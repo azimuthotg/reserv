@@ -1,12 +1,22 @@
+import os
 from pathlib import Path
-from decouple import config
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')
 
-SECRET_KEY = config('SECRET_KEY')
-DEBUG = config('DEBUG', default=False, cast=bool)
+# ── Security ──────────────────────────────────────────────────────────────────
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-changeme')
+DEBUG      = os.getenv('DEBUG', 'False') == 'True'
+ALLOWED_HOSTS = [h.strip() for h in os.getenv('ALLOWED_HOSTS', 'localhost').split(',')]
 
-ALLOWED_HOSTS = ['lib.npu.ac.th', 'localhost', '127.0.0.1']
+# ── Proxy / Path-based Routing (IIS ARR) ─────────────────────────────────────
+FORCE_SCRIPT_NAME       = os.getenv('FORCE_SCRIPT_NAME', '')
+USE_X_FORWARDED_HOST    = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SESSION_COOKIE_SECURE   = not DEBUG
+CSRF_COOKIE_SECURE      = not DEBUG
+CSRF_TRUSTED_ORIGINS    = [o.strip() for o in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -48,15 +58,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'reserv.wsgi.application'
 
-# Database — MySQL
+# ── Database — MySQL ──────────────────────────────────────────────────────────
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST', default='localhost'),
-        'PORT': '3306',
+        'NAME': os.getenv('DB_NAME', 'reserv_db'),
+        'USER': os.getenv('DB_USER', ''),
+        'PASSWORD': os.getenv('DB_PASSWORD', ''),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '3306'),
         'OPTIONS': {'charset': 'utf8mb4'},
     }
 }
@@ -69,33 +79,27 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = 'th'
-TIME_ZONE = 'Asia/Bangkok'
+TIME_ZONE     = 'Asia/Bangkok'
 USE_I18N = True
-USE_TZ = True
+USE_TZ   = True
 
-# Sub-path deployment: https://lib.npu.ac.th/reserv/
-FORCE_SCRIPT_NAME = '/reserv'
-STATIC_URL = '/reserv/static/'
+# ── Static ────────────────────────────────────────────────────────────────────
+STATIC_URL  = os.getenv('STATIC_URL', 'static/')
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Reverse proxy
-USE_X_FORWARDED_HOST = True
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-CSRF_TRUSTED_ORIGINS = ['https://lib.npu.ac.th']
+# ── LINE ──────────────────────────────────────────────────────────────────────
+LINE_CHANNEL_SECRET      = os.getenv('LINE_CHANNEL_SECRET', '')
+LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', '')
+LINE_LIFF_ID             = os.getenv('LINE_LIFF_ID', '')
 
-# LINE
-LINE_CHANNEL_SECRET = config('LINE_CHANNEL_SECRET')
-LINE_CHANNEL_ACCESS_TOKEN = config('LINE_CHANNEL_ACCESS_TOKEN')
-LINE_LIFF_ID = config('LINE_LIFF_ID')
-
-# NPU API
+# ── NPU API ───────────────────────────────────────────────────────────────────
 NPU_API_BASE = 'https://api.npu.ac.th'
 
-# Phase 2: IoT
-HA_ACCESS_SECRET = config('HA_ACCESS_SECRET', default='')
+# ── Phase 2: IoT ──────────────────────────────────────────────────────────────
+HA_ACCESS_SECRET = os.getenv('HA_ACCESS_SECRET', '')
 
-# Session
-SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+# ── Session ───────────────────────────────────────────────────────────────────
+SESSION_ENGINE   = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 86400  # 24 hours
