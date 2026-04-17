@@ -18,7 +18,7 @@ Migration จาก Google Apps Script + Google Sheets → Django + MySQL
 | ส่วน | เทคโนโลยี |
 |---|---|
 | Backend | Django 4.2 + Python 3.12 |
-| Database | MySQL 8.0 (host: 202.29.55.213, db: reserv_db) |
+| Database | MySQL 8.0 (host: ดูใน .env, db: reserv_db) |
 | Frontend | Django Template + Bootstrap 5.3 + FullCalendar v6 |
 | LIFF | LINE Front-end Framework v2 (SDK 2.15+) |
 | Process Manager | NSSM + Waitress (Windows Server) |
