@@ -15,6 +15,7 @@ media/
 
 # Environment
 .env
+deploy/.env.production
 
 # OS
 .DS_Store
