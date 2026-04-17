@@ -1,0 +1,135 @@
+{% extends "booking/base.html" %}
+
+{% block title %}ปฏิทินการจอง — ระบบจองพื้นที่บริการ{% endblock %}
+
+{% block extra_head %}
+<!-- FullCalendar v6 -->
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.14/index.global.min.css" rel="stylesheet">
+<style>
+  #calendar { background: #fff; border-radius: 12px; padding: 1rem; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+  .fc-toolbar-title { font-size: 1.1rem !important; font-weight: 600; }
+  .fc-event { cursor: pointer; border-radius: 4px !important; font-size: .78rem; }
+  #roomLegend .badge { font-size: .78rem; margin: 2px; }
+  /* Timeline ห้อง */
+  .fc-resource-label { font-weight: 600; font-size: .82rem; }
+  /* Modal */
+  .modal-header { background: #006633; color: #fff; border-radius: 8px 8px 0 0; }
+  .modal-header .btn-close { filter: invert(1); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Legend -->
+<div id="roomLegend" class="mb-3 d-flex flex-wrap gap-1 align-items-center">
+  <small class="text-muted me-2">ห้อง:</small>
+  <span class="badge rounded-pill" style="background:#1a73e8">MINI THEATER</span>
+  <span class="badge rounded-pill" style="background:#e53935">Edutainment Zone</span>
+  <span class="badge rounded-pill" style="background:#7b1fa2">Canva Pro</span>
+  <span class="badge rounded-pill" style="background:#00897b">ChatGPT</span>
+  <span class="badge rounded-pill" style="background:#f57c00">โต๊ะประชุมชั้น 1</span>
+</div>
+
+<!-- ปุ่มจองด่วน -->
+<div class="mb-3 d-flex flex-wrap gap-2">
+  {% for room in rooms %}
+    <a href="{% url 'booking' %}?room={{ room.booking_name }}"
+       class="btn btn-sm btn-outline-success">
+      <i class="bi bi-plus-circle me-1"></i>จอง {{ room.name }}
+    </a>
+  {% endfor %}
+</div>
+
+<div id="calendar"></div>
+
+<!-- Event Detail Modal -->
+<div class="modal fade" id="eventModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title" id="modalRoom">รายละเอียดการจอง</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <table class="table table-borderless table-sm mb-0">
+          <tr><td class="text-muted" style="width:40%">ห้อง</td><td id="mRoom"></td></tr>
+          <tr><td class="text-muted">วันที่</td><td id="mDate"></td></tr>
+          <tr><td class="text-muted">เวลา</td><td id="mTime"></td></tr>
+          <tr><td class="text-muted">กลุ่ม</td><td id="mGroup"></td></tr>
+          <tr><td class="text-muted">ผู้จอง</td><td id="mBooker"></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.14/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/resource@6.1.14/index.global.min.js"></script>
+<script>
+const LIFF_ID = "{{ liff_id }}";
+
+// Resources (ห้องทั้งหมด)
+const RESOURCES = [
+  {% for room in rooms %}
+  { id: '{{ room.booking_name }}', title: '{{ room.name }}' },
+  {% endfor %}
+];
+
+document.addEventListener('DOMContentLoaded', function() {
+  const calEl = document.getElementById('calendar');
+  const eventModal = new bootstrap.Modal(document.getElementById('eventModal'));
+
+  const calendar = new FullCalendar.Calendar(calEl, {
+    locale: 'th',
+    initialView: 'dayGridMonth',
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: 'dayGridMonth,timeGridWeek'
+    },
+    buttonText: {
+      today: 'วันนี้',
+      month: 'เดือน',
+      week:  'สัปดาห์',
+    },
+    events: {
+      url: '{% url "calendar_events" %}',
+      method: 'GET',
+      failure: function() {
+        alert('ไม่สามารถโหลดข้อมูลได้');
+      }
+    },
+    eventClick: function(info) {
+      const p = info.event.extendedProps;
+      const start = info.event.start;
+      const end   = info.event.end;
+      document.getElementById('modalRoom').textContent = p.room || info.event.title;
+      document.getElementById('mRoom').textContent  = p.room || '-';
+      document.getElementById('mDate').textContent  = start ? start.toLocaleDateString('th-TH') : '-';
+      document.getElementById('mTime').textContent  =
+        (start ? start.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'}) : '') +
+        ' – ' +
+        (end   ? end.toLocaleTimeString('th-TH',   {hour:'2-digit', minute:'2-digit'}) : '');
+      document.getElementById('mGroup').textContent  = p.group_name || '-';
+      document.getElementById('mBooker').textContent = p.booker || '-';
+      eventModal.show();
+    },
+    // กดวันไหน → เปลี่ยนเป็น timeGridDay
+    dateClick: function(info) {
+      calendar.changeView('timeGridDay', info.dateStr);
+    },
+    // FullCalendar settings
+    nowIndicator: true,
+    dayMaxEvents: 3,
+    eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
+    slotMinTime: '07:00:00',
+    slotMaxTime: '19:00:00',
+  });
+
+  calendar.render();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,143 @@
+{% extends "booking/base.html" %}
+
+{% block title %}จองพื้นที่ {{ room.name }} — ระบบจองพื้นที่บริการ{% endblock %}
+
+{% block content %}
+{% if not room %}
+  <div class="alert alert-danger text-center">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i> ไม่พบห้องที่ต้องการจอง
+  </div>
+{% else %}
+
+<div class="row justify-content-center">
+  <div class="col-12 col-md-8 col-lg-6">
+
+    <!-- Room Info Card -->
+    <div class="card mb-3" style="border-left: 4px solid #006633;">
+      <div class="card-body py-3">
+        <div class="d-flex align-items-center">
+          <i class="bi bi-door-open fs-3 me-3 text-success"></i>
+          <div>
+            <h5 class="mb-0 fw-bold">{{ room.name }}</h5>
+            <small class="text-muted">
+              <i class="bi bi-geo-alt me-1"></i>{{ room.location }} &nbsp;|&nbsp;
+              <i class="bi bi-people me-1"></i>รองรับ {{ room.capacity }} คน &nbsp;|&nbsp;
+              <i class="bi bi-clock me-1"></i>{{ room.open_time|time:"H:i" }}–{{ room.close_time|time:"H:i" }} น.
+            </small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Booking Form -->
+    <div class="card p-4">
+      <h6 class="fw-bold mb-3"><i class="bi bi-calendar-plus me-1"></i> กรอกข้อมูลการจอง</h6>
+
+      {% if messages %}
+        {% for msg in messages %}
+          <div class="alert alert-danger">
+            <i class="bi bi-exclamation-circle me-1"></i> {{ msg }}
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      <form method="post" action="{% url 'booking' %}" id="bookingForm">
+        {% csrf_token %}
+        <input type="hidden" name="room" value="{{ room.booking_name }}">
+
+        <!-- ชื่อผู้จอง (pre-fill, readonly) -->
+        <div class="mb-3">
+          <label class="form-label fw-semibold">ชื่อผู้จอง</label>
+          <input type="text" class="form-control" value="{{ profile.full_name|default:line_user.display_name }}" readonly>
+          <div class="form-text">{{ line_user.user_type }} — {{ profile.faculty|default:"" }}</div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">ชื่อกลุ่ม / วัตถุประสงค์การใช้ <span class="text-danger">*</span></label>
+          <input type="text" name="group_name" class="form-control" required
+                 placeholder="เช่น กลุ่มเรียนวิชา... / ประชุมโครงการ..."
+                 maxlength="200">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">วันที่จอง <span class="text-danger">*</span></label>
+          <input type="date" name="booking_date" class="form-control" required
+                 min="{{ today }}" value="{{ today }}">
+        </div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <label class="form-label fw-semibold">เวลาเริ่ม <span class="text-danger">*</span></label>
+            <input type="time" name="start_time" class="form-control" required
+                   min="{{ room.open_time|time:'H:i' }}" max="{{ room.close_time|time:'H:i' }}"
+                   value="{{ room.open_time|time:'H:i' }}">
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-semibold">เวลาสิ้นสุด <span class="text-danger">*</span></label>
+            <input type="time" name="end_time" class="form-control" required
+                   min="{{ room.open_time|time:'H:i' }}" max="{{ room.close_time|time:'H:i' }}">
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label fw-semibold">รายชื่อผู้เข้าใช้ <span class="text-danger">*</span></label>
+          <textarea name="attendees" class="form-control" rows="4" required
+                    placeholder="กรอกรายชื่อผู้เข้าใช้ (1 คนต่อบรรทัด)"></textarea>
+        </div>
+
+        <div class="d-grid">
+          <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+            <span id="btnText"><i class="bi bi-check2-circle me-1"></i> ยืนยันการจอง</span>
+            <span id="btnLoading" class="d-none">
+              <span class="spinner-border spinner-border-sm me-1"></span> กำลังบันทึก...
+            </span>
+          </button>
+        </div>
+      </form>
+    </div>
+
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const LIFF_ID = "{{ liff_id }}";
+
+// ดึง LINE userId จาก LIFF และส่งไป session ผ่าน hidden field
+async function initLiff() {
+  try {
+    await liff.init({ liffId: LIFF_ID });
+    if (!liff.isLoggedIn()) {
+      liff.login({ redirectUri: window.location.href });
+      return;
+    }
+    const profile = await liff.getProfile();
+    // บันทึก userId ไว้ใน session ผ่าน hidden API call
+    await fetch('/api/set-session/', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+      body: JSON.stringify({ line_user_id: profile.userId, display_name: profile.displayName })
+    });
+  } catch(e) {
+    console.warn('LIFF:', e.message);
+  }
+}
+
+function getCookie(name) {
+  const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+  return v ? v[2] : null;
+}
+
+// Show loading on submit
+document.getElementById('bookingForm')?.addEventListener('submit', function() {
+  document.getElementById('btnText').classList.add('d-none');
+  document.getElementById('btnLoading').classList.remove('d-none');
+  document.getElementById('submitBtn').disabled = true;
+});
+
+initLiff();
+</script>
+{% endblock %}

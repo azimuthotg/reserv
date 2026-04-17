@@ -1,0 +1,64 @@
+{% extends "booking/base.html" %}
+
+{% block title %}จองสำเร็จ — ระบบจองพื้นที่บริการ{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-sm-10 col-md-6 col-lg-5">
+
+    <div class="card text-center p-4">
+      <div class="mb-3">
+        <i class="bi bi-check-circle-fill text-success" style="font-size:4rem;"></i>
+      </div>
+      <h4 class="fw-bold text-success mb-2">จองสำเร็จ!</h4>
+
+      {% if booking %}
+      <p class="text-muted mb-4">ระบบบันทึกการจองของคุณเรียบร้อยแล้ว</p>
+
+      <div class="card bg-light border-0 text-start mb-4">
+        <div class="card-body">
+          <table class="table table-borderless table-sm mb-0">
+            <tr>
+              <td class="text-muted" style="width:40%">ห้อง</td>
+              <td class="fw-semibold">{{ booking.room.name }}</td>
+            </tr>
+            <tr>
+              <td class="text-muted">สถานที่</td>
+              <td>{{ booking.room.location }}</td>
+            </tr>
+            <tr>
+              <td class="text-muted">วันที่</td>
+              <td class="fw-semibold">{{ booking.booking_date }}</td>
+            </tr>
+            <tr>
+              <td class="text-muted">เวลา</td>
+              <td class="fw-semibold">{{ booking.start_time|time:"H:i" }} – {{ booking.end_time|time:"H:i" }} น.</td>
+            </tr>
+            <tr>
+              <td class="text-muted">กลุ่ม/วัตถุประสงค์</td>
+              <td>{{ booking.group_name }}</td>
+            </tr>
+            <tr>
+              <td class="text-muted">เลขที่จอง</td>
+              <td class="text-secondary">#{{ booking.id }}</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      {% else %}
+      <p class="text-muted mb-4">การจองของคุณเสร็จสมบูรณ์</p>
+      {% endif %}
+
+      <div class="d-grid gap-2">
+        <a href="{% url 'calendar' %}" class="btn btn-outline-primary">
+          <i class="bi bi-calendar3 me-1"></i> ดูปฏิทินการจอง
+        </a>
+        <button class="btn btn-outline-secondary" onclick="window.close(); liff?.closeWindow();">
+          <i class="bi bi-x-circle me-1"></i> ปิดหน้าต่าง
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

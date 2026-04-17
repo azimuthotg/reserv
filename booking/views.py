@@ -1,0 +1,269 @@
+import json
+from django.shortcuts import render, redirect
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib import messages
+from django.conf import settings
+from django.utils import timezone
+from django.db import transaction
+
+from .models import Room, LineUser, Booking, BookingLog
+from .utils import get_npu_user, register_npu_user, get_profile, verify_ldap
+
+
+# ─── Register ──────────────────────────────────────────────────────────────────
+
+def register_view(request):
+    """ผูกบัญชี LINE กับ LDAP"""
+    next_url = request.GET.get('next') or request.POST.get('next') or '/booking/'
+    context = {
+        'next': next_url,
+        'liff_id': settings.LINE_LIFF_ID,
+        'error': None,
+        'form_data': {},
+    }
+
+    if request.method == 'POST':
+        user_ldap  = request.POST.get('user_ldap', '').strip()
+        pass_ldap  = request.POST.get('pass_ldap', '').strip()
+        user_type  = request.POST.get('user_type', '').strip()
+        line_user_id = request.POST.get('line_user_id', '').strip()
+
+        # Fallback: ดึง line_user_id จาก session ถ้าไม่ได้มาจาก form
+        if not line_user_id:
+            line_user_id = request.session.get('line_user_id', '')
+
+        context['form_data'] = {'user_ldap': user_ldap, 'user_type': user_type}
+
+        # ─── Validate input
+        if not all([user_ldap, pass_ldap, user_type]):
+            context['error'] = 'กรุณากรอกข้อมูลให้ครบถ้วน'
+            return render(request, 'booking/register.html', context)
+
+        if user_type not in ['นักศึกษา', 'บุคลากรภายในมหาวิทยาลัย']:
+            context['error'] = 'ประเภทผู้ใช้ไม่ถูกต้อง'
+            return render(request, 'booking/register.html', context)
+
+        # ─── Verify LDAP
+        ok, err = verify_ldap(user_ldap, pass_ldap)
+        if not ok:
+            context['error'] = err or 'username หรือ password ไม่ถูกต้อง'
+            return render(request, 'booking/register.html', context)
+
+        # ─── ดึงข้อมูลโปรไฟล์
+        profile = get_profile(user_ldap, user_type)
+        full_name = profile['full_name'] if profile else user_ldap
+
+        # ─── บันทึกที่ api.npu.ac.th (ถ้ามี line_user_id)
+        if line_user_id:
+            register_npu_user(line_user_id, user_ldap, user_type)
+            # บันทึก/อัปเดต LineUser ใน Django DB (cache)
+            LineUser.objects.update_or_create(
+                line_user_id=line_user_id,
+                defaults={
+                    'display_name': full_name,
+                    'user_ldap': user_ldap,
+                    'user_type': user_type,
+                    'is_active': True,
+                }
+            )
+
+        # ─── เก็บ session
+        request.session['line_user_id'] = line_user_id
+        request.session['user_ldap'] = user_ldap
+        request.session['user_type'] = user_type
+        request.session['full_name'] = full_name
+
+        return redirect(next_url)
+
+    return render(request, 'booking/register.html', context)
+
+
+# ─── Booking ───────────────────────────────────────────────────────────────────
+
+def booking_view(request):
+    """Form จอง (เปิดจาก LIFF)"""
+    room_key = request.GET.get('room', '')
+    room = Room.objects.filter(booking_name=room_key, is_active=True).first()
+    if not room:
+        messages.error(request, f'ไม่พบห้อง "{room_key}"')
+        return render(request, 'booking/booking.html', {'room': None})
+
+    # ─── ตรวจสอบว่า user ผูกบัญชีแล้วไหม
+    line_user_id = request.session.get('line_user_id', '')
+    line_user = None
+
+    if line_user_id:
+        line_user = LineUser.objects.filter(line_user_id=line_user_id, is_active=True).first()
+        if not line_user:
+            # ลองดึงจาก NPU API
+            npu_data = get_npu_user(line_user_id)
+            if npu_data:
+                profile = get_profile(npu_data['userLdap'], npu_data['user_type'])
+                full_name = profile['full_name'] if profile else npu_data['userLdap']
+                line_user, _ = LineUser.objects.get_or_create(
+                    line_user_id=line_user_id,
+                    defaults={
+                        'display_name': full_name,
+                        'user_ldap': npu_data['userLdap'],
+                        'user_type': npu_data['user_type'],
+                    }
+                )
+
+    if not line_user:
+        register_url = f'/register/?next=/booking/?room={room_key}'
+        return redirect(register_url)
+
+    # ─── GET: แสดง form
+    if request.method == 'GET':
+        profile = get_profile(line_user.user_ldap, line_user.user_type)
+        return render(request, 'booking/booking.html', {
+            'room': room,
+            'line_user': line_user,
+            'profile': profile,
+            'liff_id': settings.LINE_LIFF_ID,
+            'today': timezone.localdate().isoformat(),
+        })
+
+    # ─── POST: บันทึกการจอง
+    group_name   = request.POST.get('group_name', '').strip()
+    booking_date = request.POST.get('booking_date', '').strip()
+    start_time   = request.POST.get('start_time', '').strip()
+    end_time     = request.POST.get('end_time', '').strip()
+    attendees    = request.POST.get('attendees', '').strip()
+
+    if not all([group_name, booking_date, start_time, end_time, attendees]):
+        messages.error(request, 'กรุณากรอกข้อมูลให้ครบถ้วน')
+        return redirect(f'/booking/?room={room_key}')
+
+    if start_time >= end_time:
+        messages.error(request, 'เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น')
+        return redirect(f'/booking/?room={room_key}')
+
+    profile = get_profile(line_user.user_ldap, line_user.user_type)
+    faculty    = profile['faculty'] if profile else ''
+    department = profile.get('department', '') if profile else ''
+
+    booking, error = check_and_create_booking(
+        room=room,
+        date=booking_date,
+        start=start_time,
+        end=end_time,
+        line_user=line_user,
+        group_name=group_name,
+        attendees=attendees,
+        faculty=faculty,
+        department=department,
+    )
+
+    if error:
+        messages.error(request, error)
+        return redirect(f'/booking/?room={room_key}')
+
+    request.session['last_booking_id'] = booking.id
+    return redirect('booking_success')
+
+
+def check_and_create_booking(room, date, start, end, line_user, **kwargs):
+    """ตรวจ conflict แล้วสร้าง Booking ด้วย atomic transaction"""
+    try:
+        with transaction.atomic():
+            conflict = Booking.objects.select_for_update().filter(
+                room=room,
+                booking_date=date,
+                status='confirmed',
+                start_time__lt=end,
+                end_time__gt=start,
+            ).exists()
+
+            if conflict:
+                return None, 'ช่วงเวลานี้มีการจองอยู่แล้ว กรุณาเลือกเวลาอื่น'
+
+            booking = Booking.objects.create(
+                room=room,
+                booking_date=date,
+                start_time=start,
+                end_time=end,
+                line_user=line_user,
+                **kwargs,
+            )
+            BookingLog.objects.create(booking=booking, action='created')
+            return booking, None
+    except Exception as e:
+        return None, f'เกิดข้อผิดพลาด: {e}'
+
+
+def booking_success(request):
+    booking_id = request.session.get('last_booking_id')
+    booking = None
+    if booking_id:
+        booking = Booking.objects.filter(id=booking_id).select_related('room', 'line_user').first()
+    return render(request, 'booking/success.html', {'booking': booking})
+
+
+# ─── Calendar ──────────────────────────────────────────────────────────────────
+
+def calendar_view(request):
+    rooms = Room.objects.filter(is_active=True)
+    return render(request, 'booking/calendar.html', {
+        'rooms': rooms,
+        'liff_id': settings.LINE_LIFF_ID,
+    })
+
+
+def calendar_events_api(request):
+    """JSON endpoint สำหรับ FullCalendar"""
+    start = request.GET.get('start', '')
+    end   = request.GET.get('end', '')
+
+    qs = Booking.objects.filter(status='confirmed').select_related('room', 'line_user')
+    if start:
+        qs = qs.filter(booking_date__gte=start[:10])
+    if end:
+        qs = qs.filter(booking_date__lte=end[:10])
+
+    ROOM_COLORS = {
+        'mini':       '#1a73e8',
+        'netflix':    '#e53935',
+        'canva':      '#7b1fa2',
+        'chat-gpt':   '#00897b',
+        'meeting_f1': '#f57c00',
+    }
+
+    events = []
+    for b in qs:
+        color = ROOM_COLORS.get(b.room.booking_name, '#546e7a')
+        events.append({
+            'id': b.id,
+            'title': f"{b.room.name} — {b.group_name}",
+            'start': f"{b.booking_date}T{b.start_time}",
+            'end':   f"{b.booking_date}T{b.end_time}",
+            'color': color,
+            'extendedProps': {
+                'room':       b.room.name,
+                'room_key':   b.room.booking_name,
+                'group_name': b.group_name,
+                'status':     b.status,
+                'booker':     b.line_user.display_name,
+            },
+        })
+
+    return JsonResponse(events, safe=False)
+
+
+# ─── LIFF Session API ──────────────────────────────────────────────────────────
+
+@require_POST
+def set_session_api(request):
+    """LIFF เรียกหลัง init เพื่อเก็บ line_user_id ใน session"""
+    try:
+        data = json.loads(request.body)
+        line_user_id = data.get('line_user_id', '')
+        display_name = data.get('display_name', '')
+        if line_user_id:
+            request.session['line_user_id'] = line_user_id
+            request.session['display_name'] = display_name
+        return JsonResponse({'ok': True})
+    except Exception:
+        return JsonResponse({'ok': False}, status=400)
