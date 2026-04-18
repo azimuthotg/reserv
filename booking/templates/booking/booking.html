@@ -1,139 +1,122 @@
-{% extends "booking/base.html" %}
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library@NPU — จองพื้นที่บริการ</title>
+    <style>
+        html, body { margin: 0; width: 100%; height: 100%; }
+        iframe { width: 100%; height: 100%; border: none; }
+        #loader {
+            position: fixed; inset: 0;
+            display: flex; justify-content: center; align-items: center;
+            background: rgba(255,255,255,0.9); z-index: 9999; flex-direction: column; gap: 12px;
+        }
+        .spinner {
+            width: 40px; height: 40px; border: 4px solid #e0e0e0;
+            border-top-color: #06C755; border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        #error-msg { display: none; padding: 20px; text-align: center; color: #c00; font-family: sans-serif; }
+    </style>
+</head>
+<body>
+    <div id="loader"><div class="spinner"></div></div>
+    <div id="error-msg"></div>
+    <iframe id="formframe" src=""></iframe>
 
-{% block title %}จองพื้นที่ {{ room.name }} — ระบบจองพื้นที่บริการ{% endblock %}
+    <script src="https://static.line-scdn.net/liff/edge/versions/2.15.0/sdk.js"></script>
+    <script>
+        const LIFF_ID      = "{{ liff_id }}";
+        const GAS_URLS     = {{ gas_urls|safe }};
+        const REGISTER_URL = "{{ register_url }}";
+        const CHECK_URL    = "{% url 'check_user' %}";
 
-{% block content %}
-{% if not room %}
-  <div class="alert alert-danger text-center">
-    <i class="bi bi-exclamation-triangle-fill me-2"></i> ไม่พบห้องที่ต้องการจอง
-  </div>
-{% elif liff_loading %}
-  <div class="text-center mt-5">
-    <div class="spinner-border text-success" role="status"></div>
-    <p class="mt-3 text-muted">กำลังตรวจสอบข้อมูล LINE...</p>
-  </div>
-{% else %}
+        function showError(msg) {
+            document.getElementById('loader').style.display = 'none';
+            const el = document.getElementById('error-msg');
+            el.textContent = msg;
+            el.style.display = 'block';
+        }
 
-<div class="row justify-content-center">
-  <div class="col-12 col-md-8 col-lg-6">
+        function hideLoader() {
+            document.getElementById('loader').style.display = 'none';
+        }
 
-    <!-- Room Info Card -->
-    <div class="card mb-3" style="border-left: 4px solid #006633;">
-      <div class="card-body py-3">
-        <div class="d-flex align-items-center">
-          <i class="bi bi-door-open fs-3 me-3 text-success"></i>
-          <div>
-            <h5 class="mb-0 fw-bold">{{ room.name }}</h5>
-            <small class="text-muted">
-              <i class="bi bi-geo-alt me-1"></i>{{ room.location }} &nbsp;|&nbsp;
-              <i class="bi bi-people me-1"></i>รองรับ {{ room.capacity }} คน &nbsp;|&nbsp;
-              <i class="bi bi-clock me-1"></i>{{ room.open_time|time:"H:i" }}–{{ room.close_time|time:"H:i" }} น.
-            </small>
-          </div>
-        </div>
-      </div>
-    </div>
+        function loadGasForm(room, userId, displayName, pictureUrl, userLdap, user_type) {
+            const base = GAS_URLS[room];
+            if (!base) {
+                showError('ไม่พบข้อมูลห้อง: ' + room);
+                return;
+            }
+            const params = new URLSearchParams({ userId, displayName, pictureUrl, userLdap, user_type });
+            document.getElementById('formframe').src = base + '?' + params.toString();
+            setTimeout(hideLoader, 5000);
+        }
 
-    <!-- Booking Form -->
-    <div class="card p-4">
-      <h6 class="fw-bold mb-3"><i class="bi bi-calendar-plus me-1"></i> กรอกข้อมูลการจอง</h6>
+        async function runApp(room) {
+            let profile;
+            try {
+                profile = await liff.getProfile();
+            } catch (e) {
+                showError('ไม่สามารถดึงข้อมูล LINE ได้');
+                return;
+            }
 
-      {% if messages %}
-        {% for msg in messages %}
-          <div class="alert alert-danger">
-            <i class="bi bi-exclamation-circle me-1"></i> {{ msg }}
-          </div>
-        {% endfor %}
-      {% endif %}
+            const { userId, displayName, pictureUrl } = profile;
 
-      <form method="post" action="{% url 'booking' %}" id="bookingForm">
-        {% csrf_token %}
-        <input type="hidden" name="room" value="{{ room.booking_name }}">
-        <input type="hidden" name="line_id" value="{{ line_id }}">
+            let data;
+            try {
+                const resp = await fetch(CHECK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId }),
+                });
+                data = await resp.json();
+            } catch (e) {
+                showError('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่');
+                return;
+            }
 
-        <!-- ชื่อผู้จอง (pre-fill, readonly) -->
-        <div class="mb-3">
-          <label class="form-label fw-semibold">ชื่อผู้จอง</label>
-          <input type="text" class="form-control" value="{{ profile.full_name|default:line_user.display_name }}" readonly>
-          <div class="form-text">{{ line_user.user_type }} — {{ profile.faculty|default:"" }}</div>
-        </div>
+            if (!data.registered) {
+                // ยังไม่ได้ลงทะเบียน → ส่งไปหน้า register เดิม
+                const currentUrl = window.location.href;
+                const registerRedirect = REGISTER_URL
+                    + '?userId=' + encodeURIComponent(userId)
+                    + '&displayName=' + encodeURIComponent(displayName)
+                    + '&pictureUrl=' + encodeURIComponent(pictureUrl)
+                    + '&page=' + encodeURIComponent(currentUrl);
+                window.location.href = registerRedirect;
+                return;
+            }
 
-        <div class="mb-3">
-          <label class="form-label fw-semibold">ชื่อกลุ่ม / วัตถุประสงค์การใช้ <span class="text-danger">*</span></label>
-          <input type="text" name="group_name" class="form-control" required
-                 placeholder="เช่น กลุ่มเรียนวิชา... / ประชุมโครงการ..."
-                 maxlength="200">
-        </div>
+            loadGasForm(room, userId, displayName, pictureUrl, data.userLdap, data.user_type);
+        }
 
-        <div class="mb-3">
-          <label class="form-label fw-semibold">วันที่จอง <span class="text-danger">*</span></label>
-          <input type="date" name="booking_date" class="form-control" required
-                 min="{{ today }}" value="{{ today }}">
-        </div>
+        function getRoom() {
+            // LIFF 2.x encode params ไว้ใน liff.state เช่น ?liff.state=%3Fbooking_name%3Dnetflix
+            let params = new URLSearchParams(window.location.search);
+            const liffState = params.get('liff.state');
+            if (liffState) {
+                // decode แล้ว parse ใหม่
+                params = new URLSearchParams(decodeURIComponent(liffState));
+            }
+            // รองรับทั้ง ?room= (ใหม่) และ ?booking_name= (เดิม)
+            return params.get('room') || params.get('booking_name') || '';
+        }
 
-        <div class="row g-2 mb-3">
-          <div class="col-6">
-            <label class="form-label fw-semibold">เวลาเริ่ม <span class="text-danger">*</span></label>
-            <input type="time" name="start_time" class="form-control" required
-                   min="{{ room.open_time|time:'H:i' }}" max="{{ room.close_time|time:'H:i' }}"
-                   value="{{ room.open_time|time:'H:i' }}">
-          </div>
-          <div class="col-6">
-            <label class="form-label fw-semibold">เวลาสิ้นสุด <span class="text-danger">*</span></label>
-            <input type="time" name="end_time" class="form-control" required
-                   min="{{ room.open_time|time:'H:i' }}" max="{{ room.close_time|time:'H:i' }}">
-          </div>
-        </div>
+        liff.init({ liffId: LIFF_ID })
+            .then(() => {
+                const room = getRoom();
 
-        <div class="mb-4">
-          <label class="form-label fw-semibold">รายชื่อผู้เข้าใช้ <span class="text-danger">*</span></label>
-          <textarea name="attendees" class="form-control" rows="4" required
-                    placeholder="กรอกรายชื่อผู้เข้าใช้ (1 คนต่อบรรทัด)"></textarea>
-        </div>
-
-        <div class="d-grid">
-          <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
-            <span id="btnText"><i class="bi bi-check2-circle me-1"></i> ยืนยันการจอง</span>
-            <span id="btnLoading" class="d-none">
-              <span class="spinner-border spinner-border-sm me-1"></span> กำลังบันทึก...
-            </span>
-          </button>
-        </div>
-      </form>
-    </div>
-
-  </div>
-</div>
-
-{% endif %}
-{% endblock %}
-
-{% block extra_scripts %}
-<script>
-document.getElementById('bookingForm')?.addEventListener('submit', function() {
-  document.getElementById('btnText').classList.add('d-none');
-  document.getElementById('btnLoading').classList.remove('d-none');
-  document.getElementById('submitBtn').disabled = true;
-});
-
-{% if liff_loading %}
-async function initLiff() {
-  try {
-    await liff.init({ liffId: "{{ liff_id }}", withLoginOnExternalBrowser: true });
-    if (!liff.isLoggedIn()) {
-      liff.login({ redirectUri: window.location.href });
-      return;
-    }
-    const profile = await liff.getProfile();
-    // redirect กลับมาพร้อม line_id
-    const url = new URL(window.location.href);
-    url.searchParams.set('line_id', profile.userId);
-    window.location.replace(url.toString());
-  } catch(e) {
-    document.querySelector('.text-muted').textContent = 'เกิดข้อผิดพลาด: ' + e.message;
-  }
-}
-initLiff();
-{% endif %}
-</script>
-{% endblock %}
+                if (liff.isLoggedIn()) {
+                    runApp(room);
+                } else {
+                    liff.login({ redirectUri: window.location.href });
+                }
+            })
+            .catch(err => showError('LIFF init error: ' + err.message));
+    </script>
+</body>
+</html>
