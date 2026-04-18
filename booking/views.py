@@ -7,6 +7,7 @@ from django.contrib import messages
 from django.conf import settings
 from django.utils import timezone
 from django.db import transaction
+from django.urls import reverse
 
 from .models import Room, LineUser, Booking, BookingLog
 from .utils import get_npu_user, register_npu_user, get_profile, verify_ldap
@@ -16,7 +17,7 @@ from .utils import get_npu_user, register_npu_user, get_profile, verify_ldap
 
 def register_view(request):
     """ผูกบัญชี LINE กับ LDAP"""
-    next_url = request.GET.get('next') or request.POST.get('next') or '/booking/'
+    next_url = request.GET.get('next') or request.POST.get('next') or reverse('booking')
     context = {
         'next': next_url,
         'liff_id': settings.LINE_LIFF_ID,
@@ -112,7 +113,7 @@ def booking_view(request):
                 )
 
     if not line_user:
-        register_url = f'/register/?next=/booking/?room={room_key}'
+        register_url = reverse('register') + f'?next={reverse("booking")}?room={room_key}'
         return redirect(register_url)
 
     # ─── GET: แสดง form
@@ -135,11 +136,11 @@ def booking_view(request):
 
     if not all([group_name, booking_date, start_time, end_time, attendees]):
         messages.error(request, 'กรุณากรอกข้อมูลให้ครบถ้วน')
-        return redirect(f'/booking/?room={room_key}')
+        return redirect(reverse('booking') + f'?room={room_key}')
 
     if start_time >= end_time:
         messages.error(request, 'เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น')
-        return redirect(f'/booking/?room={room_key}')
+        return redirect(reverse('booking') + f'?room={room_key}')
 
     profile = get_profile(line_user.user_ldap, line_user.user_type)
     faculty    = profile['faculty'] if profile else ''
@@ -159,7 +160,7 @@ def booking_view(request):
 
     if error:
         messages.error(request, error)
-        return redirect(f'/booking/?room={room_key}')
+        return redirect(reverse('booking') + f'?room={room_key}')
 
     request.session['last_booking_id'] = booking.id
     return redirect('booking_success')
