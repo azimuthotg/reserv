@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library@NPU</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <style>
+        html,
+        body {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+        }
+        #loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(255, 255, 255, 0.8);
+            z-index: 9999;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="loader">
+        <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Loading...</span>
+          </div>
+          <div class="spinner-border text-secondary" role="status">
+            <span class="sr-only">Loading...</span>
+          </div>
+          <div class="spinner-border text-success" role="status">
+            <span class="sr-only">Loading...</span>
+          </div>
+          <div class="spinner-border text-danger" role="status">
+            <span class="sr-only">Loading...</span>
+          </div>
+          <div class="spinner-border text-warning" role="status">
+            <span class="sr-only">Loading...</span>
+          </div>
+          <div class="spinner-border text-info" role="status">
+            <span class="sr-only">Loading...</span>
+          </div>
+    </div>
+    <iframe id="formframe" src="" frameborder="0"></iframe>
+    <script src="https://static.line-scdn.net/liff/edge/versions/2.15.0/sdk.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@0.21.1/dist/axios.min.js"></script>
+</body>
+
+<script>
+
+    function runApp(booking_name) {
+        if (booking_name == "netflix") {
+            liff.getProfile().then(profile => {
+                let userId = profile.userId;
+                let displayName = profile.displayName;
+                let pictureUrl = profile.pictureUrl;
+                let userLdap = null;
+                let user_type = null;
+                $.post("../testdb.php", {
+                    userId: userId
+                }, function(data, status) {
+                    setTimeout(function() {
+                        console.log(data);
+                        if(data == ""){
+                            let url = "https://api.npu.ac.th/reserv/lineoa?userId=" + userId + "&displayName=" + displayName + "&pictureUrl=" + pictureUrl+"&page=https://arc.npu.ac.th/old-web/booking/netflix.html?booking_name=netflix";
+                            console.log(url);
+                            window.location.href =url;
+                        }else{
+                        let text = data.split(",");
+                        userLdap = text[0];
+                        user_type = text[1];
+                        /////////////////////////////////////////////////////////////////// ห้อง netflix  ////////////////////////
+                        let url = "https://script.google.com/macros/s/AKfycbxFkKMyTdR65nNGyKqdiSAJ3QhAvqFbZdfOfLC5FiwwL8txefcHkSej8dykY4W8_jyz/exec?userId=" + userId + "&displayName=" + displayName + "&pictureUrl=" + pictureUrl+"&userLdap="+userLdap+"&user_type="+user_type;
+                        
+                        document.getElementById("formframe").src = url;
+                        
+                        }
+
+                    }, 1000);
+                    
+                });
+
+                document.getElementById("formframe").src = url;
+            }).catch(err => console.error(err));
+        } else if (booking_name == "mini") {
+            liff.getProfile().then(profile => {
+                let userId = profile.userId;
+                let displayName = profile.displayName;
+                let pictureUrl = profile.pictureUrl;
+                let userLdap = null;
+                let user_type = null;
+                $.post("../testdb.php", {
+                    userId: userId
+                }, function(data, status) {
+                    setTimeout(function() {
+                        console.log(data);
+                        if(data == ""){
+                            let url = "https://api.npu.ac.th/reserv/lineoa?userId=" + userId + "&displayName=" + displayName + "&pictureUrl=" + pictureUrl+"&page=https://arc.npu.ac.th/old-web/booking/netflix.html?booking_name=mini";
+                            console.log(url);
+                            window.location.href =url;
+                        }else{
+                        let text = data.split(",");
+                        userLdap = text[0];
+                        user_type = text[1];
+                        /////////////////////////////////////////////////////////////////// ห้องมินิเธียเตอร์  ////////////////////////
+                        let url = "https://script.google.com/macros/s/AKfycbztdq1E8ErPtk-IrLhigtcWDh3TlRpNwy5f1Lojo61zMksYSsKF4Wm4361DeeZ31ZBR/exec?userId=" + userId + "&displayName=" + displayName + "&pictureUrl=" + pictureUrl+"&userLdap="+userLdap+"&user_type="+user_type;
+                        
+                        document.getElementById("formframe").src = url;
+                        
+                        }
+
+                    }, 1000);
+                    
+                });
+
+                document.getElementById("formframe").src = url;
+            }).catch(err => console.error(err));
+        }  else if (booking_name == "canva") {
+            liff.getProfile().then(profile => {
+                let userId = profile.userId;
+                let displayName = profile.displayName;
+                let pictureUrl = profile.pictureUrl;
+                let userLdap = null;
+                let user_type = null;
+                $.post("../testdb.php", {
+                    userId: userId
+                }, function(data, status) {
+                    setTimeout(function() {
+                        console.log(data);
+                        if(data == ""){
+                            let url = "https://api.npu.ac.th/reserv/lineoa?userId=" + userId + "&displayName=" + displayName + "&pictureUrl=" + pictureUrl+"&page=https://arc.npu.ac.th/old-web/booking/netflix.html?booking_name=canva";
+                            console.log(url);
+                            window.location.href =url;
+                        }else{
+                        let text = data.split(",");
+                        userLdap = text[0];
+                        user_type = text[1];
+                        ///////////////////////////////////////////////////////////////////  Canva Pro  ////////////////////////
+                        let url = "https://script.google.com/macros/s/AKfycbw_jXGQutF7AytcnS0D5LkB5_XswMA_K4bIkBFEENRjOhjIghcNc7jBo6l4hEUQ4LtJNQ/exec?userId=" + userId + "&displayName=" + displayName + "&pictureUrl=" + pictureUrl+"&userLdap="+userLdap+"&user_type="+user_type;
+                        
+                        document.getElementById("formframe").src = url;
+                        
+                        }
+
+                    }, 1000);
+                    
+                });
+            }).catch(err => console.error(err));
+        }else if (booking_name == "meeting_f1") {
+             liff.getProfile().then(profile => {
+                let userId = profile.userId;
+                let displayName = profile.displayName;
+                let pictureUrl = profile.pictureUrl;
+                let userLdap = null;
+                let user_type = null;
+                $.post("../testdb.php", {
+                    userId: userId
+                }, function(data, status) {
+                    setTimeout(function() {
+                        //console.log(data);
+                        if(data == ""){
+                            let url = "https://api.npu.ac.th/reserv/lineoa?userId=" + userId + "&displayName=" + displayName + "&pictureUrl=" + pictureUrl+"&page=https://arc.npu.ac.th/old-web/booking/netflix.html?booking_name=meeting_f1";
+                            //console.log(url);
+                            window.location.href =url;
+                        }else{
+                        let text = data.split(",");
+                        userLdap = text[0];
+                        user_type = text[1];
+                        ///////////////////////////////////////////////////////////////////  โต๊ะประชุมชั้น 1  ////////////////////////
+                        let url = "https://script.google.com/macros/s/AKfycbygZ027Ua3K-EjA5cXTHLem8GFA1fqDsf9mEqjxcPhF2kvptQzLQGMpv9tZ0osNzPkS/exec?userId=" + userId + "&displayName=" + displayName + "&pictureUrl=" + pictureUrl+"&userLdap="+userLdap+"&user_type="+user_type;
+                        console.log(url);
+                        document.getElementById("formframe").src = url;
+                        
+                        }
+
+                    }, 1000);
+                    hide();
+                });
+            })
+            
+        } else if (booking_name == "chat-gpt") {
+             liff.getProfile().then(profile => {
+                let userId = profile.userId;
+                let displayName = profile.displayName;
+                let pictureUrl = profile.pictureUrl;
+                let userLdap = null;
+                let user_type = null;
+                $.post("../testdb.php", {
+                    userId: userId
+                }, function(data, status) {
+                    setTimeout(function() {
+                        //console.log(data);
+                        if(data == ""){
+                            let url = "https://api.npu.ac.th/reserv/lineoa?userId=" + userId + "&displayName=" + displayName + "&pictureUrl=" + pictureUrl+"&page=https://arc.npu.ac.th/old-web/booking/netflix.html?booking_name=chat-gpt";
+                            //console.log(url);
+                            window.location.href =url;
+                        }else{
+                        let text = data.split(",");
+                        userLdap = text[0];
+                        user_type = text[1];
+                        ///////////////////////////////////////////////////////////////////  CharGPT  ////////////////////////
+                        let url = "https://script.google.com/macros/s/AKfycby_USdtlYlCaYEn9E8uJkGLPYNEHTztcp8O05HtDQdKuz12xL1bQ3XxVbb0Lfht2EyzmQ/exec?userId=" + userId + "&displayName=" + displayName + "&pictureUrl=" + pictureUrl+"&userLdap="+userLdap+"&user_type="+user_type;
+                        console.log(url);
+                        document.getElementById("formframe").src = url;
+                        
+                        }
+
+                    }, 1000);
+                    hide();
+                });
+            })
+            
+        }
+        else if (booking_name == "authen" || booking_name == "") {
+            liff.getProfile().then(profile => {
+                let userId = profile.userId;
+                let displayName = profile.displayName; //
+                let pictureUrl = profile.pictureUrl;
+                let url = "https://api.npu.ac.th/reserv?userId=" + userId + "&displayName=" + displayName + "&pictureUrl=" + pictureUrl;
+
+                //document.getElementById("formframe").src = url;
+
+                window.location.href =url;
+            }).catch(err => console.error(err));
+        }
+        else {
+            liff.getProfile().then(profile => {
+                let userId = profile.userId;
+                let displayName = profile.displayName; //
+                let pictureUrl = profile.pictureUrl;
+                let url = "https://api.npu.ac.th/reserv?userId=" + userId + "&displayName=" + displayName + "&pictureUrl=" + pictureUrl;
+
+                //document.getElementById("formframe").src = url;
+
+                window.location.href =url;
+            }).catch(err => console.error(err));
+        }
+        console.log("loader=none");
+        setTimeout(function() {
+            document.getElementById('loader').style.display = 'none';
+        }, 8000);
+    }
+    function hide() {
+        setTimeout(function() {
+            document.getElementById('loader').style.display = 'none';
+        }, 5000);
+    }
+    liff.init({ liffId: "1653777241-BP070q31" }, () => {
+        // กำหนดค่าเริ่มต้นของพารามิเตอร์
+        var booking_name = null;
+
+        // ดึงค่าจาก URL
+        var searchParams = new URLSearchParams(window.location.search);
+
+        // ดึงค่าของพารามิเตอร์ตามชื่อ
+        if (searchParams.has('booking_name')) {
+            booking_name = searchParams.get('booking_name');
+        }
+        // แสดงค่าของพารามิเตอร์
+        console.log('booking_name:', booking_name);
+
+        if (liff.isLoggedIn()) {
+            runApp(booking_name);
+        } else {
+            liff.login({ redirectUri: "https://arc.npu.ac.th/old-web/booking/netflix.html?booking_name=" + booking_name });
+        }
+    }, err => console.error(err.code, error.message));
+
+</script>
+
+</html>

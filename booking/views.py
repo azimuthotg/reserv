@@ -12,6 +12,50 @@ from .models import Room, LineUser, Booking, BookingLog
 from .utils import get_npu_user, register_npu_user, get_profile, verify_ldap
 
 
+# ─── LIFF Entry ────────────────────────────────────────────────────────────────
+
+def liff_entry_view(request):
+    """หน้า LIFF Entry — ดึง userId แล้ว redirect ไปหน้าจอง
+    ตั้ง LIFF Endpoint URL เป็น: https://lib.npu.ac.th/reserv/liff/
+    """
+    return render(request, 'booking/liff_entry.html', {
+        'liff_id': settings.LINE_LIFF_ID,
+    })
+
+
+@require_POST
+def liff_login_api(request):
+    """Browser fallback — verify LDAP แล้วเก็บ session (ไม่มี line_id)"""
+    try:
+        data = json.loads(request.body)
+        username  = data.get('username', '').strip()
+        password  = data.get('password', '').strip()
+        user_type = data.get('user_type', '').strip()
+    except Exception:
+        return JsonResponse({'ok': False, 'error': 'ข้อมูลไม่ถูกต้อง'}, status=400)
+
+    if not all([username, password, user_type]):
+        return JsonResponse({'ok': False, 'error': 'กรุณากรอกข้อมูลให้ครบถ้วน'})
+
+    if user_type not in ['นักศึกษา', 'บุคลากรภายในมหาวิทยาลัย']:
+        return JsonResponse({'ok': False, 'error': 'ประเภทผู้ใช้ไม่ถูกต้อง'})
+
+    ok, err = verify_ldap(username, password)
+    if not ok:
+        return JsonResponse({'ok': False, 'error': err or 'username หรือ password ไม่ถูกต้อง'})
+
+    profile   = get_profile(username, user_type)
+    full_name = profile['full_name'] if profile else username
+
+    # เก็บ session สำหรับ browser login (ไม่มี LINE userId)
+    request.session['user_ldap']  = username
+    request.session['user_type']  = user_type
+    request.session['full_name']  = full_name
+    request.session['faculty']    = profile.get('faculty', '') if profile else ''
+
+    return JsonResponse({'ok': True, 'full_name': full_name})
+
+
 # ─── Home ───────────────────────────────────────────────────────────────────────
 
 def home_view(request):
@@ -95,13 +139,34 @@ def booking_view(request):
     line_id = request.GET.get('line_id', '').strip() or request.POST.get('line_id', '').strip()
 
     if not line_id:
-        # ไม่มี line_id → ให้ LIFF JS ดึง userId แล้ว redirect กลับมาพร้อม line_id
-        return render(request, 'booking/booking.html', {
-            'room': room,
-            'line_user': None,
-            'liff_loading': True,
-            'liff_id': settings.LINE_LIFF_ID,
-        })
+        # ตรวจ session จาก browser login
+        if request.session.get('user_ldap'):
+            # browser login — สร้าง pseudo line_user จาก session
+            user_ldap = request.session['user_ldap']
+            user_type = request.session['user_type']
+            full_name = request.session['full_name']
+            line_user, _ = LineUser.objects.get_or_create(
+                line_user_id=f'web_{user_ldap}',
+                defaults={
+                    'display_name': full_name,
+                    'user_ldap': user_ldap,
+                    'user_type': user_type,
+                }
+            )
+            if request.method == 'GET':
+                profile = get_profile(user_ldap, user_type)
+                return render(request, 'booking/booking.html', {
+                    'room': room,
+                    'line_user': line_user,
+                    'line_id': '',
+                    'profile': profile,
+                    'today': timezone.localdate().isoformat(),
+                })
+        else:
+            # ไม่มี line_id และไม่มี session → redirect ไปหน้า LIFF entry
+            import urllib.parse
+            next_url = request.get_full_path()
+            return redirect(reverse('liff_entry') + '?room=' + urllib.parse.quote(room_key))
 
     # ─── หา LineUser
     line_user = LineUser.objects.filter(line_user_id=line_id, is_active=True).first()
