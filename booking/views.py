@@ -88,8 +88,13 @@ def booking_view(request):
     line_id = request.GET.get('line_id', '').strip() or request.POST.get('line_id', '').strip()
 
     if not line_id:
-        # ไม่มี line_id → แสดงหน้าขอให้เปิดจาก LINE
-        return render(request, 'booking/booking.html', {'room': room, 'line_user': None})
+        # ไม่มี line_id → ให้ LIFF JS ดึง userId แล้ว redirect กลับมาพร้อม line_id
+        return render(request, 'booking/booking.html', {
+            'room': room,
+            'line_user': None,
+            'liff_loading': True,
+            'liff_id': settings.LINE_LIFF_ID,
+        })
 
     # ─── หา LineUser
     line_user = LineUser.objects.filter(line_user_id=line_id, is_active=True).first()

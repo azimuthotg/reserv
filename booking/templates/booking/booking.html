@@ -7,9 +7,10 @@
   <div class="alert alert-danger text-center">
     <i class="bi bi-exclamation-triangle-fill me-2"></i> ไม่พบห้องที่ต้องการจอง
   </div>
-{% elif not line_user %}
-  <div class="alert alert-warning text-center">
-    <i class="bi bi-line me-2"></i> กรุณาเปิดลิงก์นี้จาก LINE เพื่อยืนยันตัวตน
+{% elif liff_loading %}
+  <div class="text-center mt-5">
+    <div class="spinner-border text-success" role="status"></div>
+    <p class="mt-3 text-muted">กำลังตรวจสอบข้อมูล LINE...</p>
   </div>
 {% else %}
 
@@ -114,5 +115,25 @@ document.getElementById('bookingForm')?.addEventListener('submit', function() {
   document.getElementById('btnLoading').classList.remove('d-none');
   document.getElementById('submitBtn').disabled = true;
 });
+
+{% if liff_loading %}
+async function initLiff() {
+  try {
+    await liff.init({ liffId: "{{ liff_id }}", withLoginOnExternalBrowser: true });
+    if (!liff.isLoggedIn()) {
+      liff.login({ redirectUri: window.location.href });
+      return;
+    }
+    const profile = await liff.getProfile();
+    // redirect กลับมาพร้อม line_id
+    const url = new URL(window.location.href);
+    url.searchParams.set('line_id', profile.userId);
+    window.location.replace(url.toString());
+  } catch(e) {
+    document.querySelector('.text-muted').textContent = 'เกิดข้อผิดพลาด: ' + e.message;
+  }
+}
+initLiff();
+{% endif %}
 </script>
 {% endblock %}
