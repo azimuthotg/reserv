@@ -115,12 +115,15 @@ async function initLiff() {
       return;
     }
     const profile = await liff.getProfile();
-    // บันทึก userId ไว้ใน session ผ่าน hidden API call
-    await fetch('{% url "set_session" %}', {
+    // บันทึก userId ไว้ใน session แล้ว reload ให้ Django ตรวจสอบ
+    const res = await fetch('{% url "set_session" %}', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
       body: JSON.stringify({ line_user_id: profile.userId, display_name: profile.displayName })
     });
+    if (res.ok) {
+      window.location.reload();
+    }
   } catch(e) {
     console.warn('LIFF:', e.message);
   }

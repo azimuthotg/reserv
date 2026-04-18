@@ -112,6 +112,15 @@ def booking_view(request):
                     }
                 )
 
+    if not line_user_id:
+        # ยังไม่มี session → render หน้าก่อนให้ LIFF init แล้ว reload
+        return render(request, 'booking/booking.html', {
+            'room': room,
+            'line_user': None,
+            'liff_loading': True,
+            'liff_id': settings.LINE_LIFF_ID,
+        })
+
     if not line_user:
         register_url = reverse('register') + f'?next={reverse("booking")}?room={room_key}'
         return redirect(register_url)
