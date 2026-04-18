@@ -3,8 +3,6 @@
 {% block title %}ปฏิทินการจอง — ระบบจองพื้นที่บริการ{% endblock %}
 
 {% block extra_head %}
-<!-- FullCalendar v6 -->
-<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.14/index.global.min.css" rel="stylesheet">
 <style>
   #calendar { background: #fff; border-radius: 12px; padding: 1rem; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
   .fc-toolbar-title { font-size: 1.1rem !important; font-weight: 600; }
@@ -67,15 +65,7 @@
 
 {% block extra_scripts %}
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.14/index.global.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/resource@6.1.14/index.global.min.js"></script>
 <script>
-// Resources (ห้องทั้งหมด)
-const RESOURCES = [
-  {% for room in rooms %}
-  { id: '{{ room.booking_name }}', title: '{{ room.name }}' },
-  {% endfor %}
-];
-
 document.addEventListener('DOMContentLoaded', function() {
   const calEl = document.getElementById('calendar');
   const eventModal = new bootstrap.Modal(document.getElementById('eventModal'));
