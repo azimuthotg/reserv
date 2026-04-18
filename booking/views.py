@@ -80,6 +80,13 @@ def register_view(request):
 def booking_view(request):
     """Form จอง — รับ line_id จาก URL parameter"""
     room_key = request.GET.get('room', '') or request.POST.get('room', '')
+    if not room_key:
+        # LIFF ส่ง ?room=mini มาเป็น liff.state=%3Froom%3Dmini
+        import urllib.parse
+        liff_state = request.GET.get('liff.state', '')
+        if liff_state:
+            params = urllib.parse.parse_qs(urllib.parse.unquote(liff_state).lstrip('?'))
+            room_key = params.get('room', [''])[0]
     room = Room.objects.filter(booking_name=room_key, is_active=True).first()
     if not room:
         return render(request, 'booking/booking.html', {'room': None})
