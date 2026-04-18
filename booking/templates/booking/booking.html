@@ -113,11 +113,16 @@ const LIFF_ID = "{{ liff_id }}";
 
 async function initLiff() {
   try {
-    await liff.init({ liffId: LIFF_ID });
+    await liff.init({
+      liffId: LIFF_ID,
+      withLoginOnExternalBrowser: true
+    });
+
     if (!liff.isLoggedIn()) {
       liff.login({ redirectUri: window.location.href });
       return;
     }
+
     const profile = await liff.getProfile();
     const userId = profile.userId;
 
@@ -134,12 +139,13 @@ async function initLiff() {
       });
       window.location.reload();
     } else {
-      // ยังไม่ผูก → ไปหน้า register (พร้อม next URL)
+      // ยังไม่ผูก → ไปหน้า register
       const next = encodeURIComponent(window.location.pathname + window.location.search);
       window.location.href = '{% url "register" %}?userId=' + userId + '&next=' + next;
     }
   } catch(e) {
-    console.warn('LIFF:', e.message);
+    console.error('LIFF Error:', e);
+    document.querySelector('.text-muted').textContent = 'เกิดข้อผิดพลาด: ' + e.message;
   }
 }
 
