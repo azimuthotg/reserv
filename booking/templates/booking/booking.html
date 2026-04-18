@@ -146,6 +146,8 @@ document.getElementById('bookingForm')?.addEventListener('submit', function() {
   document.getElementById('submitBtn').disabled = true;
 });
 
+{% if liff_loading %}
 initLiff();
+{% endif %}
 </script>
 {% endblock %}
