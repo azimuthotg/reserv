@@ -116,7 +116,7 @@ async function initLiff() {
     }
     const profile = await liff.getProfile();
     // บันทึก userId ไว้ใน session ผ่าน hidden API call
-    await fetch('/api/set-session/', {
+    await fetch('{% url "set_session" %}', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
       body: JSON.stringify({ line_user_id: profile.userId, display_name: profile.displayName })
