@@ -18,13 +18,20 @@
             animation: spin 0.8s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-        #error-msg { display: none; padding: 20px; text-align: center; color: #c00; font-family: sans-serif; }
+        #error-msg { display: none; padding: 20px; text-align: center; color: #c00; font-family: sans-serif; font-size: 14px; }
+        #debug-log {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: rgba(0,0,0,0.85); color: #0f0; font-family: monospace;
+            font-size: 11px; padding: 6px; max-height: 40vh; overflow-y: auto;
+            z-index: 99999;
+        }
     </style>
 </head>
 <body>
     <div id="loader"><div class="spinner"></div></div>
     <div id="error-msg"></div>
     <iframe id="formframe" src=""></iframe>
+    <div id="debug-log"></div>
 
     <script src="https://static.line-scdn.net/liff/edge/versions/2.15.0/sdk.js"></script>
     <script>
@@ -33,7 +40,19 @@
         const REGISTER_URL = "{{ register_url }}";
         const CHECK_URL    = "{% url 'check_user' %}";
 
+        // ── Debug log ────────────────────────────────────────────────────────────
+        function log(msg, data) {
+            const el = document.getElementById('debug-log');
+            const line = document.createElement('div');
+            const text = data !== undefined ? msg + ' → ' + JSON.stringify(data) : msg;
+            line.textContent = '[' + new Date().toISOString().substr(11,8) + '] ' + text;
+            el.appendChild(line);
+            el.scrollTop = el.scrollHeight;
+            console.log('[DEBUG]', text);
+        }
+
         function showError(msg) {
+            log('ERROR: ' + msg);
             document.getElementById('loader').style.display = 'none';
             const el = document.getElementById('error-msg');
             el.textContent = msg;
@@ -44,49 +63,71 @@
             document.getElementById('loader').style.display = 'none';
         }
 
+        function getRoom() {
+            let params = new URLSearchParams(window.location.search);
+            log('URL search', window.location.search);
+            const liffState = params.get('liff.state');
+            if (liffState) {
+                log('liff.state found', liffState);
+                params = new URLSearchParams(decodeURIComponent(liffState));
+            }
+            const room = params.get('room') || params.get('booking_name') || '';
+            log('room', room);
+            return room;
+        }
+
         function loadGasForm(room, userId, displayName, pictureUrl, userLdap, user_type) {
+            log('loadGasForm', { room, userId, userLdap, user_type });
             const base = GAS_URLS[room];
             if (!base) {
                 showError('ไม่พบข้อมูลห้อง: ' + room);
                 return;
             }
             const params = new URLSearchParams({ userId, displayName, pictureUrl, userLdap, user_type });
-            document.getElementById('formframe').src = base + '?' + params.toString();
+            const src = base + '?' + params.toString();
+            log('iframe src', src);
+            document.getElementById('formframe').src = src;
             setTimeout(hideLoader, 5000);
         }
 
         async function runApp(room) {
+            log('runApp start', { room });
+
             let profile;
             try {
                 profile = await liff.getProfile();
+                log('getProfile OK', { userId: profile.userId, displayName: profile.displayName });
             } catch (e) {
-                showError('ไม่สามารถดึงข้อมูล LINE ได้');
+                showError('ไม่สามารถดึงข้อมูล LINE ได้: ' + e.message);
                 return;
             }
 
             const { userId, displayName, pictureUrl } = profile;
 
-            let data;
+            log('calling check_user', { url: CHECK_URL, userId });
+            let resp, data;
             try {
-                const resp = await fetch(CHECK_URL, {
+                resp = await fetch(CHECK_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId }),
                 });
+                log('check_user HTTP status', resp.status);
                 data = await resp.json();
+                log('check_user response', data);
             } catch (e) {
-                showError('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่');
+                showError('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: ' + e.message);
                 return;
             }
 
             if (!data.registered) {
-                // ยังไม่ได้ลงทะเบียน → ส่งไปหน้า register เดิม
                 const currentUrl = window.location.href;
                 const registerRedirect = REGISTER_URL
                     + '?userId=' + encodeURIComponent(userId)
                     + '&displayName=' + encodeURIComponent(displayName)
                     + '&pictureUrl=' + encodeURIComponent(pictureUrl)
                     + '&page=' + encodeURIComponent(currentUrl);
+                log('not registered → redirect', registerRedirect);
                 window.location.href = registerRedirect;
                 return;
             }
@@ -94,25 +135,19 @@
             loadGasForm(room, userId, displayName, pictureUrl, data.userLdap, data.user_type);
         }
 
-        function getRoom() {
-            // LIFF 2.x encode params ไว้ใน liff.state เช่น ?liff.state=%3Fbooking_name%3Dnetflix
-            let params = new URLSearchParams(window.location.search);
-            const liffState = params.get('liff.state');
-            if (liffState) {
-                // decode แล้ว parse ใหม่
-                params = new URLSearchParams(decodeURIComponent(liffState));
-            }
-            // รองรับทั้ง ?room= (ใหม่) และ ?booking_name= (เดิม)
-            return params.get('room') || params.get('booking_name') || '';
-        }
+        // ── LIFF init ────────────────────────────────────────────────────────────
+        log('LIFF_ID', LIFF_ID);
+        log('page URL', window.location.href);
 
         liff.init({ liffId: LIFF_ID })
             .then(() => {
+                log('liff.init OK');
+                log('isLoggedIn', liff.isLoggedIn());
                 const room = getRoom();
-
                 if (liff.isLoggedIn()) {
                     runApp(room);
                 } else {
+                    log('not logged in → liff.login');
                     liff.login({ redirectUri: window.location.href });
                 }
             })
