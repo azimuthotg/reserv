@@ -2,7 +2,6 @@ import json
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
-from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.conf import settings
 from django.utils import timezone
@@ -13,34 +12,36 @@ from .models import Room, LineUser, Booking, BookingLog
 from .utils import get_npu_user, register_npu_user, get_profile, verify_ldap
 
 
+# ─── Home ───────────────────────────────────────────────────────────────────────
+
+def home_view(request):
+    """หน้าหลัก — แสดงรายการห้องทั้งหมด"""
+    rooms = Room.objects.filter(is_active=True)
+    return render(request, 'booking/home.html', {'rooms': rooms})
+
+
 # ─── Register ──────────────────────────────────────────────────────────────────
 
 def register_view(request):
     """ผูกบัญชี LINE กับ LDAP"""
-    next_url = request.GET.get('next') or request.POST.get('next') or reverse('booking')
-    # รับ userId จาก LIFF JS ที่ส่งมาใน query param
-    liff_user_id = request.GET.get('userId', '') or request.session.get('line_user_id', '')
+    next_url = request.GET.get('next') or request.POST.get('next') or reverse('home')
+    liff_user_id = request.GET.get('userId', '').strip()
+
     context = {
         'next': next_url,
-        'liff_id': settings.LINE_LIFF_ID,
         'liff_user_id': liff_user_id,
         'error': None,
         'form_data': {},
     }
 
     if request.method == 'POST':
-        user_ldap  = request.POST.get('user_ldap', '').strip()
-        pass_ldap  = request.POST.get('pass_ldap', '').strip()
-        user_type  = request.POST.get('user_type', '').strip()
+        user_ldap    = request.POST.get('user_ldap', '').strip()
+        pass_ldap    = request.POST.get('pass_ldap', '').strip()
+        user_type    = request.POST.get('user_type', '').strip()
         line_user_id = request.POST.get('line_user_id', '').strip()
-
-        # ดึง line_user_id จาก form หรือ session หรือ query param (ส่งมาจาก LIFF JS)
-        if not line_user_id:
-            line_user_id = liff_user_id
 
         context['form_data'] = {'user_ldap': user_ldap, 'user_type': user_type}
 
-        # ─── Validate input
         if not all([user_ldap, pass_ldap, user_type]):
             context['error'] = 'กรุณากรอกข้อมูลให้ครบถ้วน'
             return render(request, 'booking/register.html', context)
@@ -49,20 +50,16 @@ def register_view(request):
             context['error'] = 'ประเภทผู้ใช้ไม่ถูกต้อง'
             return render(request, 'booking/register.html', context)
 
-        # ─── Verify LDAP
         ok, err = verify_ldap(user_ldap, pass_ldap)
         if not ok:
             context['error'] = err or 'username หรือ password ไม่ถูกต้อง'
             return render(request, 'booking/register.html', context)
 
-        # ─── ดึงข้อมูลโปรไฟล์
         profile = get_profile(user_ldap, user_type)
         full_name = profile['full_name'] if profile else user_ldap
 
-        # ─── บันทึกที่ api.npu.ac.th (ถ้ามี line_user_id)
         if line_user_id:
             register_npu_user(line_user_id, user_ldap, user_type)
-            # บันทึก/อัปเดต LineUser ใน Django DB (cache)
             LineUser.objects.update_or_create(
                 line_user_id=line_user_id,
                 defaults={
@@ -73,12 +70,6 @@ def register_view(request):
                 }
             )
 
-        # ─── เก็บ session
-        request.session['line_user_id'] = line_user_id
-        request.session['user_ldap'] = user_ldap
-        request.session['user_type'] = user_type
-        request.session['full_name'] = full_name
-
         return redirect(next_url)
 
     return render(request, 'booking/register.html', context)
@@ -87,42 +78,42 @@ def register_view(request):
 # ─── Booking ───────────────────────────────────────────────────────────────────
 
 def booking_view(request):
-    """Form จอง (เปิดจาก LIFF)"""
-    room_key = request.GET.get('room', '')
+    """Form จอง — รับ line_id จาก URL parameter"""
+    room_key = request.GET.get('room', '') or request.POST.get('room', '')
     room = Room.objects.filter(booking_name=room_key, is_active=True).first()
     if not room:
-        messages.error(request, f'ไม่พบห้อง "{room_key}"')
         return render(request, 'booking/booking.html', {'room': None})
 
-    # ─── ตรวจสอบว่า user ผูกบัญชีแล้วไหม
-    line_user_id = request.session.get('line_user_id', '')
-    line_user = None
+    # รับ line_id จาก GET หรือ POST
+    line_id = request.GET.get('line_id', '').strip() or request.POST.get('line_id', '').strip()
 
-    if line_user_id:
-        line_user = LineUser.objects.filter(line_user_id=line_user_id, is_active=True).first()
-        if not line_user:
-            # ลองดึงจาก NPU API
-            npu_data = get_npu_user(line_user_id)
-            if npu_data:
-                profile = get_profile(npu_data['userLdap'], npu_data['user_type'])
-                full_name = profile['full_name'] if profile else npu_data['userLdap']
-                line_user, _ = LineUser.objects.get_or_create(
-                    line_user_id=line_user_id,
-                    defaults={
-                        'display_name': full_name,
-                        'user_ldap': npu_data['userLdap'],
-                        'user_type': npu_data['user_type'],
-                    }
-                )
+    if not line_id:
+        # ไม่มี line_id → แสดงหน้าขอให้เปิดจาก LINE
+        return render(request, 'booking/booking.html', {'room': room, 'line_user': None})
+
+    # ─── หา LineUser
+    line_user = LineUser.objects.filter(line_user_id=line_id, is_active=True).first()
+    if not line_user:
+        npu_data = get_npu_user(line_id)
+        if npu_data:
+            profile = get_profile(npu_data['userLdap'], npu_data['user_type'])
+            full_name = profile['full_name'] if profile else npu_data['userLdap']
+            line_user, _ = LineUser.objects.get_or_create(
+                line_user_id=line_id,
+                defaults={
+                    'display_name': full_name,
+                    'user_ldap': npu_data['userLdap'],
+                    'user_type': npu_data['user_type'],
+                }
+            )
 
     if not line_user:
-        # ไม่มี session หรือไม่พบ user → render หน้าให้ LIFF init แล้ว JS จัดการ redirect
-        return render(request, 'booking/booking.html', {
-            'room': room,
-            'line_user': None,
-            'liff_loading': True,
-            'liff_id': settings.LINE_LIFF_ID,
-        })
+        # ยังไม่ผูกบัญชี → ไปหน้า register
+        import urllib.parse
+        next_url = request.get_full_path()
+        return redirect(
+            reverse('register') + '?userId=' + line_id + '&next=' + urllib.parse.quote(next_url)
+        )
 
     # ─── GET: แสดง form
     if request.method == 'GET':
@@ -130,8 +121,8 @@ def booking_view(request):
         return render(request, 'booking/booking.html', {
             'room': room,
             'line_user': line_user,
+            'line_id': line_id,
             'profile': profile,
-            'liff_id': settings.LINE_LIFF_ID,
             'today': timezone.localdate().isoformat(),
         })
 
@@ -144,13 +135,13 @@ def booking_view(request):
 
     if not all([group_name, booking_date, start_time, end_time, attendees]):
         messages.error(request, 'กรุณากรอกข้อมูลให้ครบถ้วน')
-        return redirect(reverse('booking') + f'?room={room_key}')
+        return redirect(reverse('booking') + f'?room={room_key}&line_id={line_id}')
 
     if start_time >= end_time:
         messages.error(request, 'เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น')
-        return redirect(reverse('booking') + f'?room={room_key}')
+        return redirect(reverse('booking') + f'?room={room_key}&line_id={line_id}')
 
-    profile = get_profile(line_user.user_ldap, line_user.user_type)
+    profile    = get_profile(line_user.user_ldap, line_user.user_type)
     faculty    = profile['faculty'] if profile else ''
     department = profile.get('department', '') if profile else ''
 
@@ -168,7 +159,7 @@ def booking_view(request):
 
     if error:
         messages.error(request, error)
-        return redirect(reverse('booking') + f'?room={room_key}')
+        return redirect(reverse('booking') + f'?room={room_key}&line_id={line_id}')
 
     request.session['last_booking_id'] = booking.id
     return redirect('booking_success')
@@ -217,7 +208,6 @@ def calendar_view(request):
     rooms = Room.objects.filter(is_active=True)
     return render(request, 'booking/calendar.html', {
         'rooms': rooms,
-        'liff_id': settings.LINE_LIFF_ID,
     })
 
 
@@ -259,64 +249,3 @@ def calendar_events_api(request):
         })
 
     return JsonResponse(events, safe=False)
-
-
-# ─── LIFF Session API ──────────────────────────────────────────────────────────
-
-@require_POST
-def set_session_api(request):
-    """LIFF เรียกหลัง init เพื่อเก็บ line_user_id ใน session"""
-    try:
-        data = json.loads(request.body)
-        line_user_id = data.get('line_user_id', '')
-        display_name = data.get('display_name', '')
-        if line_user_id:
-            request.session['line_user_id'] = line_user_id
-            request.session['display_name'] = display_name
-        return JsonResponse({'ok': True})
-    except Exception:
-        return JsonResponse({'ok': False}, status=400)
-
-
-def check_user_api(request):
-    """JS เรียกเพื่อตรวจสอบว่า LINE userId ผูกบัญชีแล้วหรือยัง
-    แทน testdb.php ของระบบเดิม
-    GET /api/check-user/?userId=Uxxxxx
-    Response: {registered: true, user_ldap, user_type} หรือ {registered: false}
-    """
-    user_id = request.GET.get('userId', '').strip()
-    if not user_id:
-        return JsonResponse({'registered': False})
-
-    # เช็คใน local DB ก่อน (cache)
-    line_user = LineUser.objects.filter(line_user_id=user_id, is_active=True).first()
-    if line_user:
-        return JsonResponse({
-            'registered': True,
-            'user_ldap': line_user.user_ldap,
-            'user_type': line_user.user_type,
-            'display_name': line_user.display_name,
-        })
-
-    # ถ้าไม่มีใน local → เช็คที่ api.npu.ac.th
-    npu_data = get_npu_user(user_id)
-    if npu_data:
-        profile = get_profile(npu_data['userLdap'], npu_data['user_type'])
-        full_name = profile['full_name'] if profile else npu_data['userLdap']
-        LineUser.objects.update_or_create(
-            line_user_id=user_id,
-            defaults={
-                'display_name': full_name,
-                'user_ldap': npu_data['userLdap'],
-                'user_type': npu_data['user_type'],
-                'is_active': True,
-            }
-        )
-        return JsonResponse({
-            'registered': True,
-            'user_ldap': npu_data['userLdap'],
-            'user_type': npu_data['user_type'],
-            'display_name': full_name,
-        })
-
-    return JsonResponse({'registered': False})

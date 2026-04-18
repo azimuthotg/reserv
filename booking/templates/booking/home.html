@@ -1,0 +1,45 @@
+{% extends "booking/base.html" %}
+
+{% block title %}ระบบจองพื้นที่บริการ Smart Creative Learning Space{% endblock %}
+
+{% block content %}
+<div class="text-center mb-4">
+  <h4 class="fw-bold" style="color:#006633;">Smart Creative Learning Space</h4>
+  <p class="text-muted">สำนักวิทยบริการ มหาวิทยาลัยนครพนม</p>
+</div>
+
+<div class="row g-3 justify-content-center">
+  {% for room in rooms %}
+  <div class="col-12 col-sm-6 col-lg-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center mb-2">
+          <i class="bi bi-door-open fs-4 me-2 text-success"></i>
+          <h6 class="mb-0 fw-bold">{{ room.name }}</h6>
+        </div>
+        <small class="text-muted d-block mb-1">
+          <i class="bi bi-geo-alt me-1"></i>{{ room.location }}
+        </small>
+        <small class="text-muted d-block mb-1">
+          <i class="bi bi-people me-1"></i>รองรับ {{ room.capacity }} คน
+        </small>
+        <small class="text-muted d-block mb-3">
+          <i class="bi bi-clock me-1"></i>{{ room.open_time|time:"H:i" }}–{{ room.close_time|time:"H:i" }} น.
+        </small>
+        <a href="{% url 'booking' %}?room={{ room.booking_name }}" class="btn btn-primary btn-sm w-100">
+          <i class="bi bi-calendar-plus me-1"></i> จองเลย
+        </a>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12 text-center text-muted">ยังไม่มีห้องที่เปิดให้บริการ</div>
+  {% endfor %}
+</div>
+
+<div class="text-center mt-4">
+  <a href="{% url 'calendar' %}" class="btn btn-outline-secondary">
+    <i class="bi bi-calendar3 me-1"></i> ดูปฏิทินการจอง
+  </a>
+</div>
+{% endblock %}

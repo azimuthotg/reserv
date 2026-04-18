@@ -22,7 +22,7 @@
       <form method="post" id="registerForm">
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ next }}">
-        <input type="hidden" name="line_user_id" id="lineUserId" value="{{ liff_user_id }}">
+        <input type="hidden" name="line_user_id" value="{{ liff_user_id }}">
 
         <div class="mb-3">
           <label class="form-label fw-semibold">ประเภทผู้ใช้</label>
@@ -74,9 +74,6 @@
 
 {% block extra_scripts %}
 <script>
-const LIFF_ID = "{{ liff_id }}";
-
-// Toggle password visibility
 document.getElementById('togglePass').addEventListener('click', function() {
   const input = document.getElementById('passInput');
   const icon = document.getElementById('eyeIcon');
@@ -89,29 +86,10 @@ document.getElementById('togglePass').addEventListener('click', function() {
   }
 });
 
-// Show loading on submit
 document.getElementById('registerForm').addEventListener('submit', function() {
   document.getElementById('btnText').classList.add('d-none');
   document.getElementById('btnLoading').classList.remove('d-none');
   document.getElementById('submitBtn').disabled = true;
 });
-
-// Initialize LIFF and get userId
-async function initLiff() {
-  try {
-    await liff.init({ liffId: LIFF_ID });
-    if (!liff.isLoggedIn()) {
-      liff.login({ redirectUri: window.location.href });
-      return;
-    }
-    const profile = await liff.getProfile();
-    document.getElementById('lineUserId').value = profile.userId;
-  } catch (e) {
-    // เปิดจาก browser ปกติ — ไม่มี userId จะใช้ session แทน
-    console.warn('LIFF init failed:', e.message);
-  }
-}
-
-initLiff();
 </script>
 {% endblock %}
