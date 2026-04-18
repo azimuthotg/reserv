@@ -111,7 +111,6 @@
 <script>
 const LIFF_ID = "{{ liff_id }}";
 
-// ดึง LINE userId จาก LIFF และส่งไป session ผ่าน hidden field
 async function initLiff() {
   try {
     await liff.init({ liffId: LIFF_ID });
@@ -120,14 +119,24 @@ async function initLiff() {
       return;
     }
     const profile = await liff.getProfile();
-    // บันทึก userId ไว้ใน session แล้ว reload ให้ Django ตรวจสอบ
-    const res = await fetch('{% url "set_session" %}', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
-      body: JSON.stringify({ line_user_id: profile.userId, display_name: profile.displayName })
-    });
-    if (res.ok) {
+    const userId = profile.userId;
+
+    // เช็คว่าผูกบัญชีแล้วหรือยัง (แทน testdb.php)
+    const checkRes = await fetch('{% url "check_user" %}?userId=' + userId);
+    const checkData = await checkRes.json();
+
+    if (checkData.registered) {
+      // ผูกแล้ว → set session แล้ว reload ให้ Django render form
+      await fetch('{% url "set_session" %}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+        body: JSON.stringify({ line_user_id: userId, display_name: profile.displayName })
+      });
       window.location.reload();
+    } else {
+      // ยังไม่ผูก → ไปหน้า register (พร้อม next URL)
+      const next = encodeURIComponent(window.location.pathname + window.location.search);
+      window.location.href = '{% url "register" %}?userId=' + userId + '&next=' + next;
     }
   } catch(e) {
     console.warn('LIFF:', e.message);

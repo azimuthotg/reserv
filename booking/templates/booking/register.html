@@ -22,7 +22,7 @@
       <form method="post" id="registerForm">
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ next }}">
-        <input type="hidden" name="line_user_id" id="lineUserId" value="">
+        <input type="hidden" name="line_user_id" id="lineUserId" value="{{ liff_user_id }}">
 
         <div class="mb-3">
           <label class="form-label fw-semibold">ประเภทผู้ใช้</label>
