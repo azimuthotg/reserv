@@ -32,11 +32,6 @@
         .field-label { font-size: 13px; color: #555; margin-bottom: 4px; }
         .btn-submit { background: #06C755; color: #fff; border: none; border-radius: 10px; padding: 14px; font-size: 16px; font-weight: 600; width: 100%; }
         .btn-submit:active { background: #059944; }
-        #debug-log {
-            position: fixed; bottom: 0; left: 0; right: 0;
-            background: rgba(0,0,0,0.85); color: #0f0; font-family: monospace;
-            font-size: 10px; padding: 6px; max-height: 35vh; overflow-y: auto; z-index: 99999;
-        }
     </style>
 </head>
 <body>
@@ -114,8 +109,6 @@
     </form>
 </div>
 
-<div id="debug-log"></div>
-
 <!-- setup + constants รันก่อน LIFF SDK โหลด -->
 <script>
     const LIFF_ID      = "{{ liff_id }}";
@@ -128,17 +121,6 @@
     const MAX_WORKDAYS = {{ max_workdays }};
 
     let currentUserId = '';
-
-    // ── Debug ────────────────────────────────────────────────────────────────
-    function log(msg, data) {
-        const el   = document.getElementById('debug-log');
-        const line = document.createElement('div');
-        line.textContent = '[' + new Date().toISOString().substr(11,8) + '] '
-            + msg + (data !== undefined ? ' → ' + JSON.stringify(data) : '');
-        el.appendChild(line);
-        el.scrollTop = el.scrollHeight;
-        console.log('[DEBUG]', line.textContent);
-    }
 
     function showFormError(msg) {
         const el = document.getElementById('form-error');
@@ -196,20 +178,18 @@
     }
 
     function isWorkday(d) {
-        const day = d.getDay(); // 0=Sun, 6=Sat
+        const day = d.getDay();
         return day !== 0 && day !== 6 && !HOLIDAYS.has(toYMD(d));
     }
 
-    /** คืนวันทำงานถัดไปจาก d (ไม่รวม d เอง) */
     function nextWorkday(d) {
         const next = new Date(d);
         do { next.setDate(next.getDate() + 1); } while (!isWorkday(next));
         return next;
     }
 
-    /** คำนวณวันสุดท้ายที่จองได้ (MAX_WORKDAYS วันทำงานจากวันนี้) */
     function calcMaxDate() {
-        let cur  = new Date();
+        let cur = new Date();
         let count = 0;
         while (count < MAX_WORKDAYS) {
             cur.setDate(cur.getDate() + 1);
@@ -219,20 +199,16 @@
     }
 
     function setMinDate() {
-        const today   = new Date();
+        const today    = new Date();
         const todayStr = toYMD(today);
-        const maxDate = calcMaxDate();
-        const maxStr  = toYMD(maxDate);
+        const maxStr   = toYMD(calcMaxDate());
 
         const el = document.getElementById('booking_date');
         el.min   = todayStr;
         el.max   = maxStr;
-
-        // เลือก default = วันนี้ถ้าเป็นวันทำงาน ไม่งั้นวันทำงานถัดไป
         el.value = isWorkday(today) ? todayStr : toYMD(nextWorkday(today));
     }
 
-    /** ตรวจ input วันที่เมื่อ user เปลี่ยน */
     document.getElementById('booking_date').addEventListener('change', function() {
         const val = this.value;
         if (!val) return;
@@ -246,12 +222,11 @@
 
     // ── Show form ─────────────────────────────────────────────────────────────
     function showForm(userInfo) {
-        document.getElementById('disp-fullname').textContent  = userInfo.full_name   || userInfo.displayName || '—';
-        document.getElementById('disp-faculty').textContent   = userInfo.faculty     || '—';
-        document.getElementById('disp-department').textContent = userInfo.department || '—';
+        document.getElementById('disp-fullname').textContent   = userInfo.full_name   || userInfo.displayName || '—';
+        document.getElementById('disp-faculty').textContent    = userInfo.faculty     || '—';
+        document.getElementById('disp-department').textContent = userInfo.department  || '—';
         document.getElementById('loader').style.display = 'none';
         document.getElementById('booking-form').style.display = 'block';
-        log('form shown');
     }
 
     // ── Submit ────────────────────────────────────────────────────────────────
@@ -269,8 +244,6 @@
             attendees:    document.getElementById('attendees').value.trim(),
         };
 
-        log('submit', payload);
-
         const btn = document.querySelector('.btn-submit');
         btn.disabled    = true;
         btn.textContent = 'กำลังบันทึก...';
@@ -282,7 +255,6 @@
                 body:    JSON.stringify(payload),
             });
             const data = await resp.json();
-            log('create_booking response', data);
 
             if (data.success) {
                 window.location.href = SUCCESS_URL + '?id=' + data.booking_id;
@@ -298,43 +270,21 @@
         }
     });
 
-    // ── getRoom param ─────────────────────────────────────────────────────────
-    function getRoom() {
-        let params = new URLSearchParams(window.location.search);
-        const liffState = params.get('liff.state');
-        if (liffState) params = new URLSearchParams(decodeURIComponent(liffState));
-        return params.get('room') || params.get('booking_name') || '';
-    }
-
-    // ── Main (รันได้เลย ไม่รอ LIFF SDK) ─────────────────────────────────────
-    log('page loaded');
-    log('LIFF_ID', LIFF_ID);
-    log('page URL', window.location.href);
-    log('ROOM_DATA', ROOM_DATA);
-
     setupRoom();
     setMinDate();
-
 </script>
 
 <!-- โหลด LIFF SDK หลังจาก setup เสร็จ -->
 <script src="https://static.line-scdn.net/liff/edge/versions/2.15.0/sdk.js"></script>
 <script>
-    log('LIFF SDK loaded');
-
     liff.init({ liffId: LIFF_ID })
         .then(async () => {
-            log('liff.init OK');
-            log('isLoggedIn', liff.isLoggedIn());
-
             if (!liff.isLoggedIn()) {
-                log('not logged in → liff.login');
                 liff.login({ redirectUri: window.location.href });
                 return;
             }
 
             const profile = await liff.getProfile();
-            log('getProfile OK', { userId: profile.userId, displayName: profile.displayName });
             currentUserId = profile.userId;
 
             const resp = await fetch(CHECK_URL, {
@@ -342,24 +292,20 @@
                 headers: { 'Content-Type': 'application/json' },
                 body:    JSON.stringify({ userId: profile.userId, displayName: profile.displayName }),
             });
-            log('check_user HTTP', resp.status);
             const data = await resp.json();
-            log('check_user response', data);
 
             if (!data.registered) {
-                const currentUrl = window.location.href;
                 window.location.href = REGISTER_URL
                     + '?userId='      + encodeURIComponent(profile.userId)
                     + '&displayName=' + encodeURIComponent(profile.displayName)
                     + '&pictureUrl='  + encodeURIComponent(profile.pictureUrl || '')
-                    + '&page='        + encodeURIComponent(currentUrl);
+                    + '&page='        + encodeURIComponent(window.location.href);
                 return;
             }
 
             showForm({ ...data, displayName: profile.displayName });
         })
         .catch(err => {
-            log('ERROR: ' + err.message);
             document.getElementById('loader').innerHTML =
                 '<div style="color:#c00;padding:20px;text-align:center;">LIFF error: ' + err.message + '</div>';
         });
