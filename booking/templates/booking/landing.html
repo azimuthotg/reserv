@@ -113,7 +113,7 @@
             margin-bottom: 8px; overflow: hidden;
             display: flex; align-items: stretch;
         }
-        .my-booking-accent { width: 4px; flex-shrink: 0; background: #06C755; }
+        .my-booking-accent { width: 4px; flex-shrink: 0; }
         .my-booking-body {
             padding: 11px 13px; flex: 1;
             display: flex; align-items: center; justify-content: space-between; gap: 8px;
@@ -123,6 +123,13 @@
         .my-booking-right { text-align: right; flex-shrink: 0; }
         .my-booking-right .mbk-date { font-size: 12px; font-weight: 600; color: #555; }
         .my-booking-right .mbk-time { font-size: 11px; color: #aaa; margin-top: 2px; }
+        .my-booking-card.cancelled  { opacity: .5; }
+        .my-booking-card.cancelled .mbk-room { text-decoration: line-through; }
+        .badge-cancelled-bk {
+            display: inline-block; font-size: 10px; font-weight: 700;
+            background: #fee2e2; color: #dc2626; border-radius: 4px;
+            padding: 1px 6px; margin-top: 4px;
+        }
         .btn-cancel-bk {
             font-size: 11px; color: #dc2626; background: none; border: none;
             padding: 2px 0; margin-top: 4px; cursor: pointer; text-decoration: underline;
@@ -272,21 +279,27 @@
         }
 
         list.innerHTML = bookings.map(b => {
-            const idx   = ROOMS.findIndex(r => r.booking_name === b.room_key);
-            const color = ACCENT_COLORS[idx >= 0 ? idx % ACCENT_COLORS.length : 0];
-            const d     = b.booking_date.split('-');
-            const dateStr = `${parseInt(d[2])} ${TH_MONTHS[parseInt(d[1])]} ${parseInt(d[0])+543}`;
+            const idx      = ROOMS.findIndex(r => r.booking_name === b.room_key);
+            const color    = ACCENT_COLORS[idx >= 0 ? idx % ACCENT_COLORS.length : 0];
+            const d        = b.booking_date.split('-');
+            const dateStr  = `${parseInt(d[2])} ${TH_MONTHS[parseInt(d[1])]} ${parseInt(d[0])+543}`;
+            const isCancelled = b.status === 'cancelled';
+            const accentColor = isCancelled ? '#ddd' : color;
+            const extraClass  = isCancelled ? 'cancelled' : '';
+            const actionHtml  = isCancelled
+                ? `<span class="badge-cancelled-bk">ยกเลิกแล้ว</span>`
+                : `<button class="btn-cancel-bk"
+                       onclick="cancelBooking(${b.id},'${b.room_name}','${dateStr}')">
+                       ยกเลิกการจอง
+                   </button>`;
             return `
-            <div class="my-booking-card" id="bk-${b.id}">
-                <div class="my-booking-accent" style="background:${color};"></div>
+            <div class="my-booking-card ${extraClass}" id="bk-${b.id}">
+                <div class="my-booking-accent" style="background:${accentColor};"></div>
                 <div class="my-booking-body">
                     <div class="my-booking-main">
                         <div class="mbk-room">${b.room_name}</div>
                         <div class="mbk-group">${b.group_name}</div>
-                        <button class="btn-cancel-bk"
-                            onclick="cancelBooking(${b.id},'${b.room_name}','${dateStr}')">
-                            ยกเลิกการจอง
-                        </button>
+                        ${actionHtml}
                     </div>
                     <div class="my-booking-right">
                         <div class="mbk-date">${dateStr}</div>
@@ -315,13 +328,18 @@
             });
             const data = await resp.json();
             if (data.success) {
-                document.getElementById('bk-' + bookingId)?.remove();
-                showToast('ยกเลิกการจองเรียบร้อยแล้ว');
-                // ถ้าไม่เหลือ booking อัปเดต section
-                if (!document.querySelector('.my-booking-card')) {
-                    document.getElementById('my-bookings-list').innerHTML =
-                        '<div class="no-booking">ยังไม่มีการจองที่กำลังจะมาถึง</div>';
+                // อัปเดต card เป็น cancelled แทนการลบ
+                const card = document.getElementById('bk-' + bookingId);
+                if (card) {
+                    card.classList.add('cancelled');
+                    card.querySelector('.my-booking-accent').style.background = '#ddd';
+                    card.querySelector('.mbk-room').style.textDecoration = 'line-through';
+                    const btn = card.querySelector('.btn-cancel-bk');
+                    if (btn) {
+                        btn.outerHTML = '<span class="badge-cancelled-bk">ยกเลิกแล้ว</span>';
+                    }
                 }
+                showToast('ยกเลิกการจองเรียบร้อยแล้ว');
             } else {
                 showToast(data.error || 'เกิดข้อผิดพลาด', true);
             }

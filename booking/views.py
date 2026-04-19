@@ -607,7 +607,11 @@ def my_bookings(request):
     bookings = (
         Booking.objects
         .select_related('room')
-        .filter(line_user__line_user_id=user_id, status='confirmed', booking_date__gte=today)
+        .filter(
+            line_user__line_user_id=user_id,
+            booking_date__gte=today,
+            status__in=['confirmed', 'cancelled'],
+        )
         .order_by('booking_date', 'start_time')
     )
 
@@ -617,10 +621,10 @@ def my_bookings(request):
             'room_name':    b.room.name,
             'room_key':     b.room.booking_name,
             'booking_date': b.booking_date.strftime('%Y-%m-%d'),
-            'date_display': f'{b.booking_date.day} {b.booking_date.strftime("%b")} {b.booking_date.year}',
             'start_time':   b.start_time.strftime('%H:%M'),
             'end_time':     b.end_time.strftime('%H:%M'),
             'group_name':   b.group_name,
+            'status':       b.status,
         }
         for b in bookings
     ]
