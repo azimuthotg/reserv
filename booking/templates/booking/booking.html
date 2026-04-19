@@ -119,7 +119,7 @@
 <!-- setup + constants รันก่อน LIFF SDK โหลด -->
 <script>
     const LIFF_ID      = "{{ liff_id }}";
-    const ROOM_DATA    = {{ room_json }};
+    const ROOM_DATA    = {{ room_json|safe }};
     const REGISTER_URL = "{{ register_url }}";
     const CHECK_URL    = "{% url 'check_user' %}";
     const BOOKING_URL  = "{% url 'create_booking' %}";
