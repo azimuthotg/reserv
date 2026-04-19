@@ -1,0 +1,119 @@
+{% extends "booking/manage/base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value">{{ stats.today }}</div>
+                    <div class="stat-label">การจองวันนี้</div>
+                </div>
+                <div class="stat-icon" style="background:#e8f9ee;color:#06C755;">
+                    <i class="bi bi-calendar-day"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value">{{ stats.upcoming }}</div>
+                    <div class="stat-label">รอดำเนินการ</div>
+                </div>
+                <div class="stat-icon" style="background:#fff3e0;color:#ff9800;">
+                    <i class="bi bi-clock"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value">{{ stats.month }}</div>
+                    <div class="stat-label">จองเดือนนี้</div>
+                </div>
+                <div class="stat-icon" style="background:#e3f2fd;color:#1976d2;">
+                    <i class="bi bi-calendar-month"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value">{{ stats.users }}</div>
+                    <div class="stat-label">ผู้ใช้ LINE</div>
+                </div>
+                <div class="stat-icon" style="background:#f3e5f5;color:#9c27b0;">
+                    <i class="bi bi-people"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Recent bookings -->
+    <div class="col-lg-8">
+        <div class="table-card">
+            <div class="table-card-header">
+                <span class="table-title">การจองล่าสุด</span>
+                <a href="{% url 'manage_bookings' %}" class="btn btn-sm btn-green">ดูทั้งหมด</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0" style="font-size:13px;">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ห้อง</th>
+                            <th>วันที่</th>
+                            <th>เวลา</th>
+                            <th>กลุ่ม</th>
+                            <th>ผู้จอง</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for b in recent_bookings %}
+                        <tr>
+                            <td>{{ b.room.name }}</td>
+                            <td>{{ b.booking_date|date:"d/m/Y" }}</td>
+                            <td style="white-space:nowrap;">{{ b.start_time|time:"H:i" }}–{{ b.end_time|time:"H:i" }}</td>
+                            <td>{{ b.group_name }}</td>
+                            <td>{{ b.line_user.full_name|default:b.line_user.display_name }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-center text-muted py-3">ยังไม่มีการจอง</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upcoming holidays -->
+    <div class="col-lg-4">
+        <div class="table-card">
+            <div class="table-card-header">
+                <span class="table-title">วันหยุดที่กำลังจะมา</span>
+                <a href="{% url 'manage_holidays' %}" class="btn btn-sm btn-outline-secondary">จัดการ</a>
+            </div>
+            <div style="padding: 8px 0;">
+                {% for h in upcoming_holidays %}
+                <div style="padding:8px 20px;border-bottom:1px solid #f5f5f5;font-size:13px;">
+                    <div style="font-weight:600;color:#222;">{{ h.date|date:"d M Y" }}</div>
+                    <div style="color:#888;font-size:12px;">{{ h.description }}</div>
+                </div>
+                {% empty %}
+                <div class="text-center text-muted py-3" style="font-size:13px;">ไม่มีวันหยุดใน 30 วันข้างหน้า</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

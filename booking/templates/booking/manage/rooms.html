@@ -1,0 +1,57 @@
+{% extends "booking/manage/base.html" %}
+{% block title %}จัดการห้อง{% endblock %}
+{% block page_title %}จัดการห้อง{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-end mb-3">
+    <a href="{% url 'manage_room_add' %}" class="btn btn-sm btn-green">
+        <i class="bi bi-plus-lg"></i> เพิ่มห้อง
+    </a>
+</div>
+<div class="table-card">
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0" style="font-size:13px;">
+            <thead class="table-light">
+                <tr>
+                    <th>ชื่อห้อง</th>
+                    <th>Booking Key</th>
+                    <th>ที่ตั้ง</th>
+                    <th>ความจุ</th>
+                    <th>เวลาเปิด–ปิด</th>
+                    <th>สถานะ</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in rooms %}
+                <tr>
+                    <td><strong>{{ r.name }}</strong></td>
+                    <td><code style="font-size:12px;">{{ r.booking_name }}</code></td>
+                    <td style="font-size:12px;color:#666;">{{ r.location }}</td>
+                    <td>{{ r.capacity }} คน</td>
+                    <td style="white-space:nowrap;">{{ r.open_time|time:"H:i" }}–{{ r.close_time|time:"H:i" }}</td>
+                    <td>
+                        {% if r.is_active %}
+                        <span class="badge badge-confirmed">เปิด</span>
+                        {% else %}
+                        <span class="badge badge-cancelled">ปิด</span>
+                        {% endif %}
+                    </td>
+                    <td style="white-space:nowrap;">
+                        <a href="{% url 'manage_room_edit' r.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:12px;">แก้ไข</a>
+                        <form method="post" action="{% url 'manage_room_toggle' r.pk %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm {% if r.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}" style="font-size:12px;">
+                                {% if r.is_active %}ปิดห้อง{% else %}เปิดห้อง{% endif %}
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center text-muted py-4">ยังไม่มีห้อง</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

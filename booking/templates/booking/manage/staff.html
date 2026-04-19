@@ -1,0 +1,67 @@
+{% extends "booking/manage/base.html" %}
+{% block title %}จัดการเจ้าหน้าที่{% endblock %}
+{% block page_title %}จัดการเจ้าหน้าที่{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-end mb-3">
+    <a href="{% url 'manage_staff_add' %}" class="btn btn-sm btn-green">
+        <i class="bi bi-plus-lg"></i> เพิ่มเจ้าหน้าที่
+    </a>
+</div>
+<div class="table-card">
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0" style="font-size:13px;">
+            <thead class="table-light">
+                <tr>
+                    <th>ชื่อผู้ใช้</th>
+                    <th>ชื่อ-นามสกุล</th>
+                    <th>อีเมล</th>
+                    <th>บทบาท</th>
+                    <th>เข้าใช้ล่าสุด</th>
+                    <th>สถานะ</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td><strong>{{ u.username }}</strong></td>
+                    <td>{{ u.get_full_name|default:"—" }}</td>
+                    <td style="font-size:12px;color:#888;">{{ u.email|default:"—" }}</td>
+                    <td>
+                        {% if u.is_superuser %}
+                        <span class="badge bg-danger" style="font-size:11px;">ผู้ดูแลระบบ</span>
+                        {% else %}
+                        <span class="badge bg-secondary" style="font-size:11px;">เจ้าหน้าที่</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-size:12px;color:#888;">
+                        {% if u.last_login %}{{ u.last_login|date:"d/m/Y H:i" }}{% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% if u.is_active %}
+                        <span class="badge badge-confirmed">ใช้งาน</span>
+                        {% else %}
+                        <span class="badge badge-cancelled">ปิดใช้</span>
+                        {% endif %}
+                    </td>
+                    <td style="white-space:nowrap;">
+                        <a href="{% url 'manage_staff_edit' u.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:12px;">แก้ไข</a>
+                        {% if u.pk != request.user.pk %}
+                        <form method="post" action="{% url 'manage_staff_toggle' u.pk %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm {% if u.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}" style="font-size:12px;">
+                                {% if u.is_active %}ปิดใช้{% else %}เปิดใช้{% endif %}
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center text-muted py-4">ยังไม่มีเจ้าหน้าที่</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

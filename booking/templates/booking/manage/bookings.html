@@ -1,0 +1,152 @@
+{% extends "booking/manage/base.html" %}
+{% block title %}รายการจอง{% endblock %}
+{% block page_title %}รายการจอง{% endblock %}
+
+{% block content %}
+<!-- Filter -->
+<div class="table-card mb-3" style="padding:16px 20px;">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-6 col-md-2">
+            <label class="form-label" style="font-size:12px;font-weight:600;color:#888;">ห้อง</label>
+            <select name="room" class="form-select form-select-sm">
+                <option value="">ทั้งหมด</option>
+                {% for r in rooms %}
+                <option value="{{ r.booking_name }}" {% if r.booking_name == room_filter %}selected{% endif %}>{{ r.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label" style="font-size:12px;font-weight:600;color:#888;">วันที่</label>
+            <input type="date" name="date" class="form-control form-control-sm" value="{{ date_filter }}">
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label" style="font-size:12px;font-weight:600;color:#888;">สถานะ</label>
+            <select name="status" class="form-select form-select-sm">
+                <option value="" {% if not status_filter %}selected{% endif %}>ทั้งหมด</option>
+                <option value="confirmed" {% if status_filter == 'confirmed' %}selected{% endif %}>ยืนยันแล้ว</option>
+                <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>ยกเลิกแล้ว</option>
+            </select>
+        </div>
+        <div class="col-12 col-md-4">
+            <label class="form-label" style="font-size:12px;font-weight:600;color:#888;">ค้นหา</label>
+            <input type="text" name="search" class="form-control form-control-sm" placeholder="ชื่อกลุ่ม / ผู้จอง / คณะ" value="{{ search }}">
+        </div>
+        <div class="col-6 col-md-2">
+            <button type="submit" class="btn btn-sm btn-green w-100">ค้นหา</button>
+        </div>
+    </form>
+</div>
+
+<!-- Table -->
+<div class="table-card">
+    <div class="table-card-header">
+        <span class="table-title">พบ {{ page_obj.paginator.count }} รายการ</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0" style="font-size:13px;">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>ห้อง</th>
+                    <th>วันที่</th>
+                    <th>เวลา</th>
+                    <th>กลุ่ม / กิจกรรม</th>
+                    <th>ผู้จอง</th>
+                    <th>คณะ</th>
+                    <th>สถานะ</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in page_obj %}
+                <tr>
+                    <td class="text-muted">{{ b.id }}</td>
+                    <td>{{ b.room.name }}</td>
+                    <td style="white-space:nowrap;">{{ b.booking_date|date:"d/m/Y" }}</td>
+                    <td style="white-space:nowrap;">{{ b.start_time|time:"H:i" }}–{{ b.end_time|time:"H:i" }}</td>
+                    <td>{{ b.group_name }}</td>
+                    <td>{{ b.line_user.full_name|default:b.line_user.display_name }}</td>
+                    <td style="font-size:12px;color:#888;">{{ b.faculty }}</td>
+                    <td>
+                        {% if b.status == 'confirmed' %}
+                        <span class="badge badge-confirmed">ยืนยันแล้ว</span>
+                        {% else %}
+                        <span class="badge badge-cancelled">ยกเลิก</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if b.status == 'confirmed' %}
+                        <button class="btn btn-sm btn-outline-danger" style="font-size:12px;"
+                            data-bs-toggle="modal" data-bs-target="#cancelModal"
+                            data-id="{{ b.id }}" data-name="{{ b.group_name }}">
+                            ยกเลิก
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="9" class="text-center text-muted py-4">ไม่พบข้อมูล</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <div style="padding:12px 20px;">
+        <nav>
+            <ul class="pagination pagination-sm mb-0 justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}&room={{ room_filter }}&date={{ date_filter }}&status={{ status_filter }}&search={{ search }}">‹</a>
+                </li>
+                {% endif %}
+                <li class="page-item disabled">
+                    <span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+                </li>
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}&room={{ room_filter }}&date={{ date_filter }}&status={{ status_filter }}&search={{ search }}">›</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Cancel Modal -->
+<div class="modal fade" id="cancelModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title">ยืนยันการยกเลิกการจอง</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="cancelForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <p style="font-size:14px;">ยืนยันยกเลิกการจอง "<strong id="cancelName"></strong>" ?</p>
+                    <div class="mb-3">
+                        <label class="form-label" style="font-size:13px;font-weight:600;">เหตุผล (ถ้ามี)</label>
+                        <textarea name="cancel_reason" class="form-control" rows="2" placeholder="เช่น ห้องปิดปรับปรุง"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-sm btn-danger">ยืนยันยกเลิก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('cancelModal').addEventListener('show.bs.modal', function(e) {
+        const btn = e.relatedTarget;
+        document.getElementById('cancelName').textContent = btn.dataset.name;
+        document.getElementById('cancelForm').action = '/reserv/manage/bookings/' + btn.dataset.id + '/cancel/';
+    });
+</script>
+{% endblock %}

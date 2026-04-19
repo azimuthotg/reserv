@@ -1,0 +1,86 @@
+{% extends "booking/manage/base.html" %}
+{% block title %}ผู้ใช้ LINE{% endblock %}
+{% block page_title %}ผู้ใช้ LINE{% endblock %}
+
+{% block content %}
+<div class="table-card mb-3" style="padding:16px 20px;">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-12 col-md-5">
+            <label class="form-label" style="font-size:12px;font-weight:600;color:#888;">ค้นหา</label>
+            <input type="text" name="search" class="form-control form-control-sm" placeholder="ชื่อ / รหัส LDAP / คณะ" value="{{ search }}">
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label" style="font-size:12px;font-weight:600;color:#888;">ประเภท</label>
+            <select name="user_type" class="form-select form-select-sm">
+                <option value="">ทั้งหมด</option>
+                {% for t in user_types %}
+                <option value="{{ t }}" {% if t == user_type %}selected{% endif %}>{{ t }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-6 col-md-2">
+            <button type="submit" class="btn btn-sm btn-green w-100">ค้นหา</button>
+        </div>
+    </form>
+</div>
+
+<div class="table-card">
+    <div class="table-card-header">
+        <span class="table-title">พบ {{ page_obj.paginator.count }} รายการ</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0" style="font-size:13px;">
+            <thead class="table-light">
+                <tr>
+                    <th>ชื่อ-นามสกุล</th>
+                    <th>รหัส LDAP</th>
+                    <th>ประเภท</th>
+                    <th>คณะ / หน่วยงาน</th>
+                    <th>สาขา / ฝ่าย</th>
+                    <th>วันที่ลงทะเบียน</th>
+                    <th>สถานะ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in page_obj %}
+                <tr>
+                    <td>
+                        <div style="font-weight:600;">{{ u.full_name|default:u.display_name }}</div>
+                        <div style="color:#aaa;font-size:11px;">{{ u.display_name }}</div>
+                    </td>
+                    <td>{{ u.user_ldap }}</td>
+                    <td><span class="badge bg-light text-dark" style="font-size:11px;">{{ u.user_type }}</span></td>
+                    <td style="font-size:12px;">{{ u.faculty }}</td>
+                    <td style="font-size:12px;color:#888;">{{ u.department }}</td>
+                    <td style="font-size:12px;color:#888;white-space:nowrap;">{{ u.created_at|date:"d/m/Y" }}</td>
+                    <td>
+                        {% if u.is_active %}
+                        <span class="badge badge-confirmed">ใช้งาน</span>
+                        {% else %}
+                        <span class="badge badge-cancelled">ปิดใช้</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center text-muted py-4">ไม่พบข้อมูล</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if page_obj.has_other_pages %}
+    <div style="padding:12px 20px;">
+        <nav>
+            <ul class="pagination pagination-sm mb-0 justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&search={{ search }}&user_type={{ user_type }}">‹</a></li>
+                {% endif %}
+                <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+                {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&search={{ search }}&user_type={{ user_type }}">›</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
