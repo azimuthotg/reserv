@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ลงทะเบียน — Library@NPU</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body { background: #f5f5f5; font-family: 'Sarabun', sans-serif; min-height: 100vh; }
+
+        .reg-header {
+            background: linear-gradient(135deg, #06C755, #00a844);
+            color: #fff; padding: 24px 20px 20px; text-align: center;
+        }
+        .reg-header .brand { font-size: 12px; opacity: .8; margin-bottom: 4px; }
+        .reg-header .title { font-size: 20px; font-weight: 700; }
+        .reg-header .subtitle { font-size: 13px; opacity: .85; margin-top: 4px; }
+
+        /* Profile preview */
+        .profile-preview {
+            display: flex; align-items: center; gap: 12px;
+            background: rgba(255,255,255,.15); border-radius: 12px;
+            padding: 12px 14px; margin-top: 14px;
+        }
+        .profile-pic {
+            width: 44px; height: 44px; border-radius: 50%;
+            background: rgba(255,255,255,.3); overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; font-weight: 700; flex-shrink: 0;
+        }
+        .profile-pic img { width: 100%; height: 100%; object-fit: cover; }
+        .profile-name { font-size: 15px; font-weight: 600; }
+        .profile-hint { font-size: 12px; opacity: .8; }
+
+        /* Form card */
+        .form-card {
+            background: #fff; border-radius: 16px;
+            margin: 16px; padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.08);
+        }
+        .form-section-title {
+            font-size: 12px; color: #aaa; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .6px;
+            margin-bottom: 14px;
+        }
+        .form-label { font-size: 13px; color: #555; font-weight: 600; }
+        .form-control, .form-select {
+            font-size: 14px; border-radius: 10px;
+            border: 1.5px solid #e0e0e0; padding: 10px 12px;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #06C755; box-shadow: 0 0 0 3px rgba(6,199,85,.12);
+        }
+
+        /* Type selector */
+        .type-options { display: flex; gap: 8px; margin-top: 4px; }
+        .type-opt { flex: 1; }
+        .type-opt input[type=radio] { display: none; }
+        .type-opt label {
+            display: block; padding: 10px 8px; text-align: center;
+            border: 2px solid #e0e0e0; border-radius: 10px;
+            font-size: 13px; font-weight: 600; color: #888;
+            cursor: pointer; transition: all .15s;
+        }
+        .type-opt input:checked + label {
+            border-color: #06C755; background: #f0faf4; color: #059944;
+        }
+
+        .btn-submit {
+            width: 100%; padding: 13px; border-radius: 12px;
+            background: #06C755; color: #fff; border: none;
+            font-size: 16px; font-weight: 700; margin-top: 4px;
+            cursor: pointer; transition: background .15s;
+        }
+        .btn-submit:hover { background: #059944; }
+        .btn-submit:disabled { background: #a0e0bc; cursor: not-allowed; }
+
+        .error-box {
+            background: #fff2f2; border: 1.5px solid #fca5a5;
+            border-radius: 10px; padding: 12px 14px;
+            font-size: 13px; color: #dc2626; margin-bottom: 16px;
+        }
+
+        .hint-box {
+            background: #fffbeb; border: 1px solid #fde68a;
+            border-radius: 10px; padding: 10px 14px;
+            font-size: 12px; color: #92400e; margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="reg-header">
+    <div class="brand">สำนักวิทยบริการ มหาวิทยาลัยนครพนม</div>
+    <div class="title">ลงทะเบียนใช้งาน</div>
+    <div class="subtitle">ผูกบัญชี LINE กับระบบของมหาวิทยาลัย</div>
+    {% if display_name %}
+    <div class="profile-preview">
+        <div class="profile-pic">
+            {% if picture_url %}
+            <img src="{{ picture_url }}" alt="{{ display_name }}">
+            {% else %}
+            {{ display_name|slice:":1" }}
+            {% endif %}
+        </div>
+        <div>
+            <div class="profile-name">{{ display_name }}</div>
+            <div class="profile-hint">LINE Account ที่ใช้ผูกบัญชี</div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="form-card">
+    {% if error %}
+    <div class="error-box">⚠️ {{ error }}</div>
+    {% endif %}
+
+    {% if not user_id %}
+    <div class="hint-box">
+        ⚠️ ไม่พบข้อมูล LINE กรุณาเข้าใช้งานผ่านลิงก์จาก LINE OA เท่านั้น
+    </div>
+    {% else %}
+
+    <div class="form-section-title">ข้อมูลบัญชีมหาวิทยาลัย</div>
+
+    <div class="hint-box">
+        ใช้รหัส LDAP เดียวกับระบบ e-Office / อีเมลมหาวิทยาลัย
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="userId"      value="{{ user_id }}">
+        <input type="hidden" name="displayName" value="{{ display_name }}">
+        <input type="hidden" name="pictureUrl"  value="{{ picture_url }}">
+        <input type="hidden" name="page"        value="{{ next_url }}">
+
+        <div class="mb-3">
+            <label class="form-label">ประเภทผู้ใช้งาน</label>
+            <div class="type-options">
+                <div class="type-opt">
+                    <input type="radio" name="user_type" id="t-staff"
+                           value="บุคลากรภายในมหาวิทยาลัย" required
+                           {% if request.POST.user_type == 'บุคลากรภายในมหาวิทยาลัย' %}checked{% endif %}>
+                    <label for="t-staff">👨‍💼 บุคลากร</label>
+                </div>
+                <div class="type-opt">
+                    <input type="radio" name="user_type" id="t-student"
+                           value="นักศึกษา"
+                           {% if request.POST.user_type == 'นักศึกษา' %}checked{% endif %}>
+                    <label for="t-student">🎓 นักศึกษา</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label for="id_user_ldap" class="form-label">รหัสผู้ใช้ (LDAP)</label>
+            <input type="text" id="id_user_ldap" name="user_ldap"
+                   class="form-control" placeholder="เช่น 6401234567 หรือ sxxxxxx"
+                   value="{{ request.POST.user_ldap|default:'' }}"
+                   autocomplete="username" required>
+        </div>
+
+        <div class="mb-4">
+            <label for="id_password" class="form-label">รหัสผ่าน</label>
+            <input type="password" id="id_password" name="password"
+                   class="form-control" placeholder="รหัสผ่านระบบมหาวิทยาลัย"
+                   autocomplete="current-password" required>
+        </div>
+
+        <button type="submit" class="btn-submit" id="btn-submit">
+            ลงทะเบียนและเข้าใช้งาน
+        </button>
+    </form>
+    {% endif %}
+</div>
+
+<script>
+    // Disable button on submit to prevent double-click
+    const form = document.querySelector('form');
+    const btn  = document.getElementById('btn-submit');
+    if (form && btn) {
+        form.addEventListener('submit', () => {
+            btn.disabled = true;
+            btn.textContent = 'กำลังตรวจสอบ…';
+        });
+    }
+</script>
+</body>
+</html>

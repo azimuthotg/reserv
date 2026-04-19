@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>จองพื้นที่บริการ — Library@NPU</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body { background: #f5f5f5; font-family: 'Sarabun', sans-serif; margin: 0; }
+
+        /* Loader */
+        #loader {
+            position: fixed; inset: 0; display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            background: #fff; z-index: 9999; gap: 16px;
+        }
+        .spinner {
+            width: 48px; height: 48px; border: 5px solid #e0e0e0;
+            border-top-color: #06C755; border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Content */
+        #content { display: none; }
+
+        /* Header */
+        .page-header {
+            background: linear-gradient(135deg, #06C755, #00a844);
+            color: #fff; padding: 20px 16px 16px;
+        }
+        .page-header .brand { font-size: 13px; opacity: .8; margin-bottom: 4px; }
+        .page-header .title { font-size: 20px; font-weight: 700; }
+
+        /* User bar */
+        .user-bar {
+            background: rgba(255,255,255,.15); border-radius: 10px;
+            padding: 10px 12px; margin-top: 12px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .user-avatar {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: rgba(255,255,255,.3); display: flex;
+            align-items: center; justify-content: center;
+            font-size: 16px; font-weight: 700; flex-shrink: 0; overflow: hidden;
+        }
+        .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .user-name  { font-size: 14px; font-weight: 600; }
+        .user-ldap  { font-size: 12px; opacity: .8; }
+
+        /* Rooms */
+        .rooms-wrap { padding: 16px; }
+        .section-label {
+            font-size: 12px; color: #aaa; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .6px; margin-bottom: 12px;
+        }
+
+        .room-card {
+            background: #fff; border-radius: 14px; margin-bottom: 12px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.08); overflow: hidden;
+        }
+        .room-card-body { padding: 14px 16px; }
+        .room-name { font-size: 16px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
+        .room-meta {
+            display: flex; flex-wrap: wrap; gap: 8px;
+            font-size: 12px; color: #888; margin-bottom: 12px;
+        }
+        .room-meta span { display: flex; align-items: center; gap: 3px; }
+        .room-hours {
+            background: #f0faf4; border-radius: 8px; padding: 6px 10px;
+            font-size: 12px; color: #059944; font-weight: 600;
+            display: inline-flex; align-items: center; gap: 5px; margin-bottom: 12px;
+        }
+        .btn-book {
+            width: 100%; padding: 10px; border-radius: 10px;
+            background: #06C755; color: #fff; border: none;
+            font-size: 15px; font-weight: 600; cursor: pointer;
+            text-decoration: none; display: block; text-align: center;
+            transition: background .15s;
+        }
+        .btn-book:hover { background: #059944; color: #fff; }
+    </style>
+</head>
+<body>
+
+<!-- Loader -->
+<div id="loader">
+    <div class="spinner"></div>
+    <div style="font-size:14px;color:#888;">กำลังตรวจสอบข้อมูล…</div>
+</div>
+
+<!-- Content -->
+<div id="content">
+    <div class="page-header">
+        <div class="brand">สำนักวิทยบริการ มหาวิทยาลัยนครพนม</div>
+        <div class="title">จองพื้นที่บริการ</div>
+        <div class="user-bar" id="user-bar" style="display:none;">
+            <div class="user-avatar" id="user-avatar-wrap">
+                <span id="user-avatar-initial">?</span>
+            </div>
+            <div>
+                <div class="user-name" id="user-fullname"></div>
+                <div class="user-ldap" id="user-ldap"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="rooms-wrap">
+        <div class="section-label">ห้องที่เปิดให้บริการ</div>
+        <div id="room-list"></div>
+    </div>
+</div>
+
+<script src="https://static.line-scdn.net/liff/edge/versions/2.15.0/sdk.js"></script>
+<script>
+    const LIFF_ID      = "{{ liff_id }}";
+    const CHECK_URL    = "{{ check_url }}";
+    const REGISTER_URL = "{{ register_url }}";
+    const ROOMS        = {{ rooms_json|safe }};
+
+    function renderRooms() {
+        const list = document.getElementById('room-list');
+        if (!ROOMS.length) {
+            list.innerHTML = '<p class="text-muted text-center py-4" style="font-size:14px;">ยังไม่มีห้องที่เปิดให้บริการ</p>';
+            return;
+        }
+        list.innerHTML = ROOMS.map(r => `
+            <div class="room-card">
+                <div class="room-card-body">
+                    <div class="room-name">${r.name}</div>
+                    <div class="room-meta">
+                        <span>👥 ${r.capacity} คน</span>
+                        ${r.location ? `<span>📍 ${r.location}</span>` : ''}
+                    </div>
+                    <div class="room-hours">
+                        🕐 เปิดให้บริการ ${r.open_time} – ${r.close_time} น.
+                    </div>
+                    <a class="btn-book" href="booking/?room=${r.booking_name}">
+                        จองห้องนี้
+                    </a>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function showContent(userData, profile) {
+        // user bar
+        const bar = document.getElementById('user-bar');
+        if (userData && userData.full_name) {
+            document.getElementById('user-fullname').textContent = userData.full_name;
+            document.getElementById('user-ldap').textContent = userData.userLdap || '';
+            if (profile && profile.pictureUrl) {
+                document.getElementById('user-avatar-wrap').innerHTML =
+                    `<img src="${profile.pictureUrl}" alt="">`;
+            } else {
+                document.getElementById('user-avatar-initial').textContent =
+                    (userData.full_name || '?')[0];
+            }
+            bar.style.display = 'flex';
+        }
+        renderRooms();
+        document.getElementById('loader').style.display  = 'none';
+        document.getElementById('content').style.display = 'block';
+    }
+
+    liff.init({ liffId: LIFF_ID })
+        .then(async () => {
+            if (!liff.isLoggedIn()) {
+                liff.login({ redirectUri: window.location.href });
+                return;
+            }
+            const profile = await liff.getProfile();
+
+            const resp = await fetch(CHECK_URL, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ userId: profile.userId, displayName: profile.displayName }),
+            });
+            const data = await resp.json();
+
+            if (!data.registered) {
+                window.location.href = REGISTER_URL
+                    + '?userId='      + encodeURIComponent(profile.userId)
+                    + '&displayName=' + encodeURIComponent(profile.displayName)
+                    + '&pictureUrl='  + encodeURIComponent(profile.pictureUrl || '')
+                    + '&page='        + encodeURIComponent(window.location.href);
+                return;
+            }
+
+            showContent(data, profile);
+        })
+        .catch(err => {
+            document.getElementById('loader').innerHTML =
+                `<div style="color:#c00;padding:24px;text-align:center;font-size:14px;">
+                    เกิดข้อผิดพลาด: ${err.message}<br>
+                    <small style="color:#aaa;">กรุณาลองใหม่อีกครั้ง</small>
+                 </div>`;
+        });
+</script>
+</body>
+</html>

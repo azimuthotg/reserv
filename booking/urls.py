@@ -2,6 +2,10 @@ from django.urls import path
 from . import views, manage_views
 
 urlpatterns = [
+    # ── Landing & Register ────────────────────────────────────────────────────
+    path('',          views.landing_page,  name='landing'),
+    path('register/', views.register_page, name='register'),
+
     # ── Booking (LIFF) ────────────────────────────────────────────────────────
     path('booking/',         views.booking_page,    name='booking'),
     path('booking/success/', views.booking_success, name='booking_success'),

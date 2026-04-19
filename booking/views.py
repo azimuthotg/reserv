@@ -5,7 +5,8 @@ from datetime import date, datetime, timedelta
 from django.conf import settings
 from django.db import transaction
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -13,7 +14,6 @@ from django.views.decorators.http import require_http_methods
 from .models import Booking, BookingLog, HolidayDate, LineUser, Room
 
 NPU_API_BASE       = 'https://api.npu.ac.th'
-REGISTER_URL       = f'{NPU_API_BASE}/reserv/lineoa'
 PROFILE_CACHE_DAYS = 30
 MAX_ADVANCE_DAYS = 5   # จองล่วงหน้าได้สูงสุดกี่วัน (นับทุกวัน)
 
@@ -74,6 +74,41 @@ def _count_workdays_between(start, end_inclusive, holidays):
 
 
 # ── NPU API helpers ───────────────────────────────────────────────────────────
+
+def _verify_ldap(username, password):
+    """POST /auth-ldap/auth_ldap/ → True/False"""
+    try:
+        resp = requests.post(
+            f'{NPU_API_BASE}/auth-ldap/auth_ldap/',
+            json={'username': username, 'password': password},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            return bool(
+                data.get('status') in ('success', 'ok') or
+                data.get('authenticated') is True or
+                data.get('result') is True or
+                data.get('success') is True
+            )
+    except requests.RequestException:
+        pass
+    return False
+
+
+def _register_npu_user(user_id, user_ldap, user_type):
+    """POST /api/ ผูก LINE userId กับ LDAP → True/False"""
+    try:
+        resp = requests.post(
+            f'{NPU_API_BASE}/api/',
+            json={'userId': user_id, 'userLdap': user_ldap, 'user_type': user_type},
+            timeout=10,
+        )
+        return resp.status_code in (200, 201)
+    except requests.RequestException:
+        pass
+    return False
+
 
 def _fetch_npu_user(user_id):
     """GET /api/{userId}/ → { id, userId, userLdap, user_type } หรือ None"""
@@ -182,6 +217,65 @@ def _get_or_refresh_line_user(line_user_id, display_name, user_ldap, user_type):
 
 # ── Views ─────────────────────────────────────────────────────────────────────
 
+def landing_page(request):
+    """หน้าแรก — แสดงห้องทั้งหมด, ต้อง login LINE ผ่าน LIFF ก่อน"""
+    rooms = Room.objects.filter(is_active=True).order_by('name')
+    rooms_json = json.dumps([
+        {
+            'name':         r.name,
+            'booking_name': r.booking_name,
+            'capacity':     r.capacity,
+            'location':     r.location or '',
+            'open_time':    r.open_time.strftime('%H:%M'),
+            'close_time':   r.close_time.strftime('%H:%M'),
+        }
+        for r in rooms
+    ])
+    return render(request, 'booking/landing.html', {
+        'liff_id':    settings.LINE_LIFF_ID,
+        'rooms_json': rooms_json,
+        'check_url':  request.build_absolute_uri(reverse('check_user')),
+        'register_url': request.build_absolute_uri(reverse('register')),
+    })
+
+
+def register_page(request):
+    """หน้าผูกบัญชี LINE + LDAP"""
+    user_id      = request.GET.get('userId', '') or request.POST.get('userId', '')
+    display_name = request.GET.get('displayName', '') or request.POST.get('displayName', '')
+    picture_url  = request.GET.get('pictureUrl', '') or request.POST.get('pictureUrl', '')
+    next_url     = request.GET.get('page', '') or request.POST.get('page', '')
+
+    if not next_url:
+        next_url = request.build_absolute_uri(reverse('landing'))
+
+    error = ''
+    if request.method == 'POST':
+        user_ldap = request.POST.get('user_ldap', '').strip()
+        password  = request.POST.get('password', '')
+        user_type = request.POST.get('user_type', '')
+
+        if not user_id:
+            error = 'ไม่พบข้อมูล LINE userId กรุณาเข้าใช้งานผ่าน LINE ใหม่อีกครั้ง'
+        elif not all([user_ldap, password, user_type]):
+            error = 'กรุณากรอกข้อมูลให้ครบทุกช่อง'
+        elif not _verify_ldap(user_ldap, password):
+            error = 'รหัสผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'
+        else:
+            _register_npu_user(user_id, user_ldap, user_type)
+            _get_or_refresh_line_user(user_id, display_name, user_ldap, user_type)
+            return redirect(next_url)
+
+    return render(request, 'booking/register.html', {
+        'user_id':      user_id,
+        'display_name': display_name,
+        'picture_url':  picture_url,
+        'next_url':     next_url,
+        'error':        error,
+        'liff_id':      settings.LINE_LIFF_ID,
+    })
+
+
 def booking_page(request):
     """หน้า LIFF — render form จอง"""
     room_key = request.GET.get('room') or request.GET.get('booking_name') or ''
@@ -212,7 +306,7 @@ def booking_page(request):
     context = {
         'liff_id':      settings.LINE_LIFF_ID,
         'room_json':    json.dumps(room_data),
-        'register_url': REGISTER_URL,
+        'register_url': request.build_absolute_uri(reverse('register')),
         'holidays_json': json.dumps(holiday_strs),
         'max_advance_days': MAX_ADVANCE_DAYS,
     }
