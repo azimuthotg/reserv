@@ -18,6 +18,7 @@ urlpatterns = [
     path('api/booking/',           views.create_booking,   name='create_booking'),
     path('api/bookings-by-date/',  views.bookings_by_date, name='bookings_by_date'),
     path('api/calendar-events/',   views.calendar_events,  name='calendar_events'),
+    path('api/my-bookings/',       views.my_bookings,      name='my_bookings'),
 
     # ── Staff Portal ──────────────────────────────────────────────────────────
     path('manage/login/',   manage_views.manage_login,   name='manage_login'),

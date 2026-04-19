@@ -232,10 +232,11 @@ def landing_page(request):
         for r in rooms
     ])
     return render(request, 'booking/landing.html', {
-        'liff_id':    settings.LINE_LIFF_ID,
-        'rooms_json': rooms_json,
-        'check_url':  request.build_absolute_uri(reverse('check_user')),
-        'register_url': request.build_absolute_uri(reverse('register')),
+        'liff_id':         settings.LINE_LIFF_ID,
+        'rooms_json':      rooms_json,
+        'check_url':       request.build_absolute_uri(reverse('check_user')),
+        'register_url':    request.build_absolute_uri(reverse('register')),
+        'my_bookings_url': request.build_absolute_uri(reverse('my_bookings')),
     })
 
 
@@ -510,6 +511,42 @@ def bookings_by_date(request):
             'start_time': b.start_time.strftime('%H:%M'),
             'end_time':   b.end_time.strftime('%H:%M'),
             'booker':     b.line_user.full_name or b.line_user.display_name,
+        }
+        for b in bookings
+    ]
+    return JsonResponse({'bookings': data})
+
+
+# ── My Bookings ────────────────────────────────────────────────────────────────
+
+@require_http_methods(['GET'])
+def my_bookings(request):
+    """
+    GET /api/my-bookings/?userId=...
+    คืนการจอง confirmed ของผู้ใช้นี้ ตั้งแต่วันนี้เป็นต้นไป
+    """
+    user_id = request.GET.get('userId', '').strip()
+    if not user_id:
+        return JsonResponse({'error': 'userId required'}, status=400)
+
+    today = date.today()
+    bookings = (
+        Booking.objects
+        .select_related('room')
+        .filter(line_user__line_user_id=user_id, status='confirmed', booking_date__gte=today)
+        .order_by('booking_date', 'start_time')
+    )
+
+    data = [
+        {
+            'id':           b.pk,
+            'room_name':    b.room.name,
+            'room_key':     b.room.booking_name,
+            'booking_date': b.booking_date.strftime('%Y-%m-%d'),
+            'date_display': f'{b.booking_date.day} {b.booking_date.strftime("%b")} {b.booking_date.year}',
+            'start_time':   b.start_time.strftime('%H:%M'),
+            'end_time':     b.end_time.strftime('%H:%M'),
+            'group_name':   b.group_name,
         }
         for b in bookings
     ]

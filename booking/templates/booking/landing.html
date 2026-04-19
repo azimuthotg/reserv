@@ -106,6 +106,28 @@
         }
         .btn-book:hover { background: #059944; color: #fff; }
 
+        /* ── My booking card ── */
+        .my-booking-card {
+            background: #fff; border-radius: 12px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.07);
+            margin-bottom: 8px; overflow: hidden;
+            display: flex; align-items: stretch;
+        }
+        .my-booking-accent { width: 4px; flex-shrink: 0; background: #06C755; }
+        .my-booking-body {
+            padding: 11px 13px; flex: 1;
+            display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        }
+        .my-booking-main .mbk-room  { font-size: 13px; font-weight: 700; color: #1a1a1a; }
+        .my-booking-main .mbk-group { font-size: 12px; color: #888; margin-top: 1px; }
+        .my-booking-right { text-align: right; flex-shrink: 0; }
+        .my-booking-right .mbk-date { font-size: 12px; font-weight: 600; color: #555; }
+        .my-booking-right .mbk-time { font-size: 11px; color: #aaa; margin-top: 2px; }
+        .no-booking {
+            background: #fff; border-radius: 12px; padding: 14px 16px;
+            text-align: center; font-size: 13px; color: #bbb; margin-bottom: 10px;
+        }
+
         /* ── Calendar card ── */
         .calendar-banner {
             background: #fff; border-radius: 14px;
@@ -164,6 +186,12 @@
             <a href="calendar/" class="btn-cal-go">ดูปฏิทิน →</a>
         </div>
 
+        <!-- My Bookings -->
+        <div id="my-bookings-section" style="display:none;">
+            <div class="section-hd">การจองของฉัน</div>
+            <div id="my-bookings-list"></div>
+        </div>
+
         <div class="section-hd">ห้องที่เปิดให้บริการ</div>
         <div id="room-list"></div>
     </div>
@@ -171,10 +199,11 @@
 
 <script src="https://static.line-scdn.net/liff/edge/versions/2.15.0/sdk.js"></script>
 <script>
-    const LIFF_ID      = "{{ liff_id }}";
-    const CHECK_URL    = "{{ check_url }}";
-    const REGISTER_URL = "{{ register_url }}";
-    const ROOMS        = {{ rooms_json|safe }};
+    const LIFF_ID        = "{{ liff_id }}";
+    const CHECK_URL      = "{{ check_url }}";
+    const REGISTER_URL   = "{{ register_url }}";
+    const MY_BOOKING_URL = "{{ my_bookings_url }}";
+    const ROOMS          = {{ rooms_json|safe }};
 
     const ACCENT_COLORS = ['#06C755','#3b82f6','#f59e0b','#8b5cf6','#ef4444','#06b6d4'];
 
@@ -204,6 +233,48 @@
                 </div>
             </div>`;
         }).join('');
+    }
+
+    const TH_MONTHS = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.',
+                        'ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+    function renderMyBookings(bookings) {
+        const section = document.getElementById('my-bookings-section');
+        const list    = document.getElementById('my-bookings-list');
+        section.style.display = 'block';
+
+        if (!bookings.length) {
+            list.innerHTML = '<div class="no-booking">ยังไม่มีการจองที่กำลังจะมาถึง</div>';
+            return;
+        }
+
+        list.innerHTML = bookings.map(b => {
+            const color = ACCENT_COLORS[ROOMS.findIndex(r => r.booking_name === b.room_key) % ACCENT_COLORS.length] || '#06C755';
+            const d = b.booking_date.split('-');
+            const dateStr = `${parseInt(d[2])} ${TH_MONTHS[parseInt(d[1])]} ${parseInt(d[0])+543}`;
+            return `
+            <div class="my-booking-card">
+                <div class="my-booking-accent" style="background:${color};"></div>
+                <div class="my-booking-body">
+                    <div class="my-booking-main">
+                        <div class="mbk-room">${b.room_name}</div>
+                        <div class="mbk-group">${b.group_name}</div>
+                    </div>
+                    <div class="my-booking-right">
+                        <div class="mbk-date">${dateStr}</div>
+                        <div class="mbk-time">${b.start_time} – ${b.end_time}</div>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    async function loadMyBookings(userId) {
+        try {
+            const resp = await fetch(MY_BOOKING_URL + '?userId=' + encodeURIComponent(userId));
+            const data = await resp.json();
+            renderMyBookings(data.bookings || []);
+        } catch(e) { /* ไม่แสดง error ถ้าโหลดไม่ได้ */ }
     }
 
     function showContent(userData, profile) {
@@ -245,6 +316,7 @@
                 return;
             }
             showContent(data, profile);
+            loadMyBookings(profile.userId);
         })
         .catch(err => {
             document.getElementById('loader').innerHTML =
