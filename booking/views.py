@@ -50,26 +50,34 @@ def _parse_profile(profile):
     if not profile:
         return '', '', ''
 
-    # ชื่อ-นามสกุล — ลอง field ต่างๆ
+    # ── บุคลากร: staffname / staffsurname / departmentname ───────────────────
+    if 'staffname' in profile:
+        prefix   = profile.get('prefixfullname', '')
+        fname    = profile.get('staffname', '')
+        lname    = profile.get('staffsurname', '')
+        full_name = f'{prefix}{fname} {lname}'.strip()
+        faculty   = profile.get('departmentname', '')
+        department = profile.get('posnameth', '')
+        return full_name, faculty, department
+
+    # ── นักศึกษา: stdname / stdsurname / facultyname / branchname ────────────
+    if 'stdname' in profile:
+        prefix   = profile.get('stdprefix', '') or profile.get('prefixname', '')
+        fname    = profile.get('stdname', '')
+        lname    = profile.get('stdsurname', '')
+        full_name = f'{prefix}{fname} {lname}'.strip()
+        faculty   = profile.get('facultyname', '') or profile.get('faculty', '')
+        department = profile.get('branchname', '') or profile.get('branch', '')
+        return full_name, faculty, department
+
+    # ── fallback ──────────────────────────────────────────────────────────────
     full_name = (
         profile.get('fullname') or
         profile.get('full_name') or
-        profile.get('name') or
-        (profile.get('fname', '') + ' ' + profile.get('lname', '')).strip() or
-        ''
+        (profile.get('fname', '') + ' ' + profile.get('lname', '')).strip() or ''
     )
-    faculty = (
-        profile.get('faculty') or
-        profile.get('faculty_name') or
-        profile.get('department_name') or
-        ''
-    )
-    department = (
-        profile.get('branch') or
-        profile.get('major') or
-        profile.get('department') or
-        ''
-    )
+    faculty    = profile.get('faculty') or profile.get('department_name') or ''
+    department = profile.get('branch') or profile.get('major') or ''
     return str(full_name).strip(), str(faculty).strip(), str(department).strip()
 
 
