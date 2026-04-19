@@ -18,6 +18,38 @@ PROFILE_CACHE_DAYS = 30
 MAX_ADVANCE_WORKDAYS = 3   # จองล่วงหน้าได้สูงสุดกี่วันทำงาน
 
 
+# ── LINE Messaging API ────────────────────────────────────────────────────────
+
+LINE_PUSH_URL = 'https://api.line.me/v2/bot/message/push'
+
+
+def _push_line(user_id, messages):
+    """
+    ส่ง push message ไปหา LINE userId
+    messages: list of message object (text, flex ฯลฯ)
+    """
+    token = settings.LINE_CHANNEL_ACCESS_TOKEN
+    if not token or not user_id:
+        return False
+    try:
+        resp = requests.post(
+            LINE_PUSH_URL,
+            headers={
+                'Authorization': f'Bearer {token}',
+                'Content-Type':  'application/json',
+            },
+            json={'to': user_id, 'messages': messages},
+            timeout=10,
+        )
+        return resp.status_code == 200
+    except requests.RequestException:
+        return False
+
+
+def _push_text(user_id, text):
+    return _push_line(user_id, [{'type': 'text', 'text': text}])
+
+
 # ── Holiday / working-day helpers ─────────────────────────────────────────────
 
 def _holiday_dates_set():
@@ -325,4 +357,25 @@ def create_booking(request):
         )
         BookingLog.objects.create(booking=booking, action='created')
 
+    # แจ้งเตือนจองสำเร็จทันที (นอก transaction เพื่อไม่ให้ block)
+    _notify_booking_confirmed(booking)
+
     return JsonResponse({'success': True, 'booking_id': booking.id})
+
+
+def _notify_booking_confirmed(booking):
+    """Push แจ้งเตือนจองสำเร็จไปหาผู้จอง"""
+    b = booking
+    th_months = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+                 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
+    date_str = f'{b.booking_date.day} {th_months[b.booking_date.month]} {b.booking_date.year + 543}'
+    msg = (
+        f'✅ จองพื้นที่สำเร็จ\n'
+        f'📍 {b.room.name}\n'
+        f'📅 {date_str}\n'
+        f'🕐 {b.start_time.strftime("%H:%M")} – {b.end_time.strftime("%H:%M")}\n'
+        f'👥 {b.group_name}\n'
+        f'เลขที่การจอง: #{b.id}'
+    )
+    if _push_text(b.line_user.line_user_id, msg):
+        Booking.objects.filter(pk=b.pk).update(notified_start=True)

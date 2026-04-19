@@ -58,6 +58,10 @@ class Booking(models.Model):
     created_at   = models.DateTimeField(auto_now_add=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
     cancel_reason = models.TextField(blank=True)
+    # LINE notification tracking
+    notified_start = models.BooleanField(default=False)  # แจ้งจองสำเร็จ
+    notified_15min = models.BooleanField(default=False)  # แจ้งก่อนเริ่ม 15 นาที
+    notified_10min = models.BooleanField(default=False)  # แจ้งก่อนหมด 10 นาที
 
     class Meta:
         ordering = ['-booking_date', '-start_time']
