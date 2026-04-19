@@ -3,3 +3,4 @@ mysqlclient
 python-dotenv
 requests
 waitress
+whitenoise
