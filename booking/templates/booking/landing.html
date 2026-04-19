@@ -123,10 +123,22 @@
         .my-booking-right { text-align: right; flex-shrink: 0; }
         .my-booking-right .mbk-date { font-size: 12px; font-weight: 600; color: #555; }
         .my-booking-right .mbk-time { font-size: 11px; color: #aaa; margin-top: 2px; }
+        .btn-cancel-bk {
+            font-size: 11px; color: #dc2626; background: none; border: none;
+            padding: 2px 0; margin-top: 4px; cursor: pointer; text-decoration: underline;
+        }
         .no-booking {
             background: #fff; border-radius: 12px; padding: 14px 16px;
             text-align: center; font-size: 13px; color: #bbb; margin-bottom: 10px;
         }
+        /* Toast */
+        #toast {
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+            background: #1a1a1a; color: #fff; border-radius: 20px;
+            padding: 10px 20px; font-size: 13px; z-index: 9999;
+            opacity: 0; transition: opacity .3s; pointer-events: none; white-space: nowrap;
+        }
+        #toast.show { opacity: 1; }
 
         /* ── Calendar card ── */
         .calendar-banner {
@@ -149,6 +161,7 @@
 </head>
 <body>
 
+<div id="toast"></div>
 <div id="loader">
     <div class="spinner"></div>
     <div style="font-size:13px;color:#aaa;">กำลังตรวจสอบสิทธิ์…</div>
@@ -203,7 +216,9 @@
     const CHECK_URL      = "{{ check_url }}";
     const REGISTER_URL   = "{{ register_url }}";
     const MY_BOOKING_URL = "{{ my_bookings_url }}";
+    const CANCEL_URL     = "{{ cancel_booking_url }}";
     const ROOMS          = {{ rooms_json|safe }};
+    let currentUserId    = null;
 
     const ACCENT_COLORS = ['#06C755','#3b82f6','#f59e0b','#8b5cf6','#ef4444','#06b6d4'];
 
@@ -238,6 +253,14 @@
     const TH_MONTHS = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.',
                         'ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
+    function showToast(msg, isError = false) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.style.background = isError ? '#dc2626' : '#1a1a1a';
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
     function renderMyBookings(bookings) {
         const section = document.getElementById('my-bookings-section');
         const list    = document.getElementById('my-bookings-list');
@@ -249,16 +272,21 @@
         }
 
         list.innerHTML = bookings.map(b => {
-            const color = ACCENT_COLORS[ROOMS.findIndex(r => r.booking_name === b.room_key) % ACCENT_COLORS.length] || '#06C755';
-            const d = b.booking_date.split('-');
+            const idx   = ROOMS.findIndex(r => r.booking_name === b.room_key);
+            const color = ACCENT_COLORS[idx >= 0 ? idx % ACCENT_COLORS.length : 0];
+            const d     = b.booking_date.split('-');
             const dateStr = `${parseInt(d[2])} ${TH_MONTHS[parseInt(d[1])]} ${parseInt(d[0])+543}`;
             return `
-            <div class="my-booking-card">
+            <div class="my-booking-card" id="bk-${b.id}">
                 <div class="my-booking-accent" style="background:${color};"></div>
                 <div class="my-booking-body">
                     <div class="my-booking-main">
                         <div class="mbk-room">${b.room_name}</div>
                         <div class="mbk-group">${b.group_name}</div>
+                        <button class="btn-cancel-bk"
+                            onclick="cancelBooking(${b.id},'${b.room_name}','${dateStr}')">
+                            ยกเลิกการจอง
+                        </button>
                     </div>
                     <div class="my-booking-right">
                         <div class="mbk-date">${dateStr}</div>
@@ -275,6 +303,31 @@
             const data = await resp.json();
             renderMyBookings(data.bookings || []);
         } catch(e) { /* ไม่แสดง error ถ้าโหลดไม่ได้ */ }
+    }
+
+    async function cancelBooking(bookingId, roomName, dateStr) {
+        if (!confirm(`ยืนยันยกเลิกการจอง?\n${roomName} — ${dateStr}`)) return;
+        try {
+            const resp = await fetch(CANCEL_URL, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ userId: currentUserId, bookingId: bookingId }),
+            });
+            const data = await resp.json();
+            if (data.success) {
+                document.getElementById('bk-' + bookingId)?.remove();
+                showToast('ยกเลิกการจองเรียบร้อยแล้ว');
+                // ถ้าไม่เหลือ booking อัปเดต section
+                if (!document.querySelector('.my-booking-card')) {
+                    document.getElementById('my-bookings-list').innerHTML =
+                        '<div class="no-booking">ยังไม่มีการจองที่กำลังจะมาถึง</div>';
+                }
+            } else {
+                showToast(data.error || 'เกิดข้อผิดพลาด', true);
+            }
+        } catch(e) {
+            showToast('ไม่สามารถเชื่อมต่อได้ กรุณาลองใหม่', true);
+        }
     }
 
     function showContent(userData, profile) {
@@ -320,6 +373,7 @@
                 return;
             }
             const profile = await liff.getProfile();
+            currentUserId = profile.userId;
             const data = await checkUser(profile);
             if (!data.registered) {
                 sessionStorage.removeItem(CACHE_KEY);
@@ -334,9 +388,18 @@
             loadMyBookings(profile.userId);
         })
         .catch(err => {
+            const msg = err.message && err.message.includes('network')
+                ? 'ไม่สามารถเชื่อมต่อได้<br>กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่'
+                : 'ไม่สามารถเชื่อมต่อ LINE ได้<br>กรุณาลองใหม่อีกครั้ง';
             document.getElementById('loader').innerHTML =
-                `<div style="color:#c00;padding:24px;text-align:center;font-size:14px;">
-                    เกิดข้อผิดพลาด<br><small style="color:#aaa;">${err.message}</small>
+                `<div style="padding:32px 24px;text-align:center;">
+                    <div style="font-size:40px;margin-bottom:12px;">⚠️</div>
+                    <div style="font-size:15px;color:#333;font-weight:600;margin-bottom:6px;">${msg}</div>
+                    <button onclick="location.reload()"
+                        style="margin-top:16px;padding:9px 24px;border-radius:20px;
+                               background:#06C755;color:#fff;border:none;font-size:14px;cursor:pointer;">
+                        ลองใหม่
+                    </button>
                  </div>`;
         });
 </script>

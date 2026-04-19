@@ -236,7 +236,8 @@ def landing_page(request):
         'rooms_json':      rooms_json,
         'check_url':       request.build_absolute_uri(reverse('check_user')),
         'register_url':    request.build_absolute_uri(reverse('register')),
-        'my_bookings_url': request.build_absolute_uri(reverse('my_bookings')),
+        'my_bookings_url':    request.build_absolute_uri(reverse('my_bookings')),
+        'cancel_booking_url': request.build_absolute_uri(reverse('cancel_booking')),
     })
 
 
@@ -461,6 +462,33 @@ def create_booking(request):
     return JsonResponse({'success': True, 'booking_id': booking.id})
 
 
+def _notify_booking_cancelled(booking, by_user=False):
+    """Push แจ้งเตือนยกเลิกการจองไปหาผู้จอง"""
+    b = booking
+    th_months = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+                 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
+    date_str = f'{b.booking_date.day} {th_months[b.booking_date.month]} {b.booking_date.year + 543}'
+    if by_user:
+        msg = (
+            f'❌ ยกเลิกการจองแล้ว\n'
+            f'📍 {b.room.name}\n'
+            f'📅 {date_str}\n'
+            f'🕐 {b.start_time.strftime("%H:%M")} – {b.end_time.strftime("%H:%M")}\n'
+            f'เลขที่การจอง: #{b.id}'
+        )
+    else:
+        msg = (
+            f'❌ การจองของคุณถูกยกเลิกโดยเจ้าหน้าที่\n'
+            f'📍 {b.room.name}\n'
+            f'📅 {date_str}\n'
+            f'🕐 {b.start_time.strftime("%H:%M")} – {b.end_time.strftime("%H:%M")}\n'
+        )
+        if b.cancel_reason:
+            msg += f'เหตุผล: {b.cancel_reason}\n'
+        msg += 'หากมีข้อสงสัยกรุณาติดต่อเจ้าหน้าที่'
+    _push_text(b.line_user.line_user_id, msg)
+
+
 def _notify_booking_confirmed(booking):
     """Push แจ้งเตือนจองสำเร็จไปหาผู้จอง"""
     b = booking
@@ -515,6 +543,52 @@ def bookings_by_date(request):
         for b in bookings
     ]
     return JsonResponse({'bookings': data})
+
+
+# ── Cancel Booking (by user) ───────────────────────────────────────────────────
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def cancel_booking(request):
+    """POST { userId, bookingId } → ผู้ใช้ยกเลิกการจองของตัวเอง"""
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'invalid request'}, status=400)
+
+    user_id    = body.get('userId', '').strip()
+    booking_id = body.get('bookingId')
+
+    if not user_id or not booking_id:
+        return JsonResponse({'error': 'ข้อมูลไม่ครบ'}, status=400)
+
+    try:
+        booking = Booking.objects.select_related('line_user', 'room').get(pk=booking_id)
+    except Booking.DoesNotExist:
+        return JsonResponse({'error': 'ไม่พบการจอง'}, status=404)
+
+    if booking.line_user.line_user_id != user_id:
+        return JsonResponse({'error': 'ไม่มีสิทธิ์ยกเลิกการจองนี้'}, status=403)
+
+    if booking.status != 'confirmed':
+        return JsonResponse({'error': 'การจองนี้ถูกยกเลิกไปแล้ว'}, status=400)
+
+    now          = timezone.localtime(timezone.now())
+    today        = now.date()
+    current_time = now.time()
+    if booking.booking_date < today or (
+        booking.booking_date == today and booking.start_time <= current_time
+    ):
+        return JsonResponse({'error': 'ไม่สามารถยกเลิกการจองที่เริ่มแล้วหรือผ่านมาแล้ว'}, status=400)
+
+    booking.status        = 'cancelled'
+    booking.cancelled_at  = timezone.now()
+    booking.cancel_reason = 'ยกเลิกโดยผู้จอง'
+    booking.save()
+    BookingLog.objects.create(booking=booking, action='cancelled', note='ยกเลิกโดยผู้จอง')
+    _notify_booking_cancelled(booking, by_user=True)
+
+    return JsonResponse({'success': True})
 
 
 # ── My Bookings ────────────────────────────────────────────────────────────────

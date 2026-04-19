@@ -11,6 +11,7 @@ from django.views.decorators.http import require_POST
 
 from .forms import HolidayDateForm, RoomForm, StaffAddForm, StaffEditForm
 from .models import Booking, BookingLog, HolidayDate, LineUser, Room
+from .views import _notify_booking_cancelled
 
 
 # ── Permission decorators ──────────────────────────────────────────────────────
@@ -135,11 +136,12 @@ def manage_booking_cancel(request, pk):
     booking = get_object_or_404(Booking, pk=pk)
     if booking.status == 'confirmed':
         reason = request.POST.get('cancel_reason', '').strip()
-        booking.status       = 'cancelled'
-        booking.cancelled_at = timezone.now()
+        booking.status        = 'cancelled'
+        booking.cancelled_at  = timezone.now()
         booking.cancel_reason = reason
         booking.save()
         BookingLog.objects.create(booking=booking, action='cancelled', note=reason)
+        _notify_booking_cancelled(booking, by_user=False)
     return redirect('manage_bookings')
 
 

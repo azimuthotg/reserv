@@ -515,8 +515,19 @@
             showForm({ ...data, displayName: profile.displayName });
         })
         .catch(err => {
+            const msg = err.message && err.message.includes('network')
+                ? 'ไม่สามารถเชื่อมต่อได้<br>กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่'
+                : 'ไม่สามารถเชื่อมต่อ LINE ได้<br>กรุณาลองใหม่อีกครั้ง';
             document.getElementById('loader').innerHTML =
-                '<div style="color:#c00;padding:20px;text-align:center;">LIFF error: ' + err.message + '</div>';
+                `<div style="padding:32px 24px;text-align:center;">
+                    <div style="font-size:40px;margin-bottom:12px;">⚠️</div>
+                    <div style="font-size:15px;color:#333;font-weight:600;margin-bottom:6px;">${msg}</div>
+                    <button onclick="location.reload()"
+                        style="margin-top:16px;padding:9px 24px;border-radius:20px;
+                               background:#06C755;color:#fff;border:none;font-size:14px;cursor:pointer;">
+                        ลองใหม่
+                    </button>
+                 </div>`;
         });
 </script>
 </body>
