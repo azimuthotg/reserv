@@ -10,11 +10,35 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from .models import Booking, BookingLog, LineUser, Room
+from .models import Booking, BookingLog, HolidayDate, LineUser, Room
 
-NPU_API_BASE     = 'https://api.npu.ac.th'
-REGISTER_URL     = f'{NPU_API_BASE}/reserv/lineoa'
+NPU_API_BASE       = 'https://api.npu.ac.th'
+REGISTER_URL       = f'{NPU_API_BASE}/reserv/lineoa'
 PROFILE_CACHE_DAYS = 30
+MAX_ADVANCE_WORKDAYS = 3   # จองล่วงหน้าได้สูงสุดกี่วันทำงาน
+
+
+# ── Holiday / working-day helpers ─────────────────────────────────────────────
+
+def _holiday_dates_set():
+    """คืน set ของวันหยุดที่ active ทั้งหมด"""
+    return set(HolidayDate.objects.filter(is_active=True).values_list('date', flat=True))
+
+
+def _is_workday(d, holidays):
+    """วันทำงาน = จันทร์–ศุกร์ และไม่ใช่วันหยุด"""
+    return d.weekday() < 5 and d not in holidays
+
+
+def _count_workdays_between(start, end_inclusive, holidays):
+    """นับจำนวนวันทำงานระหว่าง start ถึง end_inclusive"""
+    count = 0
+    cur = start
+    while cur <= end_inclusive:
+        if _is_workday(cur, holidays):
+            count += 1
+        cur += timedelta(days=1)
+    return count
 
 
 # ── NPU API helpers ───────────────────────────────────────────────────────────
@@ -142,10 +166,23 @@ def booking_page(request):
             'close_time': room.close_time.strftime('%H:%M'),
         }
 
+    # วันหยุดในอีก 60 วันข้างหน้า สำหรับ disable ใน date picker
+    today = date.today()
+    holiday_list = list(
+        HolidayDate.objects.filter(
+            is_active=True,
+            date__gte=today,
+            date__lte=today + timedelta(days=60),
+        ).values_list('date', flat=True)
+    )
+    holiday_strs = [d.strftime('%Y-%m-%d') for d in holiday_list]
+
     context = {
-        'liff_id':    settings.LINE_LIFF_ID,
-        'room_json':  json.dumps(room_data),
+        'liff_id':      settings.LINE_LIFF_ID,
+        'room_json':    json.dumps(room_data),
         'register_url': REGISTER_URL,
+        'holidays_json': json.dumps(holiday_strs),
+        'max_workdays': MAX_ADVANCE_WORKDAYS,
     }
     return render(request, 'booking/booking.html', context)
 
@@ -159,7 +196,10 @@ def booking_success(request):
             booking = Booking.objects.select_related('room', 'line_user').get(id=booking_id)
         except Booking.DoesNotExist:
             pass
-    return render(request, 'booking/success.html', {'booking': booking})
+    return render(request, 'booking/success.html', {
+        'booking':  booking,
+        'liff_id':  settings.LINE_LIFF_ID,
+    })
 
 
 # ── APIs ──────────────────────────────────────────────────────────────────────
@@ -236,6 +276,19 @@ def create_booking(request):
 
     if b_date < date.today():
         return JsonResponse({'error': 'ไม่สามารถจองย้อนหลังได้'}, status=400)
+
+    holidays = _holiday_dates_set()
+
+    # ตรวจว่าวันที่จองเป็นวันหยุดหรือไม่
+    if b_date in holidays:
+        holiday = HolidayDate.objects.get(date=b_date)
+        return JsonResponse({'error': f'ไม่สามารถจองวัน {b_date.strftime("%d/%m/%Y")} ได้ เนื่องจาก: {holiday.description}'}, status=400)
+
+    # ตรวจล่วงหน้าไม่เกิน 3 วันทำงาน
+    today = date.today()
+    workdays_ahead = _count_workdays_between(today + timedelta(days=1), b_date, holidays)
+    if workdays_ahead > MAX_ADVANCE_WORKDAYS:
+        return JsonResponse({'error': f'จองล่วงหน้าได้ไม่เกิน {MAX_ADVANCE_WORKDAYS} วันทำงาน'}, status=400)
 
     try:
         room = Room.objects.get(booking_name=room_key, is_active=True)

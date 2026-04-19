@@ -67,6 +67,20 @@ class Booking(models.Model):
         return f'{self.room.name} — {self.booking_date} {self.start_time:%H:%M}-{self.end_time:%H:%M}'
 
 
+class HolidayDate(models.Model):
+    date        = models.DateField(unique=True, verbose_name='วันที่')
+    description = models.CharField(max_length=200, verbose_name='เหตุผล/ชื่อวันหยุด')
+    is_active   = models.BooleanField(default=True, verbose_name='เปิดใช้งาน')
+
+    class Meta:
+        ordering     = ['date']
+        verbose_name = 'วันหยุด'
+        verbose_name_plural = 'วันหยุด'
+
+    def __str__(self):
+        return f'{self.date} — {self.description}'
+
+
 class BookingLog(models.Model):
     booking   = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='logs')
     action    = models.CharField(max_length=50)

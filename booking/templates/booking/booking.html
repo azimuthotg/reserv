@@ -124,6 +124,8 @@
     const CHECK_URL    = "{% url 'check_user' %}";
     const BOOKING_URL  = "{% url 'create_booking' %}";
     const SUCCESS_URL  = "{% url 'booking_success' %}";
+    const HOLIDAYS     = new Set({{ holidays_json|safe }});
+    const MAX_WORKDAYS = {{ max_workdays }};
 
     let currentUserId = '';
 
@@ -188,12 +190,59 @@
         return true;
     }
 
-    // ── Min date = today ──────────────────────────────────────────────────────
-    function setMinDate() {
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('booking_date').min   = today;
-        document.getElementById('booking_date').value = today;
+    // ── Date helpers ──────────────────────────────────────────────────────────
+    function toYMD(d) {
+        return d.toISOString().split('T')[0];
     }
+
+    function isWorkday(d) {
+        const day = d.getDay(); // 0=Sun, 6=Sat
+        return day !== 0 && day !== 6 && !HOLIDAYS.has(toYMD(d));
+    }
+
+    /** คืนวันทำงานถัดไปจาก d (ไม่รวม d เอง) */
+    function nextWorkday(d) {
+        const next = new Date(d);
+        do { next.setDate(next.getDate() + 1); } while (!isWorkday(next));
+        return next;
+    }
+
+    /** คำนวณวันสุดท้ายที่จองได้ (MAX_WORKDAYS วันทำงานจากวันนี้) */
+    function calcMaxDate() {
+        let cur  = new Date();
+        let count = 0;
+        while (count < MAX_WORKDAYS) {
+            cur.setDate(cur.getDate() + 1);
+            if (isWorkday(cur)) count++;
+        }
+        return cur;
+    }
+
+    function setMinDate() {
+        const today   = new Date();
+        const todayStr = toYMD(today);
+        const maxDate = calcMaxDate();
+        const maxStr  = toYMD(maxDate);
+
+        const el = document.getElementById('booking_date');
+        el.min   = todayStr;
+        el.max   = maxStr;
+
+        // เลือก default = วันนี้ถ้าเป็นวันทำงาน ไม่งั้นวันทำงานถัดไป
+        el.value = isWorkday(today) ? todayStr : toYMD(nextWorkday(today));
+    }
+
+    /** ตรวจ input วันที่เมื่อ user เปลี่ยน */
+    document.getElementById('booking_date').addEventListener('change', function() {
+        const val = this.value;
+        if (!val) return;
+        if (HOLIDAYS.has(val)) {
+            showFormError('วันที่เลือกเป็นวันหยุด กรุณาเลือกวันอื่น');
+            this.value = '';
+        } else {
+            hideFormError();
+        }
+    });
 
     // ── Show form ─────────────────────────────────────────────────────────────
     function showForm(userInfo) {

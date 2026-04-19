@@ -64,9 +64,28 @@
     {% endif %}
 
     <div class="text-center mt-3">
-        <button onclick="window.close()" class="btn btn-outline-secondary btn-sm">ปิดหน้าต่างนี้</button>
+        <button id="btn-close" class="btn btn-outline-secondary btn-sm">ปิดหน้าต่างนี้</button>
     </div>
 
 </div>
+<script src="https://static.line-scdn.net/liff/edge/versions/2.15.0/sdk.js"></script>
+<script>
+    const LIFF_ID = "{{ liff_id }}";
+    const btn = document.getElementById('btn-close');
+
+    liff.init({ liffId: LIFF_ID })
+        .then(() => {
+            btn.addEventListener('click', () => {
+                if (liff.isInClient()) {
+                    liff.closeWindow();
+                } else {
+                    window.close();
+                }
+            });
+        })
+        .catch(() => {
+            btn.addEventListener('click', () => window.close());
+        });
+</script>
 </body>
 </html>
