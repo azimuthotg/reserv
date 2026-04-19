@@ -469,6 +469,25 @@
 
 <script src="https://static.line-scdn.net/liff/edge/versions/2.15.0/sdk.js"></script>
 <script>
+    const CACHE_KEY = 'npu_user_v1';
+
+    async function checkUser(profile) {
+        const cached = sessionStorage.getItem(CACHE_KEY);
+        if (cached) {
+            return JSON.parse(cached);
+        }
+        const resp = await fetch(CHECK_URL, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ userId: profile.userId, displayName: profile.displayName }),
+        });
+        const data = await resp.json();
+        if (data.registered) {
+            sessionStorage.setItem(CACHE_KEY, JSON.stringify(data));
+        }
+        return data;
+    }
+
     liff.init({ liffId: LIFF_ID })
         .then(async () => {
             if (!liff.isLoggedIn()) {
@@ -477,15 +496,10 @@
             }
             const profile = await liff.getProfile();
             currentUserId = profile.userId;
-
-            const resp = await fetch(CHECK_URL, {
-                method:  'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ userId: profile.userId, displayName: profile.displayName }),
-            });
-            const data = await resp.json();
+            const data = await checkUser(profile);
 
             if (!data.registered) {
+                sessionStorage.removeItem(CACHE_KEY);
                 window.location.href = REGISTER_URL
                     + '?userId='      + encodeURIComponent(profile.userId)
                     + '&displayName=' + encodeURIComponent(profile.displayName)
