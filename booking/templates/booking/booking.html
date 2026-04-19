@@ -3,155 +3,309 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Library@NPU — จองพื้นที่บริการ</title>
+    <title>จองพื้นที่บริการ — Library@NPU</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <style>
-        html, body { margin: 0; width: 100%; height: 100%; }
-        iframe { width: 100%; height: 100%; border: none; }
+        body { background: #f5f5f5; font-family: 'Sarabun', sans-serif; }
         #loader {
-            position: fixed; inset: 0;
-            display: flex; justify-content: center; align-items: center;
-            background: rgba(255,255,255,0.9); z-index: 9999; flex-direction: column; gap: 12px;
+            position: fixed; inset: 0; display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            background: #fff; z-index: 9999; gap: 16px;
         }
         .spinner {
-            width: 40px; height: 40px; border: 4px solid #e0e0e0;
+            width: 48px; height: 48px; border: 5px solid #e0e0e0;
             border-top-color: #06C755; border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-        #error-msg { display: none; padding: 20px; text-align: center; color: #c00; font-family: sans-serif; font-size: 14px; }
+        #booking-form { display: none; }
+        .room-banner {
+            background: linear-gradient(135deg, #06C755, #00a844);
+            color: #fff; padding: 16px; border-radius: 12px; margin-bottom: 16px;
+        }
+        .section-card {
+            background: #fff; border-radius: 12px;
+            padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.08);
+        }
+        .section-title { font-size: 13px; color: #888; margin-bottom: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+        .field-readonly { background: #f8f8f8; border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px 12px; font-size: 15px; color: #333; }
+        .field-label { font-size: 13px; color: #555; margin-bottom: 4px; }
+        .btn-submit { background: #06C755; color: #fff; border: none; border-radius: 10px; padding: 14px; font-size: 16px; font-weight: 600; width: 100%; }
+        .btn-submit:active { background: #059944; }
         #debug-log {
             position: fixed; bottom: 0; left: 0; right: 0;
             background: rgba(0,0,0,0.85); color: #0f0; font-family: monospace;
-            font-size: 11px; padding: 6px; max-height: 40vh; overflow-y: auto;
-            z-index: 99999;
+            font-size: 10px; padding: 6px; max-height: 35vh; overflow-y: auto; z-index: 99999;
         }
     </style>
 </head>
 <body>
-    <div id="loader"><div class="spinner"></div></div>
-    <div id="error-msg"></div>
-    <iframe id="formframe" src=""></iframe>
-    <div id="debug-log"></div>
 
-    <script src="https://static.line-scdn.net/liff/edge/versions/2.15.0/sdk.js"></script>
-    <script>
-        const LIFF_ID      = "{{ liff_id }}";
-        const GAS_URLS     = {{ gas_urls|safe }};
-        const REGISTER_URL = "{{ register_url }}";
-        const CHECK_URL    = "{% url 'check_user' %}";
+<div id="loader">
+    <div class="spinner"></div>
+    <div style="color:#888;font-size:14px;">กำลังโหลด...</div>
+</div>
 
-        // ── Debug log ────────────────────────────────────────────────────────────
-        function log(msg, data) {
-            const el = document.getElementById('debug-log');
-            const line = document.createElement('div');
-            const text = data !== undefined ? msg + ' → ' + JSON.stringify(data) : msg;
-            line.textContent = '[' + new Date().toISOString().substr(11,8) + '] ' + text;
-            el.appendChild(line);
-            el.scrollTop = el.scrollHeight;
-            console.log('[DEBUG]', text);
+<div id="booking-form" class="container py-3" style="max-width:480px;">
+
+    <!-- Room Banner -->
+    <div class="room-banner" id="room-banner">
+        <div style="font-size:18px;font-weight:700;" id="room-name">—</div>
+        <div style="font-size:13px;opacity:.85;" id="room-location"></div>
+        <div style="font-size:13px;opacity:.85;" id="room-hours"></div>
+    </div>
+
+    <form id="form" novalidate>
+
+        <!-- ข้อมูลผู้จอง -->
+        <div class="section-card">
+            <div class="section-title">ข้อมูลผู้จอง</div>
+            <div class="mb-2">
+                <div class="field-label">ชื่อ-นามสกุล</div>
+                <div class="field-readonly" id="disp-fullname">—</div>
+            </div>
+            <div class="mb-2">
+                <div class="field-label">คณะ / หน่วยงาน</div>
+                <div class="field-readonly" id="disp-faculty">—</div>
+            </div>
+            <div>
+                <div class="field-label">สาขาวิชา / ฝ่าย</div>
+                <div class="field-readonly" id="disp-department">—</div>
+            </div>
+        </div>
+
+        <!-- รายละเอียดการจอง -->
+        <div class="section-card">
+            <div class="section-title">รายละเอียดการจอง</div>
+
+            <div class="mb-3">
+                <label class="field-label" for="group_name">ชื่อกลุ่ม / กิจกรรม <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="group_name" placeholder="เช่น กลุ่มโปรเจกต์ CS" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="field-label" for="booking_date">วันที่จอง <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" id="booking_date" required>
+            </div>
+
+            <div class="row g-2 mb-3">
+                <div class="col-6">
+                    <label class="field-label" for="start_time">เวลาเริ่ม <span class="text-danger">*</span></label>
+                    <select class="form-select" id="start_time" required></select>
+                </div>
+                <div class="col-6">
+                    <label class="field-label" for="end_time">เวลาสิ้นสุด <span class="text-danger">*</span></label>
+                    <select class="form-select" id="end_time" required></select>
+                </div>
+            </div>
+
+            <div class="mb-2">
+                <label class="field-label" for="attendees">รายชื่อผู้เข้าใช้ <span class="text-danger">*</span></label>
+                <textarea class="form-control" id="attendees" rows="4"
+                    placeholder="พิมพ์รายชื่อผู้เข้าใช้ทุกคน&#10;เช่น นายสมชาย ใจดี&#10;นางสาวสมหญิง รักเรียน" required></textarea>
+            </div>
+        </div>
+
+        <!-- Error -->
+        <div id="form-error" class="alert alert-danger d-none" role="alert"></div>
+
+        <button type="submit" class="btn-submit mb-4">ยืนยันการจอง</button>
+
+    </form>
+</div>
+
+<div id="debug-log"></div>
+
+<script src="https://static.line-scdn.net/liff/edge/versions/2.15.0/sdk.js"></script>
+<script>
+    const LIFF_ID      = "{{ liff_id }}";
+    const ROOM_DATA    = {{ room_json }};
+    const REGISTER_URL = "{{ register_url }}";
+    const CHECK_URL    = "{% url 'check_user' %}";
+    const BOOKING_URL  = "{% url 'create_booking' %}";
+    const SUCCESS_URL  = "{% url 'booking_success' %}";
+
+    let currentUserId = '';
+
+    // ── Debug ────────────────────────────────────────────────────────────────
+    function log(msg, data) {
+        const el   = document.getElementById('debug-log');
+        const line = document.createElement('div');
+        line.textContent = '[' + new Date().toISOString().substr(11,8) + '] '
+            + msg + (data !== undefined ? ' → ' + JSON.stringify(data) : '');
+        el.appendChild(line);
+        el.scrollTop = el.scrollHeight;
+        console.log('[DEBUG]', line.textContent);
+    }
+
+    function showFormError(msg) {
+        const el = document.getElementById('form-error');
+        el.textContent = msg;
+        el.classList.remove('d-none');
+        el.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function hideFormError() {
+        document.getElementById('form-error').classList.add('d-none');
+    }
+
+    // ── Time slots ───────────────────────────────────────────────────────────
+    function timeToMin(t) {
+        const [h, m] = t.split(':').map(Number);
+        return h * 60 + m;
+    }
+
+    function buildTimeOptions(selectEl, openTime, closeTime) {
+        let min = timeToMin(openTime);
+        const max = timeToMin(closeTime);
+        selectEl.innerHTML = '<option value="">-- เลือกเวลา --</option>';
+        while (min <= max) {
+            const h = String(Math.floor(min / 60)).padStart(2, '0');
+            const m = String(min % 60).padStart(2, '0');
+            const opt = document.createElement('option');
+            opt.value = `${h}:${m}`;
+            opt.textContent = `${h}:${m}`;
+            selectEl.appendChild(opt);
+            min += 30;
         }
+    }
 
-        function showError(msg) {
-            log('ERROR: ' + msg);
-            document.getElementById('loader').style.display = 'none';
-            const el = document.getElementById('error-msg');
-            el.textContent = msg;
-            el.style.display = 'block';
+    // ── Room info ─────────────────────────────────────────────────────────────
+    function setupRoom() {
+        if (!ROOM_DATA) {
+            document.getElementById('room-banner').innerHTML =
+                '<div style="font-size:16px;">ไม่พบข้อมูลห้อง กรุณาติดต่อเจ้าหน้าที่</div>';
+            return false;
         }
+        document.getElementById('room-name').textContent     = ROOM_DATA.name;
+        document.getElementById('room-location').textContent = '📍 ' + ROOM_DATA.location;
+        document.getElementById('room-hours').textContent    =
+            '🕐 ' + ROOM_DATA.open_time + ' – ' + ROOM_DATA.close_time +
+            '  |  👥 สูงสุด ' + ROOM_DATA.capacity + ' คน';
 
-        function hideLoader() {
-            document.getElementById('loader').style.display = 'none';
-        }
+        buildTimeOptions(document.getElementById('start_time'), ROOM_DATA.open_time, ROOM_DATA.close_time);
+        buildTimeOptions(document.getElementById('end_time'),   ROOM_DATA.open_time, ROOM_DATA.close_time);
+        return true;
+    }
 
-        function getRoom() {
-            let params = new URLSearchParams(window.location.search);
-            log('URL search', window.location.search);
-            const liffState = params.get('liff.state');
-            if (liffState) {
-                log('liff.state found', liffState);
-                params = new URLSearchParams(decodeURIComponent(liffState));
+    // ── Min date = today ──────────────────────────────────────────────────────
+    function setMinDate() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('booking_date').min   = today;
+        document.getElementById('booking_date').value = today;
+    }
+
+    // ── Show form ─────────────────────────────────────────────────────────────
+    function showForm(userInfo) {
+        document.getElementById('disp-fullname').textContent  = userInfo.full_name   || userInfo.displayName || '—';
+        document.getElementById('disp-faculty').textContent   = userInfo.faculty     || '—';
+        document.getElementById('disp-department').textContent = userInfo.department || '—';
+        document.getElementById('loader').style.display = 'none';
+        document.getElementById('booking-form').style.display = 'block';
+        log('form shown');
+    }
+
+    // ── Submit ────────────────────────────────────────────────────────────────
+    document.getElementById('form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        hideFormError();
+
+        const payload = {
+            userId:       currentUserId,
+            room:         ROOM_DATA ? ROOM_DATA.booking_name : '',
+            booking_date: document.getElementById('booking_date').value,
+            start_time:   document.getElementById('start_time').value,
+            end_time:     document.getElementById('end_time').value,
+            group_name:   document.getElementById('group_name').value.trim(),
+            attendees:    document.getElementById('attendees').value.trim(),
+        };
+
+        log('submit', payload);
+
+        const btn = document.querySelector('.btn-submit');
+        btn.disabled    = true;
+        btn.textContent = 'กำลังบันทึก...';
+
+        try {
+            const resp = await fetch(BOOKING_URL, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify(payload),
+            });
+            const data = await resp.json();
+            log('create_booking response', data);
+
+            if (data.success) {
+                window.location.href = SUCCESS_URL + '?id=' + data.booking_id;
+            } else {
+                showFormError(data.error || 'เกิดข้อผิดพลาด กรุณาลองใหม่');
+                btn.disabled    = false;
+                btn.textContent = 'ยืนยันการจอง';
             }
-            const room = params.get('room') || params.get('booking_name') || '';
-            log('room', room);
-            return room;
+        } catch (err) {
+            showFormError('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่');
+            btn.disabled    = false;
+            btn.textContent = 'ยืนยันการจอง';
         }
+    });
 
-        function loadGasForm(room, userId, displayName, pictureUrl, userLdap, user_type) {
-            log('loadGasForm', { room, userId, userLdap, user_type });
-            const base = GAS_URLS[room];
-            if (!base) {
-                showError('ไม่พบข้อมูลห้อง: ' + room);
+    // ── getRoom param ─────────────────────────────────────────────────────────
+    function getRoom() {
+        let params = new URLSearchParams(window.location.search);
+        const liffState = params.get('liff.state');
+        if (liffState) params = new URLSearchParams(decodeURIComponent(liffState));
+        return params.get('room') || params.get('booking_name') || '';
+    }
+
+    // ── Main ──────────────────────────────────────────────────────────────────
+    log('LIFF_ID', LIFF_ID);
+    log('page URL', window.location.href);
+    log('ROOM_DATA', ROOM_DATA);
+
+    setupRoom();
+    setMinDate();
+
+    liff.init({ liffId: LIFF_ID })
+        .then(async () => {
+            log('liff.init OK');
+            log('isLoggedIn', liff.isLoggedIn());
+
+            if (!liff.isLoggedIn()) {
+                log('not logged in → liff.login');
+                liff.login({ redirectUri: window.location.href });
                 return;
             }
-            const params = new URLSearchParams({ userId, displayName, pictureUrl, userLdap, user_type });
-            const src = base + '?' + params.toString();
-            log('iframe src', src);
-            document.getElementById('formframe').src = src;
-            setTimeout(hideLoader, 5000);
-        }
 
-        async function runApp(room) {
-            log('runApp start', { room });
+            const profile = await liff.getProfile();
+            log('getProfile OK', { userId: profile.userId, displayName: profile.displayName });
+            currentUserId = profile.userId;
 
-            let profile;
-            try {
-                profile = await liff.getProfile();
-                log('getProfile OK', { userId: profile.userId, displayName: profile.displayName });
-            } catch (e) {
-                showError('ไม่สามารถดึงข้อมูล LINE ได้: ' + e.message);
-                return;
-            }
-
-            const { userId, displayName, pictureUrl } = profile;
-
-            log('calling check_user', { url: CHECK_URL, userId });
-            let resp, data;
-            try {
-                resp = await fetch(CHECK_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId }),
-                });
-                log('check_user HTTP status', resp.status);
-                data = await resp.json();
-                log('check_user response', data);
-            } catch (e) {
-                showError('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: ' + e.message);
-                return;
-            }
+            const resp = await fetch(CHECK_URL, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ userId: profile.userId, displayName: profile.displayName }),
+            });
+            log('check_user HTTP', resp.status);
+            const data = await resp.json();
+            log('check_user response', data);
 
             if (!data.registered) {
                 const currentUrl = window.location.href;
-                const registerRedirect = REGISTER_URL
-                    + '?userId=' + encodeURIComponent(userId)
-                    + '&displayName=' + encodeURIComponent(displayName)
-                    + '&pictureUrl=' + encodeURIComponent(pictureUrl)
-                    + '&page=' + encodeURIComponent(currentUrl);
-                log('not registered → redirect', registerRedirect);
-                window.location.href = registerRedirect;
+                window.location.href = REGISTER_URL
+                    + '?userId='      + encodeURIComponent(profile.userId)
+                    + '&displayName=' + encodeURIComponent(profile.displayName)
+                    + '&pictureUrl='  + encodeURIComponent(profile.pictureUrl || '')
+                    + '&page='        + encodeURIComponent(currentUrl);
                 return;
             }
 
-            loadGasForm(room, userId, displayName, pictureUrl, data.userLdap, data.user_type);
-        }
-
-        // ── LIFF init ────────────────────────────────────────────────────────────
-        log('LIFF_ID', LIFF_ID);
-        log('page URL', window.location.href);
-
-        liff.init({ liffId: LIFF_ID })
-            .then(() => {
-                log('liff.init OK');
-                log('isLoggedIn', liff.isLoggedIn());
-                const room = getRoom();
-                if (liff.isLoggedIn()) {
-                    runApp(room);
-                } else {
-                    log('not logged in → liff.login');
-                    liff.login({ redirectUri: window.location.href });
-                }
-            })
-            .catch(err => showError('LIFF init error: ' + err.message));
-    </script>
+            showForm({ ...data, displayName: profile.displayName });
+        })
+        .catch(err => {
+            log('ERROR: ' + err.message);
+            document.getElementById('loader').innerHTML =
+                '<div style="color:#c00;padding:20px;text-align:center;">LIFF error: ' + err.message + '</div>';
+        });
+</script>
 </body>
 </html>

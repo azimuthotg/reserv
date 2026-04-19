@@ -3,7 +3,10 @@ from django.db import models
 
 class Room(models.Model):
     name         = models.CharField(max_length=100)
-    booking_name = models.CharField(max_length=50, unique=True)
+    booking_name = models.CharField(
+        max_length=50, unique=True,
+        help_text='key ที่ใช้ใน URL เช่น netflix, mini, canva, chat-gpt, meeting_f1'
+    )
     description  = models.TextField(blank=True)
     location     = models.CharField(max_length=200)
     capacity     = models.IntegerField()
@@ -16,20 +19,27 @@ class Room(models.Model):
         ordering = ['name']
 
     def __str__(self):
-        return self.name
+        return f'{self.name} ({self.booking_name})'
 
 
 class LineUser(models.Model):
-    line_user_id = models.CharField(max_length=100, unique=True)
-    display_name = models.CharField(max_length=200)
-    user_ldap    = models.CharField(max_length=100)
-    user_type    = models.CharField(max_length=50)
+    line_user_id     = models.CharField(max_length=100, unique=True)
+    display_name     = models.CharField(max_length=200)          # ชื่อ LINE
+    user_ldap        = models.CharField(max_length=100)
+    user_type        = models.CharField(max_length=50)
+    # Profile จริงจาก NPU API
+    full_name        = models.CharField(max_length=200, blank=True)  # ชื่อ-นามสกุลจริง
+    faculty          = models.CharField(max_length=200, blank=True)
+    department       = models.CharField(max_length=200, blank=True)
+    profile_updated_at = models.DateTimeField(null=True, blank=True)
+    # Meta
     created_at   = models.DateTimeField(auto_now_add=True)
     updated_at   = models.DateTimeField(auto_now=True)
     is_active    = models.BooleanField(default=True)
 
     def __str__(self):
-        return f"{self.display_name} ({self.user_ldap})"
+        name = self.full_name or self.display_name
+        return f'{name} ({self.user_ldap})'
 
 
 class Booking(models.Model):
@@ -54,7 +64,7 @@ class Booking(models.Model):
         indexes  = [models.Index(fields=['room', 'booking_date', 'status'])]
 
     def __str__(self):
-        return f"{self.room} — {self.booking_date} {self.start_time}"
+        return f'{self.room.name} — {self.booking_date} {self.start_time:%H:%M}-{self.end_time:%H:%M}'
 
 
 class BookingLog(models.Model):
@@ -65,3 +75,6 @@ class BookingLog(models.Model):
 
     class Meta:
         ordering = ['-timestamp']
+
+    def __str__(self):
+        return f'{self.booking} — {self.action}'
