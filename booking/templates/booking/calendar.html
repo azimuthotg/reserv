@@ -226,7 +226,15 @@
                 if (currentRoom) params.set('room', currentRoom);
                 fetch(EVENTS_URL + '?' + params)
                     .then(r => r.json())
-                    .then(success)
+                    .then(events => {
+                        // ใส่สีจาก roomColorMap ที่ client สร้างจาก rooms list (consistent กับ legend)
+                        events.forEach(e => {
+                            const key = e.extendedProps && e.extendedProps.room_key;
+                            e.color           = roomColorMap[key] || '#06C755';
+                            e.borderColor     = 'transparent';
+                        });
+                        success(events);
+                    })
                     .catch(failure);
             },
             eventClick: function(info) {

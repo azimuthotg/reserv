@@ -589,24 +589,15 @@ def calendar_events(request):
     if room_key:
         qs = qs.filter(room__booking_name=room_key)
 
-    # สีต่อห้อง
-    ROOM_COLORS = ['#06C755', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4']
-    room_color_map = {}
-
     events = []
     for b in qs:
-        if b.room.booking_name not in room_color_map:
-            idx = len(room_color_map) % len(ROOM_COLORS)
-            room_color_map[b.room.booking_name] = ROOM_COLORS[idx]
-        color = room_color_map[b.room.booking_name]
-
         events.append({
             'id':    b.pk,
             'title': f'{b.room.name} — {b.group_name}',
             'start': f'{b.booking_date}T{b.start_time.strftime("%H:%M:%S")}',
             'end':   f'{b.booking_date}T{b.end_time.strftime("%H:%M:%S")}',
-            'color': color,
             'extendedProps': {
+                'room_key':   b.room.booking_name,
                 'room':       b.room.name,
                 'group_name': b.group_name,
                 'booker':     b.line_user.full_name or b.line_user.display_name,
