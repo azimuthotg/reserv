@@ -15,7 +15,7 @@ from .models import Booking, BookingLog, HolidayDate, LineUser, Room
 NPU_API_BASE       = 'https://api.npu.ac.th'
 REGISTER_URL       = f'{NPU_API_BASE}/reserv/lineoa'
 PROFILE_CACHE_DAYS = 30
-MAX_ADVANCE_WORKDAYS = 3   # จองล่วงหน้าได้สูงสุดกี่วันทำงาน
+MAX_ADVANCE_DAYS = 5   # จองล่วงหน้าได้สูงสุดกี่วัน (นับทุกวัน)
 
 
 # ── LINE Messaging API ────────────────────────────────────────────────────────
@@ -214,7 +214,7 @@ def booking_page(request):
         'room_json':    json.dumps(room_data),
         'register_url': REGISTER_URL,
         'holidays_json': json.dumps(holiday_strs),
-        'max_workdays': MAX_ADVANCE_WORKDAYS,
+        'max_advance_days': MAX_ADVANCE_DAYS,
     }
     return render(request, 'booking/booking.html', context)
 
@@ -320,11 +320,10 @@ def create_booking(request):
         holiday = HolidayDate.objects.get(date=b_date)
         return JsonResponse({'error': f'ไม่สามารถจองวัน {b_date.strftime("%d/%m/%Y")} ได้ เนื่องจาก: {holiday.description}'}, status=400)
 
-    # ตรวจล่วงหน้าไม่เกิน 3 วันทำงาน
+    # ตรวจล่วงหน้าไม่เกิน 5 วัน (นับทุกวัน)
     today = date.today()
-    workdays_ahead = _count_workdays_between(today + timedelta(days=1), b_date, holidays)
-    if workdays_ahead > MAX_ADVANCE_WORKDAYS:
-        return JsonResponse({'error': f'จองล่วงหน้าได้ไม่เกิน {MAX_ADVANCE_WORKDAYS} วันทำงาน'}, status=400)
+    if b_date > today + timedelta(days=MAX_ADVANCE_DAYS):
+        return JsonResponse({'error': f'จองล่วงหน้าได้ไม่เกิน {MAX_ADVANCE_DAYS} วัน'}, status=400)
 
     try:
         room = Room.objects.get(booking_name=room_key, is_active=True)

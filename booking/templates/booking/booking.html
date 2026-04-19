@@ -188,7 +188,7 @@
     const SUCCESS_URL   = "{% url 'booking_success' %}";
     const BY_DATE_URL   = "{% url 'bookings_by_date' %}";
     const HOLIDAYS      = new Set({{ holidays_json|safe }});
-    const MAX_WORKDAYS  = {{ max_workdays }};
+    const MAX_ADVANCE_DAYS = {{ max_advance_days }};
     const MAX_DURATION  = 210; // นาที = 3.5 ชม.
 
     let currentUserId = '';
@@ -369,22 +369,10 @@
 
     // ── Date helpers ──────────────────────────────────────────────────────────
     function toYMD(d) { return d.toISOString().split('T')[0]; }
-    function isWorkday(d) {
-        const day = d.getDay();
-        return day !== 0 && day !== 6 && !HOLIDAYS.has(toYMD(d));
-    }
-    function nextWorkday(d) {
-        const next = new Date(d);
-        do { next.setDate(next.getDate() + 1); } while (!isWorkday(next));
-        return next;
-    }
     function calcMaxDate() {
-        let cur = new Date(), count = 0;
-        while (count < MAX_WORKDAYS) {
-            cur.setDate(cur.getDate() + 1);
-            if (isWorkday(cur)) count++;
-        }
-        return cur;
+        const d = new Date();
+        d.setDate(d.getDate() + MAX_ADVANCE_DAYS);
+        return d;
     }
 
     function setMinDate() {
@@ -392,8 +380,7 @@
         const el = document.getElementById('booking_date');
         el.min   = toYMD(today);
         el.max   = toYMD(calcMaxDate());
-        const defaultDate = isWorkday(today) ? today : nextWorkday(today);
-        el.value = toYMD(defaultDate);
+        el.value = toYMD(today);
         loadBookingsByDate(el.value);
     }
 
