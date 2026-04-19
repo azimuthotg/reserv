@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ปฏิทินการจอง — Library@NPU</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body { background: #f0f2f5; font-family: 'Sarabun', sans-serif; margin: 0; }
+
+        /* Header */
+        .cal-header {
+            background: linear-gradient(135deg, #06C755, #00a844);
+            padding: 14px 16px 12px;
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; z-index: 100;
+            box-shadow: 0 2px 8px rgba(6,199,85,.3);
+        }
+        .cal-header .hd-left .org  { font-size: 11px; color: rgba(255,255,255,.8); }
+        .cal-header .hd-left .name { font-size: 17px; font-weight: 700; color: #fff; }
+        .btn-back {
+            background: rgba(255,255,255,.2); color: #fff;
+            border: 1.5px solid rgba(255,255,255,.4); border-radius: 20px;
+            padding: 5px 12px; font-size: 12px; font-weight: 600;
+            text-decoration: none; display: flex; align-items: center; gap: 4px;
+        }
+        .btn-back:hover { background: rgba(255,255,255,.3); color: #fff; }
+
+        /* Room filter */
+        .filter-wrap {
+            background: #fff; padding: 10px 16px;
+            border-bottom: 1px solid #eee;
+            display: flex; gap: 6px; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .filter-wrap::-webkit-scrollbar { display: none; }
+        .filter-btn {
+            padding: 5px 12px; border-radius: 20px;
+            font-size: 12px; font-weight: 600; white-space: nowrap;
+            cursor: pointer; border: 2px solid transparent;
+            transition: all .15s; flex-shrink: 0;
+        }
+        .filter-btn.all {
+            background: #1a1a1a; color: #fff; border-color: #1a1a1a;
+        }
+        .filter-btn.room-filter {
+            background: #fff; color: #555; border-color: #ddd;
+        }
+        .filter-btn.room-filter.active {
+            color: #fff;
+        }
+
+        /* Calendar wrap */
+        .cal-wrap {
+            background: #fff; margin: 12px; border-radius: 14px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.08); padding: 12px;
+        }
+
+        /* FullCalendar overrides */
+        .fc { font-family: 'Sarabun', sans-serif !important; font-size: 13px; }
+        .fc-toolbar-title { font-size: 16px !important; font-weight: 700 !important; }
+        .fc-button {
+            background: #06C755 !important; border-color: #06C755 !important;
+            font-size: 12px !important; padding: 4px 10px !important;
+        }
+        .fc-button:hover { background: #059944 !important; border-color: #059944 !important; }
+        .fc-button-active { background: #059944 !important; border-color: #059944 !important; }
+        .fc-event { border-radius: 6px !important; border: none !important; font-size: 12px !important; }
+        .fc-daygrid-event { padding: 2px 5px !important; }
+        .fc-event-title { font-weight: 600 !important; }
+        .fc-col-header-cell { background: #f8f9fa !important; }
+        .fc-day-today { background: #f0faf4 !important; }
+
+        /* Popup */
+        .event-popup {
+            position: fixed; z-index: 9999;
+            background: #fff; border-radius: 14px;
+            box-shadow: 0 8px 32px rgba(0,0,0,.18);
+            padding: 16px; min-width: 240px; max-width: 300px;
+            display: none;
+        }
+        .popup-close {
+            position: absolute; top: 10px; right: 12px;
+            font-size: 18px; cursor: pointer; color: #aaa;
+            background: none; border: none; line-height: 1;
+        }
+        .popup-room  { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 6px; }
+        .popup-group { font-size: 16px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
+        .popup-row   { font-size: 13px; color: #555; margin-bottom: 3px; display: flex; align-items: flex-start; gap: 6px; }
+
+        /* Legend */
+        .legend-wrap {
+            display: flex; flex-wrap: wrap; gap: 8px;
+            padding: 8px 12px 12px; margin: 0 12px;
+        }
+        .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #555; }
+        .legend-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+        @media (max-width: 576px) {
+            .cal-wrap { margin: 8px; padding: 8px; }
+            .fc-toolbar { flex-wrap: wrap; gap: 6px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="cal-header">
+    <div class="hd-left">
+        <div class="org">สำนักวิทยบริการ มนพ.</div>
+        <div class="name">📅 ปฏิทินการจอง</div>
+    </div>
+    <a href="../" class="btn-back">← หน้าหลัก</a>
+</div>
+
+<!-- Room filter -->
+<div class="filter-wrap">
+    <button class="filter-btn all" onclick="filterRoom('')" id="btn-all">ทุกห้อง</button>
+    {% for room in rooms %}
+    <button class="filter-btn room-filter" id="btn-{{ room.booking_name }}"
+            onclick="filterRoom('{{ room.booking_name }}')"
+            data-room="{{ room.booking_name }}">
+        {{ room.name }}
+    </button>
+    {% endfor %}
+</div>
+
+<!-- Legend -->
+<div class="legend-wrap" id="legend"></div>
+
+<!-- Calendar -->
+<div class="cal-wrap">
+    <div id="calendar"></div>
+</div>
+
+<!-- Event popup -->
+<div class="event-popup" id="event-popup">
+    <button class="popup-close" onclick="closePopup()">×</button>
+    <div class="popup-room"  id="pop-room"></div>
+    <div class="popup-group" id="pop-group"></div>
+    <div class="popup-row"><span>🕐</span><span id="pop-time"></span></div>
+    <div class="popup-row"><span>👤</span><span id="pop-booker"></span></div>
+    <div class="popup-row" id="pop-fac-row"><span>🏛️</span><span id="pop-fac"></span></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+<script>
+    const EVENTS_URL = "{{ events_url }}";
+    const ROOM_COLORS = ['#06C755','#3b82f6','#f59e0b','#8b5cf6','#ef4444','#06b6d4'];
+    const ROOMS = [{% for r in rooms %}{ name: "{{ r.name }}", key: "{{ r.booking_name }}" },{% endfor %}];
+
+    // Assign colors to rooms
+    const roomColorMap = {};
+    ROOMS.forEach((r, i) => { roomColorMap[r.key] = ROOM_COLORS[i % ROOM_COLORS.length]; });
+
+    // Build legend
+    const legendEl = document.getElementById('legend');
+    ROOMS.forEach(r => {
+        const color = roomColorMap[r.key];
+        const item = document.createElement('div');
+        item.className = 'legend-item';
+        item.innerHTML = `<div class="legend-dot" style="background:${color};"></div>${r.name}`;
+        legendEl.appendChild(item);
+
+        // Set filter button color
+        const btn = document.getElementById('btn-' + r.key);
+        if (btn) btn.style.borderColor = color;
+    });
+
+    let currentRoom = '';
+    let calendar;
+
+    function filterRoom(roomKey) {
+        currentRoom = roomKey;
+        // Update button states
+        document.getElementById('btn-all').className = 'filter-btn all' + (roomKey === '' ? ' active' : '');
+        if (roomKey === '') {
+            document.getElementById('btn-all').style.background = '#1a1a1a';
+        }
+        document.querySelectorAll('.room-filter').forEach(btn => {
+            const key = btn.dataset.room;
+            const color = roomColorMap[key];
+            if (key === roomKey) {
+                btn.style.background = color;
+                btn.style.borderColor = color;
+                btn.style.color = '#fff';
+            } else {
+                btn.style.background = '#fff';
+                btn.style.color = '#555';
+                btn.style.borderColor = color;
+            }
+        });
+        calendar.refetchEvents();
+    }
+
+    function closePopup() {
+        document.getElementById('event-popup').style.display = 'none';
+    }
+
+    document.addEventListener('click', e => {
+        const popup = document.getElementById('event-popup');
+        if (!popup.contains(e.target) && !e.target.closest('.fc-event')) {
+            closePopup();
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const el = document.getElementById('calendar');
+        calendar = new FullCalendar.Calendar(el, {
+            locale: 'th',
+            initialView: 'dayGridMonth',
+            headerToolbar: {
+                left:   'prev,next today',
+                center: 'title',
+                right:  'dayGridMonth,timeGridWeek'
+            },
+            buttonText: { today: 'วันนี้', month: 'เดือน', week: 'สัปดาห์' },
+            height: 'auto',
+            events: function(info, success, failure) {
+                const params = new URLSearchParams({
+                    start: info.startStr.slice(0, 10),
+                    end:   info.endStr.slice(0, 10),
+                });
+                if (currentRoom) params.set('room', currentRoom);
+                fetch(EVENTS_URL + '?' + params)
+                    .then(r => r.json())
+                    .then(success)
+                    .catch(failure);
+            },
+            eventClick: function(info) {
+                const p = info.event.extendedProps;
+                const popup = document.getElementById('event-popup');
+
+                document.getElementById('pop-room').textContent  = p.room;
+                document.getElementById('pop-room').style.color  = info.event.backgroundColor;
+                document.getElementById('pop-group').textContent = p.group_name;
+                document.getElementById('pop-time').textContent  = `${p.start_time} – ${p.end_time} น.`;
+                document.getElementById('pop-booker').textContent = p.booker || '—';
+
+                const facRow = document.getElementById('pop-fac-row');
+                if (p.faculty) {
+                    document.getElementById('pop-fac').textContent = p.faculty;
+                    facRow.style.display = 'flex';
+                } else {
+                    facRow.style.display = 'none';
+                }
+
+                // Position popup
+                const rect = info.el.getBoundingClientRect();
+                popup.style.display = 'block';
+                let top  = rect.bottom + window.scrollY + 8;
+                let left = rect.left   + window.scrollX;
+                if (left + 300 > window.innerWidth) left = window.innerWidth - 310;
+                popup.style.top  = top  + 'px';
+                popup.style.left = left + 'px';
+            },
+        });
+        calendar.render();
+    });
+</script>
+</body>
+</html>

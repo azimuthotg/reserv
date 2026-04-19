@@ -10,10 +10,14 @@ urlpatterns = [
     path('booking/',         views.booking_page,    name='booking'),
     path('booking/success/', views.booking_success, name='booking_success'),
 
+    # ── Calendar (public) ─────────────────────────────────────────────────────
+    path('calendar/', views.calendar_page, name='calendar'),
+
     # ── APIs ──────────────────────────────────────────────────────────────────
     path('api/check-user/',        views.check_user,       name='check_user'),
     path('api/booking/',           views.create_booking,   name='create_booking'),
     path('api/bookings-by-date/',  views.bookings_by_date, name='bookings_by_date'),
+    path('api/calendar-events/',   views.calendar_events,  name='calendar_events'),
 
     # ── Staff Portal ──────────────────────────────────────────────────────────
     path('manage/login/',   manage_views.manage_login,   name='manage_login'),

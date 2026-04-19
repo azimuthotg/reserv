@@ -514,3 +514,69 @@ def bookings_by_date(request):
         for b in bookings
     ]
     return JsonResponse({'bookings': data})
+
+
+# ── Calendar ───────────────────────────────────────────────────────────────────
+
+def calendar_page(request):
+    """ปฏิทินรวมการจองทุกห้อง (public — ไม่ต้อง login)"""
+    rooms = Room.objects.filter(is_active=True).order_by('name')
+    return render(request, 'booking/calendar.html', {
+        'rooms': rooms,
+        'events_url': request.build_absolute_uri(reverse('calendar_events')),
+    })
+
+
+@require_http_methods(['GET'])
+def calendar_events(request):
+    """
+    GET /api/calendar-events/?start=YYYY-MM-DD&end=YYYY-MM-DD&room=<key>
+    คืน FullCalendar events format
+    """
+    start_str = request.GET.get('start', '')
+    end_str   = request.GET.get('end', '')
+    room_key  = request.GET.get('room', '')
+
+    qs = Booking.objects.select_related('room', 'line_user').filter(status='confirmed')
+
+    if start_str:
+        try:
+            qs = qs.filter(booking_date__gte=datetime.strptime(start_str[:10], '%Y-%m-%d').date())
+        except ValueError:
+            pass
+    if end_str:
+        try:
+            qs = qs.filter(booking_date__lte=datetime.strptime(end_str[:10], '%Y-%m-%d').date())
+        except ValueError:
+            pass
+    if room_key:
+        qs = qs.filter(room__booking_name=room_key)
+
+    # สีต่อห้อง
+    ROOM_COLORS = ['#06C755', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4']
+    room_color_map = {}
+
+    events = []
+    for b in qs:
+        if b.room.booking_name not in room_color_map:
+            idx = len(room_color_map) % len(ROOM_COLORS)
+            room_color_map[b.room.booking_name] = ROOM_COLORS[idx]
+        color = room_color_map[b.room.booking_name]
+
+        events.append({
+            'id':    b.pk,
+            'title': f'{b.room.name} — {b.group_name}',
+            'start': f'{b.booking_date}T{b.start_time.strftime("%H:%M:%S")}',
+            'end':   f'{b.booking_date}T{b.end_time.strftime("%H:%M:%S")}',
+            'color': color,
+            'extendedProps': {
+                'room':       b.room.name,
+                'group_name': b.group_name,
+                'booker':     b.line_user.full_name or b.line_user.display_name,
+                'faculty':    b.faculty,
+                'start_time': b.start_time.strftime('%H:%M'),
+                'end_time':   b.end_time.strftime('%H:%M'),
+            },
+        })
+
+    return JsonResponse(events, safe=False)
