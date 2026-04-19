@@ -306,6 +306,10 @@ def create_booking(request):
     if s_time >= e_time:
         return JsonResponse({'error': 'เวลาเริ่มต้องน้อยกว่าเวลาสิ้นสุด'}, status=400)
 
+    duration_min = (datetime.combine(date.today(), e_time) - datetime.combine(date.today(), s_time)).seconds // 60
+    if duration_min > 210:
+        return JsonResponse({'error': 'จองได้สูงสุด 3.5 ชั่วโมงต่อครั้ง'}, status=400)
+
     if b_date < date.today():
         return JsonResponse({'error': 'ไม่สามารถจองย้อนหลังได้'}, status=400)
 
@@ -379,3 +383,40 @@ def _notify_booking_confirmed(booking):
     )
     if _push_text(b.line_user.line_user_id, msg):
         Booking.objects.filter(pk=b.pk).update(notified_start=True)
+
+
+@require_http_methods(['GET'])
+def bookings_by_date(request):
+    """
+    GET /api/bookings-by-date/?room=<key>&date=<YYYY-MM-DD>
+    คืน list การจอง confirmed ในวันและห้องที่ระบุ
+    """
+    room_key   = request.GET.get('room', '')
+    date_str   = request.GET.get('date', '')
+
+    if not room_key or not date_str:
+        return JsonResponse({'error': 'room and date required'}, status=400)
+
+    try:
+        b_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return JsonResponse({'error': 'invalid date'}, status=400)
+
+    try:
+        room = Room.objects.get(booking_name=room_key, is_active=True)
+    except Room.DoesNotExist:
+        return JsonResponse({'error': 'room not found'}, status=404)
+
+    bookings = Booking.objects.filter(
+        room=room, booking_date=b_date, status='confirmed'
+    ).order_by('start_time')
+
+    data = [
+        {
+            'group_name': b.group_name,
+            'start_time': b.start_time.strftime('%H:%M'),
+            'end_time':   b.end_time.strftime('%H:%M'),
+        }
+        for b in bookings
+    ]
+    return JsonResponse({'bookings': data})

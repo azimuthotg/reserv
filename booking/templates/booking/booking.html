@@ -19,19 +19,75 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
         #booking-form { display: none; }
+
         .room-banner {
             background: linear-gradient(135deg, #06C755, #00a844);
-            color: #fff; padding: 16px; border-radius: 12px; margin-bottom: 16px;
+            color: #fff; padding: 16px; border-radius: 12px; margin-bottom: 12px;
         }
+        .user-info-bar {
+            background: #fff; border-radius: 10px; padding: 10px 14px;
+            margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.07);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .user-avatar {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: #06C755; color: #fff; display: flex;
+            align-items: center; justify-content: center;
+            font-size: 16px; font-weight: 700; flex-shrink: 0;
+        }
+        .user-name { font-size: 15px; font-weight: 600; color: #222; line-height: 1.2; }
+        .user-sub  { font-size: 12px; color: #888; margin-top: 2px; }
+
         .section-card {
             background: #fff; border-radius: 12px;
             padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.08);
         }
-        .section-title { font-size: 13px; color: #888; margin-bottom: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
-        .field-readonly { background: #f8f8f8; border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px 12px; font-size: 15px; color: #333; }
+        .section-title { font-size: 12px; color: #aaa; margin-bottom: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
         .field-label { font-size: 13px; color: #555; margin-bottom: 4px; }
+
+        /* Quick booking buttons */
+        .quick-btns { display: flex; gap: 8px; margin-bottom: 12px; }
+        .btn-quick {
+            flex: 1; padding: 10px 6px; border-radius: 10px; border: 2px solid #06C755;
+            background: #fff; color: #06C755; font-size: 13px; font-weight: 600;
+            cursor: pointer; text-align: center; transition: all .15s;
+        }
+        .btn-quick:active, .btn-quick.active {
+            background: #06C755; color: #fff;
+        }
+        .btn-quick.disabled {
+            border-color: #ddd; color: #bbb; cursor: not-allowed; background: #fafafa;
+        }
+        .btn-quick .q-label { font-size: 14px; }
+        .btn-quick .q-time  { font-size: 11px; opacity: .75; margin-top: 2px; }
+        .btn-quick .q-badge {
+            font-size: 10px; background: #ffecec; color: #c00;
+            border-radius: 4px; padding: 1px 5px; margin-top: 3px; display: inline-block;
+        }
+
+        /* Divider */
+        .or-divider {
+            display: flex; align-items: center; gap: 8px;
+            color: #bbb; font-size: 12px; margin: 12px 0;
+        }
+        .or-divider::before, .or-divider::after {
+            content: ''; flex: 1; height: 1px; background: #e8e8e8;
+        }
+
+        /* Booking list */
+        .booking-list { margin-top: 10px; }
+        .booking-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 7px 10px; background: #fff8e1; border-radius: 8px;
+            margin-bottom: 6px; font-size: 13px;
+        }
+        .booking-time { font-weight: 700; color: #e67e00; white-space: nowrap; }
+        .booking-group { color: #555; text-align: right; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .no-booking { color: #06C755; font-size: 13px; text-align: center; padding: 8px 0; }
+
         .btn-submit { background: #06C755; color: #fff; border: none; border-radius: 10px; padding: 14px; font-size: 16px; font-weight: 600; width: 100%; }
         .btn-submit:active { background: #059944; }
+        .btn-submit:disabled { background: #b2dfdb; }
     </style>
 </head>
 <body>
@@ -50,111 +106,129 @@
         <div style="font-size:13px;opacity:.85;" id="room-hours"></div>
     </div>
 
+    <!-- User Info — compact -->
+    <div class="user-info-bar">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <div>
+            <div class="user-name" id="disp-fullname">—</div>
+            <div class="user-sub"  id="disp-sub">—</div>
+        </div>
+    </div>
+
     <form id="form" novalidate>
 
-        <!-- ข้อมูลผู้จอง -->
+        <!-- วันที่ + การจองในวันนั้น -->
         <div class="section-card">
-            <div class="section-title">ข้อมูลผู้จอง</div>
+            <div class="section-title">เลือกวันที่</div>
             <div class="mb-2">
-                <div class="field-label">ชื่อ-นามสกุล</div>
-                <div class="field-readonly" id="disp-fullname">—</div>
+                <input type="date" class="form-control" id="booking_date" required>
             </div>
-            <div class="mb-2">
-                <div class="field-label">คณะ / หน่วยงาน</div>
-                <div class="field-readonly" id="disp-faculty">—</div>
-            </div>
-            <div>
-                <div class="field-label">สาขาวิชา / ฝ่าย</div>
-                <div class="field-readonly" id="disp-department">—</div>
+            <div id="booking-list-wrap" style="display:none;">
+                <div style="font-size:12px;color:#aaa;margin:8px 0 4px;font-weight:600;">การจองในวันนี้</div>
+                <div class="booking-list" id="booking-list"></div>
             </div>
         </div>
 
-        <!-- รายละเอียดการจอง -->
+        <!-- Quick Booking -->
+        <div class="section-card">
+            <div class="section-title">จองด่วน</div>
+            <div class="quick-btns">
+                <div class="btn-quick" id="btn-morning" onclick="selectQuick('morning')">
+                    <div class="q-label">🌅 จองเช้า</div>
+                    <div class="q-time" id="morning-time">—</div>
+                </div>
+                <div class="btn-quick" id="btn-afternoon" onclick="selectQuick('afternoon')">
+                    <div class="q-label">🌆 จองบ่าย</div>
+                    <div class="q-time" id="afternoon-time">—</div>
+                </div>
+            </div>
+
+            <div class="or-divider">หรือเลือกเวลาเอง (สูงสุด 3.5 ชั่วโมง)</div>
+
+            <div class="row g-2">
+                <div class="col-6">
+                    <label class="field-label" for="start_time">เวลาเริ่ม <span class="text-danger">*</span></label>
+                    <select class="form-select" id="start_time" onchange="onStartTimeChange()"></select>
+                </div>
+                <div class="col-6">
+                    <label class="field-label" for="end_time">เวลาสิ้นสุด <span class="text-danger">*</span></label>
+                    <select class="form-select" id="end_time"></select>
+                </div>
+            </div>
+        </div>
+
+        <!-- รายละเอียด -->
         <div class="section-card">
             <div class="section-title">รายละเอียดการจอง</div>
-
             <div class="mb-3">
                 <label class="field-label" for="group_name">ชื่อกลุ่ม / กิจกรรม <span class="text-danger">*</span></label>
                 <input type="text" class="form-control" id="group_name" placeholder="เช่น กลุ่มโปรเจกต์ CS" required>
             </div>
-
-            <div class="mb-3">
-                <label class="field-label" for="booking_date">วันที่จอง <span class="text-danger">*</span></label>
-                <input type="date" class="form-control" id="booking_date" required>
-            </div>
-
-            <div class="row g-2 mb-3">
-                <div class="col-6">
-                    <label class="field-label" for="start_time">เวลาเริ่ม <span class="text-danger">*</span></label>
-                    <select class="form-select" id="start_time" required></select>
-                </div>
-                <div class="col-6">
-                    <label class="field-label" for="end_time">เวลาสิ้นสุด <span class="text-danger">*</span></label>
-                    <select class="form-select" id="end_time" required></select>
-                </div>
-            </div>
-
-            <div class="mb-2">
+            <div>
                 <label class="field-label" for="attendees">รายชื่อผู้เข้าใช้ <span class="text-danger">*</span></label>
                 <textarea class="form-control" id="attendees" rows="4"
                     placeholder="พิมพ์รายชื่อผู้เข้าใช้ทุกคน&#10;เช่น นายสมชาย ใจดี&#10;นางสาวสมหญิง รักเรียน" required></textarea>
             </div>
         </div>
 
-        <!-- Error -->
         <div id="form-error" class="alert alert-danger d-none" role="alert"></div>
 
         <button type="submit" class="btn-submit mb-4">ยืนยันการจอง</button>
-
     </form>
 </div>
 
-<!-- setup + constants รันก่อน LIFF SDK โหลด -->
 <script>
-    const LIFF_ID      = "{{ liff_id }}";
-    const ROOM_DATA    = {{ room_json|safe }};
-    const REGISTER_URL = "{{ register_url }}";
-    const CHECK_URL    = "{% url 'check_user' %}";
-    const BOOKING_URL  = "{% url 'create_booking' %}";
-    const SUCCESS_URL  = "{% url 'booking_success' %}";
-    const HOLIDAYS     = new Set({{ holidays_json|safe }});
-    const MAX_WORKDAYS = {{ max_workdays }};
+    const LIFF_ID       = "{{ liff_id }}";
+    const ROOM_DATA     = {{ room_json|safe }};
+    const REGISTER_URL  = "{{ register_url }}";
+    const CHECK_URL     = "{% url 'check_user' %}";
+    const BOOKING_URL   = "{% url 'create_booking' %}";
+    const SUCCESS_URL   = "{% url 'booking_success' %}";
+    const BY_DATE_URL   = "{% url 'bookings_by_date' %}";
+    const HOLIDAYS      = new Set({{ holidays_json|safe }});
+    const MAX_WORKDAYS  = {{ max_workdays }};
+    const MAX_DURATION  = 210; // นาที = 3.5 ชม.
 
     let currentUserId = '';
+    let quickSelected = null; // 'morning' | 'afternoon' | null
 
+    // ── Slot คำนวณจาก room ───────────────────────────────────────────────────
+    function timeToMin(t) {
+        const [h, m] = t.split(':').map(Number);
+        return h * 60 + m;
+    }
+    function minToTime(m) {
+        return String(Math.floor(m / 60)).padStart(2,'0') + ':' + String(m % 60).padStart(2,'0');
+    }
+
+    let MORNING_START, MORNING_END, AFTERNOON_START, AFTERNOON_END;
+
+    function initQuickSlots() {
+        if (!ROOM_DATA) return;
+        const open  = timeToMin(ROOM_DATA.open_time);
+        const close = timeToMin(ROOM_DATA.close_time);
+        MORNING_START   = open;
+        MORNING_END     = open + MAX_DURATION;
+        AFTERNOON_START = close - MAX_DURATION;
+        AFTERNOON_END   = close;
+        document.getElementById('morning-time').textContent =
+            minToTime(MORNING_START) + '–' + minToTime(MORNING_END);
+        document.getElementById('afternoon-time').textContent =
+            minToTime(AFTERNOON_START) + '–' + minToTime(AFTERNOON_END);
+    }
+
+    // ── Error helpers ─────────────────────────────────────────────────────────
     function showFormError(msg) {
         const el = document.getElementById('form-error');
         el.textContent = msg;
         el.classList.remove('d-none');
         el.scrollIntoView({ behavior: 'smooth' });
     }
-
     function hideFormError() {
         document.getElementById('form-error').classList.add('d-none');
     }
 
-    // ── Time slots ───────────────────────────────────────────────────────────
-    function timeToMin(t) {
-        const [h, m] = t.split(':').map(Number);
-        return h * 60 + m;
-    }
-
-    function buildTimeOptions(selectEl, openTime, closeTime) {
-        let min = timeToMin(openTime);
-        const max = timeToMin(closeTime);
-        selectEl.innerHTML = '<option value="">-- เลือกเวลา --</option>';
-        while (min <= max) {
-            const h = String(Math.floor(min / 60)).padStart(2, '0');
-            const m = String(min % 60).padStart(2, '0');
-            const opt = document.createElement('option');
-            opt.value = `${h}:${m}`;
-            opt.textContent = `${h}:${m}`;
-            selectEl.appendChild(opt);
-            min += 30;
-        }
-    }
-
-    // ── Room info ─────────────────────────────────────────────────────────────
+    // ── Room banner ───────────────────────────────────────────────────────────
     function setupRoom() {
         if (!ROOM_DATA) {
             document.getElementById('room-banner').innerHTML =
@@ -164,33 +238,143 @@
         document.getElementById('room-name').textContent     = ROOM_DATA.name;
         document.getElementById('room-location').textContent = '📍 ' + ROOM_DATA.location;
         document.getElementById('room-hours').textContent    =
-            '🕐 ' + ROOM_DATA.open_time + ' – ' + ROOM_DATA.close_time +
+            '🕐 ' + ROOM_DATA.open_time + '–' + ROOM_DATA.close_time +
             '  |  👥 สูงสุด ' + ROOM_DATA.capacity + ' คน';
-
-        buildTimeOptions(document.getElementById('start_time'), ROOM_DATA.open_time, ROOM_DATA.close_time);
-        buildTimeOptions(document.getElementById('end_time'),   ROOM_DATA.open_time, ROOM_DATA.close_time);
         return true;
     }
 
-    // ── Date helpers ──────────────────────────────────────────────────────────
-    function toYMD(d) {
-        return d.toISOString().split('T')[0];
+    // ── Time dropdown ─────────────────────────────────────────────────────────
+    function buildStartOptions() {
+        const sel = document.getElementById('start_time');
+        let min = timeToMin(ROOM_DATA.open_time);
+        const max = timeToMin(ROOM_DATA.close_time) - 30;
+        sel.innerHTML = '<option value="">-- เลือกเวลาเริ่ม --</option>';
+        while (min <= max) {
+            const opt = document.createElement('option');
+            opt.value = opt.textContent = minToTime(min);
+            sel.appendChild(opt);
+            min += 30;
+        }
     }
 
+    function buildEndOptions(startMin) {
+        const sel = document.getElementById('end_time');
+        const closeMin = timeToMin(ROOM_DATA.close_time);
+        const maxEnd = Math.min(startMin + MAX_DURATION, closeMin);
+        sel.innerHTML = '<option value="">-- เลือกเวลาสิ้นสุด --</option>';
+        let min = startMin + 30;
+        while (min <= maxEnd) {
+            const opt = document.createElement('option');
+            opt.value = opt.textContent = minToTime(min);
+            sel.appendChild(opt);
+            min += 30;
+        }
+    }
+
+    function onStartTimeChange() {
+        quickSelected = null;
+        document.getElementById('btn-morning').classList.remove('active');
+        document.getElementById('btn-afternoon').classList.remove('active');
+        const val = document.getElementById('start_time').value;
+        if (val) buildEndOptions(timeToMin(val));
+        else document.getElementById('end_time').innerHTML = '<option value="">-- เลือกเวลาสิ้นสุด --</option>';
+    }
+
+    // ── Quick booking ─────────────────────────────────────────────────────────
+    function selectQuick(type) {
+        const btn = document.getElementById(type === 'morning' ? 'btn-morning' : 'btn-afternoon');
+        if (btn.classList.contains('disabled')) return;
+
+        quickSelected = type;
+        document.getElementById('btn-morning').classList.toggle('active', type === 'morning');
+        document.getElementById('btn-afternoon').classList.toggle('active', type === 'afternoon');
+
+        const s = type === 'morning' ? MORNING_START : AFTERNOON_START;
+        const e = type === 'morning' ? MORNING_END   : AFTERNOON_END;
+
+        // set start_time dropdown
+        const startSel = document.getElementById('start_time');
+        startSel.value = minToTime(s);
+        buildEndOptions(s);
+        document.getElementById('end_time').value = minToTime(e);
+        hideFormError();
+    }
+
+    // ── ตรวจ quick slot ว่าง/ไม่ว่างจาก booking list ──────────────────────────
+    function updateQuickBtnState(bookings) {
+        function overlaps(s, e, bs, be) {
+            return s < be && e > bs;
+        }
+        [
+            { id: 'btn-morning',   s: MORNING_START,   e: MORNING_END },
+            { id: 'btn-afternoon', s: AFTERNOON_START, e: AFTERNOON_END },
+        ].forEach(({ id, s, e }) => {
+            const btn = document.getElementById(id);
+            btn.classList.remove('disabled');
+            // ลบ badge เดิม
+            const old = btn.querySelector('.q-badge');
+            if (old) old.remove();
+
+            const conflict = bookings.some(b =>
+                overlaps(s, e, timeToMin(b.start_time), timeToMin(b.end_time))
+            );
+            if (conflict) {
+                btn.classList.add('disabled');
+                // ถ้า active อยู่ให้ reset
+                if (btn.classList.contains('active')) {
+                    btn.classList.remove('active');
+                    quickSelected = null;
+                }
+                const badge = document.createElement('div');
+                badge.className = 'q-badge';
+                badge.textContent = 'ไม่ว่าง';
+                btn.appendChild(badge);
+            }
+        });
+    }
+
+    // ── Booking list ──────────────────────────────────────────────────────────
+    async function loadBookingsByDate(dateStr) {
+        if (!ROOM_DATA || !dateStr) return;
+        const wrap = document.getElementById('booking-list-wrap');
+        const list = document.getElementById('booking-list');
+        list.innerHTML = '<div style="color:#bbb;font-size:13px;padding:6px 0;">กำลังโหลด...</div>';
+        wrap.style.display = 'block';
+
+        try {
+            const resp = await fetch(BY_DATE_URL + '?room=' + ROOM_DATA.booking_name + '&date=' + dateStr);
+            const data = await resp.json();
+            const bookings = data.bookings || [];
+
+            if (bookings.length === 0) {
+                list.innerHTML = '<div class="no-booking">✅ ยังไม่มีการจองในวันนี้</div>';
+            } else {
+                list.innerHTML = bookings.map(b =>
+                    `<div class="booking-item">
+                        <span class="booking-time">${b.start_time}–${b.end_time}</span>
+                        <span class="booking-group">${b.group_name}</span>
+                    </div>`
+                ).join('');
+            }
+            updateQuickBtnState(bookings);
+        } catch {
+            list.innerHTML = '<div style="color:#bbb;font-size:13px;">โหลดข้อมูลไม่ได้</div>';
+        }
+    }
+
+    // ── Date helpers ──────────────────────────────────────────────────────────
+    function toYMD(d) { return d.toISOString().split('T')[0]; }
     function isWorkday(d) {
         const day = d.getDay();
         return day !== 0 && day !== 6 && !HOLIDAYS.has(toYMD(d));
     }
-
     function nextWorkday(d) {
         const next = new Date(d);
         do { next.setDate(next.getDate() + 1); } while (!isWorkday(next));
         return next;
     }
-
     function calcMaxDate() {
-        let cur = new Date();
-        let count = 0;
+        let cur = new Date(), count = 0;
         while (count < MAX_WORKDAYS) {
             cur.setDate(cur.getDate() + 1);
             if (isWorkday(cur)) count++;
@@ -199,14 +383,13 @@
     }
 
     function setMinDate() {
-        const today    = new Date();
-        const todayStr = toYMD(today);
-        const maxStr   = toYMD(calcMaxDate());
-
+        const today = new Date();
         const el = document.getElementById('booking_date');
-        el.min   = todayStr;
-        el.max   = maxStr;
-        el.value = isWorkday(today) ? todayStr : toYMD(nextWorkday(today));
+        el.min   = toYMD(today);
+        el.max   = toYMD(calcMaxDate());
+        const defaultDate = isWorkday(today) ? today : nextWorkday(today);
+        el.value = toYMD(defaultDate);
+        loadBookingsByDate(el.value);
     }
 
     document.getElementById('booking_date').addEventListener('change', function() {
@@ -215,17 +398,25 @@
         if (HOLIDAYS.has(val)) {
             showFormError('วันที่เลือกเป็นวันหยุด กรุณาเลือกวันอื่น');
             this.value = '';
-        } else {
-            hideFormError();
+            document.getElementById('booking-list-wrap').style.display = 'none';
+            return;
         }
+        hideFormError();
+        loadBookingsByDate(val);
     });
 
     // ── Show form ─────────────────────────────────────────────────────────────
     function showForm(userInfo) {
-        document.getElementById('disp-fullname').textContent   = userInfo.full_name   || userInfo.displayName || '—';
-        document.getElementById('disp-faculty').textContent    = userInfo.faculty     || '—';
-        document.getElementById('disp-department').textContent = userInfo.department  || '—';
-        document.getElementById('loader').style.display = 'none';
+        const name    = userInfo.full_name || userInfo.displayName || '—';
+        const faculty = userInfo.faculty   || '';
+        const dept    = userInfo.department || '';
+        const sub     = [faculty, dept].filter(Boolean).join(' · ');
+
+        document.getElementById('disp-fullname').textContent = name;
+        document.getElementById('disp-sub').textContent      = sub || '—';
+        document.getElementById('user-avatar').textContent   = name.charAt(0) || '?';
+
+        document.getElementById('loader').style.display      = 'none';
         document.getElementById('booking-form').style.display = 'block';
     }
 
@@ -234,12 +425,20 @@
         e.preventDefault();
         hideFormError();
 
+        const startVal = document.getElementById('start_time').value;
+        const endVal   = document.getElementById('end_time').value;
+
+        if (!startVal || !endVal) {
+            showFormError('กรุณาเลือกเวลาเริ่มและเวลาสิ้นสุด');
+            return;
+        }
+
         const payload = {
             userId:       currentUserId,
             room:         ROOM_DATA ? ROOM_DATA.booking_name : '',
             booking_date: document.getElementById('booking_date').value,
-            start_time:   document.getElementById('start_time').value,
-            end_time:     document.getElementById('end_time').value,
+            start_time:   startVal,
+            end_time:     endVal,
             group_name:   document.getElementById('group_name').value.trim(),
             attendees:    document.getElementById('attendees').value.trim(),
         };
@@ -255,7 +454,6 @@
                 body:    JSON.stringify(payload),
             });
             const data = await resp.json();
-
             if (data.success) {
                 window.location.href = SUCCESS_URL + '?id=' + data.booking_id;
             } else {
@@ -263,18 +461,20 @@
                 btn.disabled    = false;
                 btn.textContent = 'ยืนยันการจอง';
             }
-        } catch (err) {
+        } catch {
             showFormError('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่');
             btn.disabled    = false;
             btn.textContent = 'ยืนยันการจอง';
         }
     });
 
+    // ── Init ──────────────────────────────────────────────────────────────────
     setupRoom();
+    initQuickSlots();
+    if (ROOM_DATA) buildStartOptions();
     setMinDate();
 </script>
 
-<!-- โหลด LIFF SDK หลังจาก setup เสร็จ -->
 <script src="https://static.line-scdn.net/liff/edge/versions/2.15.0/sdk.js"></script>
 <script>
     liff.init({ liffId: LIFF_ID })
@@ -283,7 +483,6 @@
                 liff.login({ redirectUri: window.location.href });
                 return;
             }
-
             const profile = await liff.getProfile();
             currentUserId = profile.userId;
 
@@ -302,7 +501,6 @@
                     + '&page='        + encodeURIComponent(window.location.href);
                 return;
             }
-
             showForm({ ...data, displayName: profile.displayName });
         })
         .catch(err => {
