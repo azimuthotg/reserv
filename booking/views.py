@@ -416,6 +416,7 @@ def bookings_by_date(request):
             'group_name': b.group_name,
             'start_time': b.start_time.strftime('%H:%M'),
             'end_time':   b.end_time.strftime('%H:%M'),
+            'booker':     b.line_user.full_name or b.line_user.display_name,
         }
         for b in bookings
     ]
