@@ -60,14 +60,14 @@ def _parse_profile(profile):
         department = profile.get('posnameth', '')
         return full_name, faculty, department
 
-    # ── นักศึกษา: stdname / stdsurname / facultyname / branchname ────────────
-    if 'stdname' in profile:
-        prefix   = profile.get('stdprefix', '') or profile.get('prefixname', '')
-        fname    = profile.get('stdname', '')
-        lname    = profile.get('stdsurname', '')
+    # ── นักศึกษา: student_name / student_surname / faculty_name / program_name ─
+    if 'student_name' in profile:
+        prefix    = profile.get('prefix_name', '')
+        fname     = profile.get('student_name', '')
+        lname     = profile.get('student_surname', '')
         full_name = f'{prefix}{fname} {lname}'.strip()
-        faculty   = profile.get('facultyname', '') or profile.get('faculty', '')
-        department = profile.get('branchname', '') or profile.get('branch', '')
+        faculty   = profile.get('faculty_name', '')
+        department = profile.get('program_name', '')
         return full_name, faculty, department
 
     # ── fallback ──────────────────────────────────────────────────────────────
