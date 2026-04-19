@@ -116,7 +116,7 @@
 
 <div id="debug-log"></div>
 
-<script src="https://static.line-scdn.net/liff/edge/versions/2.15.0/sdk.js"></script>
+<!-- setup + constants รันก่อน LIFF SDK โหลด -->
 <script>
     const LIFF_ID      = "{{ liff_id }}";
     const ROOM_DATA    = {{ room_json }};
@@ -257,13 +257,21 @@
         return params.get('room') || params.get('booking_name') || '';
     }
 
-    // ── Main ──────────────────────────────────────────────────────────────────
+    // ── Main (รันได้เลย ไม่รอ LIFF SDK) ─────────────────────────────────────
+    log('page loaded');
     log('LIFF_ID', LIFF_ID);
     log('page URL', window.location.href);
     log('ROOM_DATA', ROOM_DATA);
 
     setupRoom();
     setMinDate();
+
+</script>
+
+<!-- โหลด LIFF SDK หลังจาก setup เสร็จ -->
+<script src="https://static.line-scdn.net/liff/edge/versions/2.15.0/sdk.js"></script>
+<script>
+    log('LIFF SDK loaded');
 
     liff.init({ liffId: LIFF_ID })
         .then(async () => {
