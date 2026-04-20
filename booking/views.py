@@ -633,6 +633,56 @@ def my_bookings(request):
 
 # ── Calendar ───────────────────────────────────────────────────────────────────
 
+def card_page(request):
+    """หน้า Virtual Card — แสดงบัตรสมาชิกดิจิทัล"""
+    return render(request, 'booking/card.html', {
+        'liff_id':    settings.LINE_LIFF_ID,
+        'check_url':  request.build_absolute_uri(reverse('check_user')),
+        'walai_url':  request.build_absolute_uri(reverse('walai_card')),
+        'register_url': request.build_absolute_uri(reverse('register')),
+    })
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def walai_card(request):
+    """
+    POST { userId, userLdap }
+    → เช็ค Walai API → คืน { is_member, barcode, inform_date, ciract_name }
+    """
+    try:
+        body      = json.loads(request.body)
+        user_id   = body.get('userId', '').strip()
+        user_ldap = body.get('userLdap', '').strip()
+    except (json.JSONDecodeError, AttributeError):
+        return JsonResponse({'error': 'invalid request'}, status=400)
+
+    if not user_ldap:
+        return JsonResponse({'error': 'userLdap required'}, status=400)
+
+    try:
+        resp = requests.get(
+            f'{NPU_API_BASE}/walai/check_user_walai/{user_ldap}/',
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            # Walai คืน array — ถ้ามีข้อมูล = สมาชิก
+            if isinstance(data, list) and len(data) > 0:
+                w = data[0]
+                return JsonResponse({
+                    'is_member':   True,
+                    'barcode':     w.get('BARCODE', ''),
+                    'inform_date': w.get('INFORMDATE', ''),
+                    'ciract_name': w.get('CIRACTNAME', ''),
+                })
+            return JsonResponse({'is_member': False})
+    except requests.RequestException:
+        pass
+
+    return JsonResponse({'is_member': False, 'error': 'ไม่สามารถตรวจสอบ Walai ได้'})
+
+
 def calendar_page(request):
     """ปฏิทินรวมการจองทุกห้อง (public — ไม่ต้อง login)"""
     rooms = Room.objects.filter(is_active=True).order_by('name')

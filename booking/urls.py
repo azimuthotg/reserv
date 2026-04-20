@@ -10,6 +10,9 @@ urlpatterns = [
     path('booking/',         views.booking_page,    name='booking'),
     path('booking/success/', views.booking_success, name='booking_success'),
 
+    # ── Virtual Card (LIFF) ───────────────────────────────────────────────────
+    path('card/',            views.card_page,  name='card'),
+
     # ── Calendar (public) ─────────────────────────────────────────────────────
     path('calendar/', views.calendar_page, name='calendar'),
 
@@ -20,6 +23,7 @@ urlpatterns = [
     path('api/calendar-events/',   views.calendar_events,  name='calendar_events'),
     path('api/my-bookings/',       views.my_bookings,      name='my_bookings'),
     path('api/cancel-booking/',    views.cancel_booking,   name='cancel_booking'),
+    path('api/walai-card/',        views.walai_card,       name='walai_card'),
 
     # ── Staff Portal ──────────────────────────────────────────────────────────
     path('manage/login/',   manage_views.manage_login,   name='manage_login'),
