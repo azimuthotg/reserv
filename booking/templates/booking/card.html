@@ -318,7 +318,6 @@
         <div class="walai-dot"></div>
         <span id="walai-badge-text">กำลังตรวจสอบ...</span>
       </div>
-      <div class="walai-detail" id="walai-detail"></div>
     </div>
 
     <div class="card-divider"></div>
@@ -400,10 +399,9 @@
     document.getElementById('barcode-num').textContent = barcode;
   }
 
-  function setWalaiBadge(isMember, detail) {
+  function setWalaiBadge(isMember) {
     const badge = document.getElementById('walai-badge');
     const text  = document.getElementById('walai-badge-text');
-    const detailEl = document.getElementById('walai-detail');
     if (isMember) {
       badge.className = 'walai-badge member';
       text.textContent = '✓ สมาชิกห้องสมุด';
@@ -411,7 +409,6 @@
       badge.className = 'walai-badge non-member';
       text.textContent = '✗ ไม่ใช่สมาชิก';
     }
-    if (detail) detailEl.textContent = detail;
   }
 
   async function init() {
@@ -468,15 +465,15 @@
         const wData = await wResp.json();
 
         if (wData.is_member && wData.barcode) {
-          setWalaiBadge(true, wData.ciract_name || '');
+          setWalaiBadge(true);
           renderQR(wData.barcode);
         } else {
-          setWalaiBadge(false, '');
+          setWalaiBadge(false);
           document.getElementById('qr-area').innerHTML =
             '<div class="no-qr-text">ไม่พบข้อมูลสมาชิกในระบบ Walai<br><small style="opacity:.6">ติดต่อเจ้าหน้าที่เพื่อสมัครสมาชิก</small></div>';
         }
       } catch (e) {
-        setWalaiBadge(false, '');
+        setWalaiBadge(false);
         document.getElementById('qr-area').innerHTML =
           '<div class="no-qr-text">ไม่สามารถตรวจสอบ Walai ได้ในขณะนี้</div>';
       }
