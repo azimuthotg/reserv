@@ -76,7 +76,7 @@ api.npu.ac.th         MySQL reserv_db
 | `/api/set-session/` | `/reserv/api/set-session/` | LIFF → session (POST) |
 | `/admin/` | `/reserv/admin/` | Django Admin |
 
-room keys: `mini`, `netflix`, `canva`, `chat-gpt`, `meeting_f1`
+room keys: `mini`, `edutainment`, `canva`, `chat-gpt`, `meeting_f1`
 
 ---
 
