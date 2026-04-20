@@ -185,7 +185,59 @@ def manage_holiday_delete(request, pk):
     return redirect('manage_holidays')
 
 
+@staff_required
+@require_POST
+def manage_holiday_toggle(request, pk):
+    holiday = get_object_or_404(HolidayDate, pk=pk)
+    holiday.is_active = not holiday.is_active
+    holiday.save()
+    return redirect('manage_holidays')
+
+
 # ── LINE Users ─────────────────────────────────────────────────────────────────
+
+@staff_required
+@require_POST
+def manage_line_user_toggle(request, pk):
+    lu = get_object_or_404(LineUser, pk=pk)
+    lu.is_active = not lu.is_active
+    lu.save()
+    return redirect('manage_line_users')
+
+
+@staff_required
+def manage_line_user_detail(request, pk):
+    lu = get_object_or_404(LineUser, pk=pk)
+    bookings = (
+        Booking.objects.select_related('room')
+        .filter(line_user=lu)
+        .order_by('-booking_date', '-start_time')
+    )
+    total      = bookings.count()
+    confirmed  = bookings.filter(status='confirmed').count()
+    cancelled  = bookings.filter(status='cancelled').count()
+    cancel_rate = round(cancelled / total * 100) if total else 0
+    return render(request, 'booking/manage/line_user_detail.html', {
+        'line_user':       lu,
+        'bookings':        bookings,
+        'total_bookings':  total,
+        'confirmed_count': confirmed,
+        'cancelled_count': cancelled,
+        'cancel_rate':     cancel_rate,
+    })
+
+
+@staff_required
+def manage_booking_logs(request, pk):
+    booking = get_object_or_404(
+        Booking.objects.select_related('room', 'line_user'), pk=pk
+    )
+    logs = booking.logs.order_by('timestamp')
+    return render(request, 'booking/manage/booking_logs.html', {
+        'booking': booking,
+        'logs':    logs,
+    })
+
 
 @staff_required
 def manage_line_users(request):

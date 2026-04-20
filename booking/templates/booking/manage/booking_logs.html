@@ -1,0 +1,107 @@
+{% extends "booking/manage/base.html" %}
+{% block title %}Logs การจอง #{{ booking.id }}{% endblock %}
+{% block page_title %}Logs การจอง #{{ booking.id }}{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <a href="{% url 'manage_bookings' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> กลับรายการจอง
+    </a>
+</div>
+
+<!-- Booking Summary -->
+<div class="table-card mb-3" style="padding:20px;">
+    <div class="row g-3">
+        <div class="col-6 col-md-3">
+            <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">ห้อง</div>
+            <div style="font-size:15px;font-weight:700;margin-top:4px;">{{ booking.room.name }}</div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">วันที่</div>
+            <div style="font-size:15px;font-weight:700;margin-top:4px;">{{ booking.booking_date|date:"d/m/Y" }}</div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">เวลา</div>
+            <div style="font-size:15px;font-weight:700;margin-top:4px;">{{ booking.start_time|time:"H:i" }}–{{ booking.end_time|time:"H:i" }}</div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">สถานะ</div>
+            <div style="margin-top:6px;">
+                {% if booking.status == 'confirmed' %}
+                <span class="badge badge-confirmed">ยืนยันแล้ว</span>
+                {% else %}
+                <span class="badge badge-cancelled">ยกเลิก</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-12 col-md-6">
+            <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">ผู้จอง</div>
+            <div style="font-size:14px;margin-top:4px;">
+                <a href="{% url 'manage_line_user_detail' booking.line_user.pk %}">
+                    {{ booking.line_user.full_name|default:booking.line_user.display_name }}
+                </a>
+                <span style="color:#888;font-size:12px;"> — {{ booking.line_user.user_type }}</span>
+            </div>
+        </div>
+        <div class="col-12 col-md-6">
+            <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">กลุ่ม / กิจกรรม</div>
+            <div style="font-size:14px;margin-top:4px;">{{ booking.group_name }}</div>
+        </div>
+        {% if booking.cancel_reason %}
+        <div class="col-12">
+            <div style="font-size:11px;color:#e53e3e;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">เหตุผลการยกเลิก</div>
+            <div style="font-size:14px;margin-top:4px;color:#e53e3e;">{{ booking.cancel_reason }}</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Timeline Logs -->
+<div class="table-card">
+    <div class="table-card-header">
+        <span class="table-title"><i class="bi bi-clock-history"></i> ประวัติการดำเนินการ</span>
+    </div>
+    <div style="padding:20px;">
+        {% if logs %}
+        <div style="position:relative;">
+            {% for log in logs %}
+            <div style="display:flex;gap:16px;margin-bottom:20px;position:relative;">
+                <!-- Icon -->
+                <div style="flex-shrink:0;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;z-index:1;
+                    {% if log.action == 'created' %}background:#d1fae5;color:#059669;
+                    {% elif log.action == 'cancelled' %}background:#fee2e2;color:#dc2626;
+                    {% elif log.action == 'auto_off' %}background:#fef3c7;color:#d97706;
+                    {% else %}background:#e0e7ff;color:#4f46e5;{% endif %}">
+                    {% if log.action == 'created' %}<i class="bi bi-plus-circle-fill"></i>
+                    {% elif log.action == 'cancelled' %}<i class="bi bi-x-circle-fill"></i>
+                    {% elif log.action == 'auto_off' %}<i class="bi bi-lightning-fill"></i>
+                    {% else %}<i class="bi bi-info-circle-fill"></i>{% endif %}
+                </div>
+                <!-- Content -->
+                <div style="flex:1;padding-top:4px;">
+                    <div style="font-weight:600;font-size:14px;">
+                        {% if log.action == 'created' %}สร้างการจอง
+                        {% elif log.action == 'cancelled' %}ยกเลิกการจอง
+                        {% elif log.action == 'auto_off' %}ปิดอุปกรณ์อัตโนมัติ
+                        {% elif log.action == 'accessed' %}เข้าถึงข้อมูล
+                        {% else %}{{ log.action }}{% endif %}
+                    </div>
+                    {% if log.note %}
+                    <div style="font-size:13px;color:#718096;margin-top:2px;">{{ log.note }}</div>
+                    {% endif %}
+                    <div style="font-size:12px;color:#a0aec0;margin-top:4px;">
+                        <i class="bi bi-clock"></i> {{ log.timestamp|date:"d/m/Y H:i:s" }}
+                    </div>
+                </div>
+            </div>
+            {% if not forloop.last %}
+            <div style="position:absolute;left:17px;top:36px;width:2px;background:#e2e8f0;height:calc(100% - 16px);"></div>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-4">ไม่มีประวัติการดำเนินการ</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

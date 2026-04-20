@@ -64,8 +64,19 @@
                     <td>{{ b.room.name }}</td>
                     <td style="white-space:nowrap;">{{ b.booking_date|date:"d/m/Y" }}</td>
                     <td style="white-space:nowrap;">{{ b.start_time|time:"H:i" }}–{{ b.end_time|time:"H:i" }}</td>
-                    <td>{{ b.group_name }}</td>
-                    <td>{{ b.line_user.full_name|default:b.line_user.display_name }}</td>
+                    <td>
+                        {{ b.group_name }}
+                        {% if b.status == 'cancelled' and b.cancel_reason %}
+                        <div style="font-size:11px;color:#e53e3e;margin-top:2px;">
+                            <i class="bi bi-x-circle"></i> {{ b.cancel_reason }}
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'manage_line_user_detail' b.line_user.pk %}" style="color:inherit;text-decoration:none;">
+                            {{ b.line_user.full_name|default:b.line_user.display_name }}
+                        </a>
+                    </td>
                     <td style="font-size:12px;color:#888;">{{ b.faculty }}</td>
                     <td>
                         {% if b.status == 'confirmed' %}
@@ -74,7 +85,10 @@
                         <span class="badge badge-cancelled">ยกเลิก</span>
                         {% endif %}
                     </td>
-                    <td>
+                    <td style="white-space:nowrap;">
+                        <a href="{% url 'manage_booking_logs' b.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:12px;" title="ดู Logs">
+                            <i class="bi bi-clock-history"></i>
+                        </a>
                         {% if b.status == 'confirmed' %}
                         <button class="btn btn-sm btn-outline-danger" style="font-size:12px;"
                             data-bs-toggle="modal" data-bs-target="#cancelModal"

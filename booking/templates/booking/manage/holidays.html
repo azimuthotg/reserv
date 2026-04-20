@@ -40,6 +40,12 @@
                         {% endif %}
                     </td>
                     <td style="white-space:nowrap;">
+                        <form method="post" action="{% url 'manage_holiday_toggle' h.pk %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm {% if h.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}" style="font-size:12px;">
+                                {% if h.is_active %}ปิดใช้{% else %}เปิดใช้{% endif %}
+                            </button>
+                        </form>
                         <a href="{% url 'manage_holiday_edit' h.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:12px;">แก้ไข</a>
                         <button class="btn btn-sm btn-outline-danger" style="font-size:12px;"
                             data-bs-toggle="modal" data-bs-target="#deleteModal"

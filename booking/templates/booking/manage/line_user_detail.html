@@ -1,0 +1,144 @@
+{% extends "booking/manage/base.html" %}
+{% block title %}{{ line_user.full_name|default:line_user.display_name }}{% endblock %}
+{% block page_title %}ประวัติผู้ใช้{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <a href="{% url 'manage_line_users' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> กลับรายชื่อผู้ใช้
+    </a>
+</div>
+
+<!-- Profile Card -->
+<div class="table-card mb-3" style="padding:24px;">
+    <div class="d-flex align-items-start gap-4 flex-wrap">
+        <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#229799,#1a7a7c);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;">
+            👤
+        </div>
+        <div style="flex:1;min-width:200px;">
+            <div style="font-size:20px;font-weight:700;color:#1a202c;">
+                {{ line_user.full_name|default:line_user.display_name }}
+            </div>
+            <div style="color:#718096;font-size:13px;margin-top:2px;">{{ line_user.display_name }}</div>
+            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+                <span class="badge bg-light text-dark" style="font-size:12px;">{{ line_user.user_type }}</span>
+                {% if line_user.is_active %}
+                <span class="badge badge-confirmed">ใช้งาน</span>
+                {% else %}
+                <span class="badge badge-cancelled">ปิดใช้</span>
+                {% endif %}
+            </div>
+        </div>
+        <div>
+            <form method="post" action="{% url 'manage_line_user_toggle' line_user.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm {% if line_user.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}">
+                    {% if line_user.is_active %}<i class="bi bi-pause-circle"></i> ปิดใช้งาน{% else %}<i class="bi bi-play-circle"></i> เปิดใช้งาน{% endif %}
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <hr style="margin:20px 0;border-color:#e2e8f0;">
+
+    <div class="row g-3">
+        <div class="col-6 col-md-3">
+            <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">รหัส LDAP</div>
+            <div style="font-size:14px;font-weight:600;margin-top:4px;">{{ line_user.user_ldap }}</div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">
+                {% if line_user.user_type == 'นักศึกษา' %}คณะ{% else %}หน่วยงาน{% endif %}
+            </div>
+            <div style="font-size:14px;margin-top:4px;">{{ line_user.faculty|default:"—" }}</div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">
+                {% if line_user.user_type == 'นักศึกษา' %}สาขา{% else %}ฝ่าย / ตำแหน่ง{% endif %}
+            </div>
+            <div style="font-size:14px;margin-top:4px;">{{ line_user.department|default:"—" }}</div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">ลงทะเบียนเมื่อ</div>
+            <div style="font-size:14px;margin-top:4px;">{{ line_user.created_at|date:"d/m/Y H:i" }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="row g-3 mb-3">
+    <div class="col-6 col-md-3">
+        <div class="table-card" style="padding:16px;text-align:center;">
+            <div style="font-size:28px;font-weight:700;color:#229799;">{{ total_bookings }}</div>
+            <div style="font-size:12px;color:#718096;margin-top:4px;">จองทั้งหมด</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="table-card" style="padding:16px;text-align:center;">
+            <div style="font-size:28px;font-weight:700;color:#059669;">{{ confirmed_count }}</div>
+            <div style="font-size:12px;color:#718096;margin-top:4px;">ยืนยันแล้ว</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="table-card" style="padding:16px;text-align:center;">
+            <div style="font-size:28px;font-weight:700;color:#dc2626;">{{ cancelled_count }}</div>
+            <div style="font-size:12px;color:#718096;margin-top:4px;">ยกเลิกแล้ว</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="table-card" style="padding:16px;text-align:center;">
+            <div style="font-size:28px;font-weight:700;color:#d97706;">{{ cancel_rate }}%</div>
+            <div style="font-size:12px;color:#718096;margin-top:4px;">อัตราการยกเลิก</div>
+        </div>
+    </div>
+</div>
+
+<!-- Booking History -->
+<div class="table-card">
+    <div class="table-card-header">
+        <span class="table-title"><i class="bi bi-calendar3"></i> ประวัติการจองทั้งหมด ({{ total_bookings }} รายการ)</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0" style="font-size:13px;">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>ห้อง</th>
+                    <th>วันที่</th>
+                    <th>เวลา</th>
+                    <th>กลุ่ม / กิจกรรม</th>
+                    <th>สถานะ</th>
+                    <th>เหตุผลยกเลิก</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in bookings %}
+                <tr {% if b.status == 'cancelled' %}style="opacity:.7;"{% endif %}>
+                    <td class="text-muted">{{ b.id }}</td>
+                    <td>{{ b.room.name }}</td>
+                    <td style="white-space:nowrap;">{{ b.booking_date|date:"d/m/Y" }}</td>
+                    <td style="white-space:nowrap;">{{ b.start_time|time:"H:i" }}–{{ b.end_time|time:"H:i" }}</td>
+                    <td>{{ b.group_name }}</td>
+                    <td>
+                        {% if b.status == 'confirmed' %}
+                        <span class="badge badge-confirmed">ยืนยันแล้ว</span>
+                        {% else %}
+                        <span class="badge badge-cancelled">ยกเลิก</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-size:12px;color:#e53e3e;">{{ b.cancel_reason|default:"—" }}</td>
+                    <td>
+                        <a href="{% url 'manage_booking_logs' b.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:12px;" title="ดู Logs">
+                            <i class="bi bi-clock-history"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="text-center text-muted py-4">ยังไม่มีประวัติการจอง</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

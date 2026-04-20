@@ -39,9 +39,15 @@ urlpatterns = [
     path('manage/holidays/add/',                manage_views.manage_holiday_add,    name='manage_holiday_add'),
     path('manage/holidays/<int:pk>/edit/',      manage_views.manage_holiday_edit,   name='manage_holiday_edit'),
     path('manage/holidays/<int:pk>/delete/',    manage_views.manage_holiday_delete, name='manage_holiday_delete'),
+    path('manage/holidays/<int:pk>/toggle/',    manage_views.manage_holiday_toggle, name='manage_holiday_toggle'),
 
     # LINE Users
-    path('manage/line-users/',  manage_views.manage_line_users, name='manage_line_users'),
+    path('manage/line-users/',              manage_views.manage_line_users,       name='manage_line_users'),
+    path('manage/line-users/<int:pk>/',     manage_views.manage_line_user_detail, name='manage_line_user_detail'),
+    path('manage/line-users/<int:pk>/toggle/', manage_views.manage_line_user_toggle, name='manage_line_user_toggle'),
+
+    # Booking Logs
+    path('manage/bookings/<int:pk>/logs/', manage_views.manage_booking_logs, name='manage_booking_logs'),
 
     # Rooms (admin only)
     path('manage/rooms/',                   manage_views.manage_rooms,       name='manage_rooms'),
