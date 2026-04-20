@@ -45,6 +45,8 @@ urlpatterns = [
     path('manage/line-users/',              manage_views.manage_line_users,       name='manage_line_users'),
     path('manage/line-users/<int:pk>/',     manage_views.manage_line_user_detail, name='manage_line_user_detail'),
     path('manage/line-users/<int:pk>/toggle/', manage_views.manage_line_user_toggle, name='manage_line_user_toggle'),
+    path('manage/line-users/<int:pk>/send/',   manage_views.manage_send_line_message, name='manage_send_line_message'),
+    path('manage/line-users/broadcast/',       manage_views.manage_broadcast_line,    name='manage_broadcast_line'),
 
     # Booking Logs
     path('manage/bookings/<int:pk>/logs/', manage_views.manage_booking_logs, name='manage_booking_logs'),

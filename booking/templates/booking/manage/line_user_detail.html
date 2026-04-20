@@ -29,7 +29,12 @@
                 {% endif %}
             </div>
         </div>
-        <div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            {% if line_user.is_active %}
+            <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#sendModal">
+                <i class="bi bi-chat-dots"></i> ส่งข้อความ LINE
+            </button>
+            {% endif %}
             <form method="post" action="{% url 'manage_line_user_toggle' line_user.pk %}">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-sm {% if line_user.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}">
@@ -37,6 +42,29 @@
                 </button>
             </form>
         </div>
+
+<!-- Send Message Modal -->
+<div class="modal fade" id="sendModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title"><i class="bi bi-chat-dots"></i> ส่งข้อความ LINE ถึง {{ line_user.full_name|default:line_user.display_name }}</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'manage_send_line_message' line_user.pk %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-2" style="font-size:13px;color:#718096;">ข้อความจะถูกส่งผ่าน LINE OA ไปยัง {{ line_user.full_name|default:line_user.display_name }} โดยตรง</div>
+                    <textarea name="message" class="form-control" rows="4" placeholder="พิมพ์ข้อความที่ต้องการส่ง..." required></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-sm btn-success"><i class="bi bi-send"></i> ส่งข้อความ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
     </div>
 
     <hr style="margin:20px 0;border-color:#e2e8f0;">

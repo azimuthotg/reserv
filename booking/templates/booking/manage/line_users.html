@@ -27,6 +27,9 @@
 <div class="table-card">
     <div class="table-card-header">
         <span class="table-title">พบ {{ page_obj.paginator.count }} รายการ</span>
+        <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#broadcastModal">
+            <i class="bi bi-megaphone"></i> ส่งข้อความทุกคน
+        </button>
     </div>
     <div class="table-responsive">
         <table class="table table-sm table-hover mb-0" style="font-size:13px;">
@@ -96,5 +99,31 @@
         </nav>
     </div>
     {% endif %}
+</div>
+
+<!-- Broadcast Modal -->
+<div class="modal fade" id="broadcastModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title"><i class="bi bi-megaphone"></i> ส่งข้อความถึงผู้ใช้ทุกคน</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'manage_broadcast_line' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-warning" style="font-size:13px;padding:8px 12px;">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        ข้อความจะถูกส่งไปยัง <strong>ผู้ใช้ที่เปิดใช้งานทุกคน</strong> ผ่าน LINE OA
+                    </div>
+                    <textarea name="message" class="form-control" rows="4" placeholder="พิมพ์ข้อความที่ต้องการส่ง..." required></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-sm btn-success"><i class="bi bi-send"></i> ส่งทุกคน</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 {% endblock %}

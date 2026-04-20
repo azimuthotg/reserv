@@ -11,7 +11,7 @@ from django.views.decorators.http import require_POST
 
 from .forms import HolidayDateForm, RoomForm, StaffAddForm, StaffEditForm
 from .models import Booking, BookingLog, HolidayDate, LineUser, Room
-from .views import _notify_booking_cancelled
+from .views import _notify_booking_cancelled, _push_text
 
 
 # ── Permission decorators ──────────────────────────────────────────────────────
@@ -364,3 +364,28 @@ def manage_staff_toggle(request, pk):
         user.is_active = not user.is_active
         user.save()
     return redirect('manage_staff_list')
+
+
+# ── LINE Messaging ─────────────────────────────────────────────────────────────
+
+@staff_required
+@require_POST
+def manage_send_line_message(request, pk):
+    """ส่งข้อความ LINE ถึงผู้ใช้คนเดียว"""
+    lu = get_object_or_404(LineUser, pk=pk)
+    message = request.POST.get('message', '').strip()
+    if message and lu.is_active:
+        _push_text(lu.line_user_id, message)
+    return redirect('manage_line_user_detail', pk=pk)
+
+
+@staff_required
+@require_POST
+def manage_broadcast_line(request):
+    """ส่งข้อความ LINE ไปยังผู้ใช้ที่ active ทุกคน"""
+    message = request.POST.get('message', '').strip()
+    if message:
+        users = LineUser.objects.filter(is_active=True)
+        for lu in users:
+            _push_text(lu.line_user_id, message)
+    return redirect('manage_line_users')
