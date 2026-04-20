@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -77,10 +78,23 @@
             background: #fff; border-radius: 14px;
             box-shadow: 0 1px 4px rgba(0,0,0,.07);
             margin-bottom: 10px; overflow: hidden;
-            display: flex;
+            display: flex; flex-direction: column;
         }
-        .room-accent { width: 5px; flex-shrink: 0; }
-        .room-body { padding: 14px 14px 14px 12px; flex: 1; min-width: 0; }
+        .room-img {
+            width: 100%; height: 150px; overflow: hidden;
+            background: #f0f2f5; position: relative;
+        }
+        .room-img img {
+            width: 100%; height: 100%; object-fit: cover;
+            display: block;
+        }
+        .room-img-placeholder {
+            width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 40px; opacity: .35;
+        }
+        .room-accent-bar { height: 4px; flex-shrink: 0; }
+        .room-body { padding: 12px 14px 14px; flex: 1; min-width: 0; }
         .room-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
         .room-name { font-size: 15px; font-weight: 700; color: #1a1a1a; line-height: 1.2; }
         .room-capacity {
@@ -221,6 +235,7 @@
 <script>
     const LIFF_ID        = "{{ liff_id }}";
     const CHECK_URL      = "{{ check_url }}";
+    const IMAGE_BASE     = "{% static 'booking/images/rooms/' %}";
     const REGISTER_URL   = "{{ register_url }}";
     const MY_BOOKING_URL = "{{ my_bookings_url }}";
     const CANCEL_URL     = "{{ cancel_booking_url }}";
@@ -237,9 +252,15 @@
         }
         list.innerHTML = ROOMS.map((r, i) => {
             const color = ACCENT_COLORS[i % ACCENT_COLORS.length];
+            const imgSrc = IMAGE_BASE + r.booking_name + '.png';
             return `
             <div class="room-card">
-                <div class="room-accent" style="background:${color};"></div>
+                <div class="room-img">
+                    <img src="${imgSrc}" alt="${r.name}"
+                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                    <div class="room-img-placeholder" style="display:none;background:${color}18;">🏢</div>
+                </div>
+                <div class="room-accent-bar" style="background:${color};"></div>
                 <div class="room-body">
                     <div class="room-top">
                         <div class="room-name">${r.name}</div>
