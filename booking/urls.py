@@ -16,6 +16,9 @@ urlpatterns = [
     # ── Calendar (public) ─────────────────────────────────────────────────────
     path('calendar/', views.calendar_page, name='calendar'),
 
+    # ── Room Detail (public) ──────────────────────────────────────────────────
+    path('room/<str:booking_name>/', views.room_detail, name='room_detail'),
+
     # ── APIs ──────────────────────────────────────────────────────────────────
     path('api/check-user/',        views.check_user,       name='check_user'),
     path('api/booking/',           views.create_booking,   name='create_booking'),

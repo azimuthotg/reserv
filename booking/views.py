@@ -692,6 +692,31 @@ def calendar_page(request):
     })
 
 
+def room_detail(request, booking_name):
+    """หน้ารายละเอียดห้อง (public — ไม่ต้อง login)"""
+    from django.shortcuts import get_object_or_404
+    room = get_object_or_404(Room, booking_name=booking_name, is_active=True)
+
+    # สีของห้องโดยใช้ index เดียวกับ landing page
+    accent_colors = ['#06C755', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4']
+    all_rooms     = list(Room.objects.filter(is_active=True).order_by('name').values_list('booking_name', flat=True))
+    idx           = all_rooms.index(booking_name) if booking_name in all_rooms else 0
+    room_color    = accent_colors[idx % len(accent_colors)]
+
+    facilities = [f.strip() for f in room.facilities.splitlines() if f.strip()]
+    rules      = [r.strip() for r in room.rules.splitlines() if r.strip()]
+    how_to_use = [s.strip() for s in room.how_to_use.splitlines() if s.strip()]
+    eligible   = [e.strip() for e in room.eligible_users.splitlines() if e.strip()]
+    return render(request, 'booking/room_detail.html', {
+        'room':       room,
+        'room_color': room_color,
+        'facilities': facilities,
+        'rules':      rules,
+        'how_to_use': how_to_use,
+        'eligible':   eligible,
+    })
+
+
 @require_http_methods(['GET'])
 def calendar_events(request):
     """

@@ -119,6 +119,14 @@
             transition: background .15s;
         }
         .btn-book:hover { background: #059944; color: #fff; }
+        .btn-detail {
+            padding: 7px 14px; border-radius: 20px;
+            background: transparent; border: 1.5px solid currentColor;
+            font-size: 13px; font-weight: 600; cursor: pointer;
+            text-decoration: none; white-space: nowrap;
+            transition: background .15s;
+        }
+        .btn-detail:hover { background: rgba(0,0,0,.06); }
 
         /* ── My booking card ── */
         .my-booking-card {
@@ -233,13 +241,14 @@
 
 <script src="https://static.line-scdn.net/liff/edge/versions/2.15.0/sdk.js"></script>
 <script>
-    const LIFF_ID        = "{{ liff_id }}";
-    const CHECK_URL      = "{{ check_url }}";
-    const IMAGE_BASE     = "{% static 'booking/images/rooms/' %}";
-    const REGISTER_URL   = "{{ register_url }}";
-    const MY_BOOKING_URL = "{{ my_bookings_url }}";
-    const CANCEL_URL     = "{{ cancel_booking_url }}";
-    const ROOMS          = {{ rooms_json|safe }};
+    const LIFF_ID          = "{{ liff_id }}";
+    const CHECK_URL        = "{{ check_url }}";
+    const IMAGE_BASE       = "{% static 'booking/images/rooms/' %}";
+    const REGISTER_URL     = "{{ register_url }}";
+    const MY_BOOKING_URL   = "{{ my_bookings_url }}";
+    const CANCEL_URL       = "{{ cancel_booking_url }}";
+    const ROOM_DETAIL_BASE = "room/";
+    const ROOMS            = {{ rooms_json|safe }};
     let currentUserId    = null;
 
     const ACCENT_COLORS = ['#06C755','#3b82f6','#f59e0b','#8b5cf6','#ef4444','#06b6d4'];
@@ -269,9 +278,15 @@
                     ${r.location ? `<div class="room-location">📍 ${r.location}</div>` : ''}
                     <div class="room-footer">
                         <div class="room-hours">🕐 ${r.open_time} – ${r.close_time} น.</div>
-                        <a class="btn-book" href="booking/?room=${r.booking_name}" style="background:${color};">
-                            จองห้องนี้
-                        </a>
+                        <div style="display:flex;gap:6px;">
+                            <a class="btn-detail" href="${ROOM_DETAIL_BASE}${r.booking_name}/"
+                               style="color:${color};">
+                                รายละเอียด
+                            </a>
+                            <a class="btn-book" href="booking/?room=${r.booking_name}" style="background:${color};">
+                                จองห้องนี้
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>`;

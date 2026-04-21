@@ -1,0 +1,232 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ room.name }} — Library@NPU</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            background: #f0f2f5; font-family: 'Sarabun', sans-serif;
+            margin: 0; padding-bottom: 80px;
+        }
+
+        /* ── Topbar ── */
+        .topbar {
+            position: sticky; top: 0; z-index: 100;
+            background: #fff; border-bottom: 1px solid #e8e8e8;
+            padding: 0 16px; height: 52px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .btn-back {
+            background: none; border: none; padding: 4px 6px;
+            font-size: 20px; color: #333; cursor: pointer; line-height: 1;
+            display: flex; align-items: center;
+        }
+        .topbar-title {
+            font-size: 15px; font-weight: 700; color: #1a1a1a;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        /* ── Room image ── */
+        .room-hero {
+            width: 100%; height: 220px; overflow: hidden;
+            background: #e0e0e0; position: relative;
+        }
+        .room-hero img {
+            width: 100%; height: 100%; object-fit: cover; display: block;
+        }
+        .room-hero-placeholder {
+            width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 64px; opacity: .25;
+        }
+        .accent-bar { height: 5px; }
+
+        /* ── Body ── */
+        .body-wrap { max-width: 560px; margin: 0 auto; padding: 16px; }
+
+        /* ── Info card ── */
+        .info-card {
+            background: #fff; border-radius: 14px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.07);
+            padding: 16px; margin-bottom: 12px;
+        }
+        .room-name   { font-size: 20px; font-weight: 800; color: #1a1a1a; line-height: 1.2; }
+        .room-loc    { font-size: 13px; color: #888; margin-top: 5px; display: flex; align-items: center; gap: 4px; }
+
+        /* ── Chips ── */
+        .chip-row  { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+        .chip {
+            display: flex; align-items: center; gap: 5px;
+            background: #f3f4f6; border-radius: 20px;
+            padding: 5px 12px; font-size: 12px; font-weight: 600; color: #555;
+        }
+        .chip .chip-icon { font-size: 14px; }
+
+        /* ── Section ── */
+        .section-card {
+            background: #fff; border-radius: 14px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.07);
+            padding: 16px; margin-bottom: 12px;
+        }
+        .section-title {
+            font-size: 13px; font-weight: 700; color: #555;
+            text-transform: uppercase; letter-spacing: .6px;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+        }
+        .section-title .ico { font-size: 16px; }
+
+        /* Step list */
+        .step-list { list-style: none; padding: 0; margin: 0; }
+        .step-list li {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 7px 0; border-bottom: 1px solid #f5f5f5; font-size: 14px; color: #333;
+        }
+        .step-list li:last-child { border-bottom: none; padding-bottom: 0; }
+        .step-num {
+            width: 22px; height: 22px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; margin-top: 1px;
+        }
+
+        /* Bullet list */
+        .bullet-list { list-style: none; padding: 0; margin: 0; }
+        .bullet-list li {
+            display: flex; align-items: flex-start; gap: 8px;
+            padding: 6px 0; border-bottom: 1px solid #f5f5f5; font-size: 14px; color: #333;
+        }
+        .bullet-list li:last-child { border-bottom: none; padding-bottom: 0; }
+        .bullet-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            flex-shrink: 0; margin-top: 7px;
+        }
+
+        /* Eligible text */
+        .eligible-text { font-size: 14px; color: #333; line-height: 1.7; }
+
+        /* ── Sticky footer ── */
+        .sticky-footer {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: #fff; border-top: 1px solid #e8e8e8;
+            padding: 12px 16px; display: flex; gap: 10px;
+            justify-content: center;
+        }
+        .btn-book {
+            flex: 1; max-width: 400px;
+            padding: 13px; border-radius: 24px;
+            color: #fff; border: none; font-size: 15px; font-weight: 700;
+            cursor: pointer; text-align: center; text-decoration: none;
+            display: block; transition: opacity .15s;
+        }
+        .btn-book:hover { opacity: .88; color: #fff; }
+    </style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+    <button class="btn-back" onclick="history.back()">←</button>
+    <div class="topbar-title">{{ room.name }}</div>
+</div>
+
+<!-- Hero image -->
+<div class="room-hero">
+    <img src="{% static 'booking/images/rooms/' %}{{ room.booking_name }}.png"
+         alt="{{ room.name }}"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+    <div class="room-hero-placeholder">🏢</div>
+</div>
+<div class="accent-bar" style="background:{{ room_color }};"></div>
+
+<!-- Body -->
+<div class="body-wrap">
+
+    <!-- ข้อมูลหลัก -->
+    <div class="info-card">
+        <div class="room-name">{{ room.name }}</div>
+        {% if room.location %}
+        <div class="room-loc">📍 {{ room.location }}</div>
+        {% endif %}
+        {% if room.description %}
+        <p style="font-size:14px;color:#666;margin-top:10px;margin-bottom:0;line-height:1.6;">{{ room.description }}</p>
+        {% endif %}
+        <div class="chip-row">
+            <div class="chip"><span class="chip-icon">🕐</span>{{ room.open_time|time:"H:i" }}–{{ room.close_time|time:"H:i" }} น.</div>
+            <div class="chip"><span class="chip-icon">👥</span>รองรับ {{ room.capacity }} คน</div>
+            {% if room.min_attendees > 1 %}
+            <div class="chip"><span class="chip-icon">👤</span>ขั้นต่ำ {{ room.min_attendees }} คน</div>
+            {% endif %}
+            <div class="chip"><span class="chip-icon">⏱</span>จองสูงสุด {{ room.max_booking_hours }} ชม./ครั้ง</div>
+        </div>
+    </div>
+
+    <!-- ผู้มีสิทธิ์ใช้บริการ -->
+    {% if eligible %}
+    <div class="section-card">
+        <div class="section-title"><span class="ico">👤</span>ผู้มีสิทธิ์ใช้บริการ</div>
+        <div class="eligible-text">
+            {% for e in eligible %}{{ e }}{% if not forloop.last %}, {% endif %}{% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ขั้นตอนการใช้บริการ -->
+    {% if how_to_use %}
+    <div class="section-card">
+        <div class="section-title"><span class="ico">📋</span>ขั้นตอนการใช้บริการ</div>
+        <ul class="step-list">
+            {% for step in how_to_use %}
+            <li>
+                <div class="step-num" style="background:{{ room_color }};">{{ forloop.counter }}</div>
+                <span>{{ step }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- อุปกรณ์ -->
+    {% if facilities %}
+    <div class="section-card">
+        <div class="section-title"><span class="ico">🖥️</span>อุปกรณ์ / สิ่งอำนวยความสะดวก</div>
+        <ul class="bullet-list">
+            {% for item in facilities %}
+            <li>
+                <div class="bullet-dot" style="background:{{ room_color }};"></div>
+                <span>{{ item }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- กฎระเบียบ -->
+    {% if rules %}
+    <div class="section-card">
+        <div class="section-title"><span class="ico">📌</span>กฎระเบียบการใช้ห้อง</div>
+        <ul class="bullet-list">
+            {% for rule in rules %}
+            <li>
+                <div class="bullet-dot" style="background:#ef4444;"></div>
+                <span>{{ rule }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+</div>
+
+<!-- Sticky footer -->
+<div class="sticky-footer">
+    <a href="{% url 'booking' %}?room={{ room.booking_name }}"
+       class="btn-book" style="background:{{ room_color }};">
+        จองห้องนี้
+    </a>
+</div>
+
+</body>
+</html>
