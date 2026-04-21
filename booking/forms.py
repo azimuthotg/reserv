@@ -26,7 +26,7 @@ class RoomForm(forms.ModelForm):
             'name', 'booking_name', 'description', 'location',
             'capacity', 'min_attendees', 'max_booking_hours',
             'open_time', 'close_time',
-            'eligible_users', 'facilities', 'rules',
+            'eligible_users', 'how_to_use', 'facilities', 'rules',
             'is_active', 'ha_entity_id',
         ]
         widgets = {
@@ -41,6 +41,8 @@ class RoomForm(forms.ModelForm):
             'close_time':        forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
             'eligible_users':    forms.Textarea(attrs={'class': 'form-control', 'rows': 2,
                                      'placeholder': 'เช่น นักศึกษา บุคลากร และอาจารย์ มนพ.'}),
+            'how_to_use':        forms.Textarea(attrs={'class': 'form-control', 'rows': 4,
+                                     'placeholder': 'สแกน QR Code เพื่อจองผ่าน LINE OA\nแสดง QR Code การจองแก่เจ้าหน้าที่\nรับกุญแจและเข้าใช้บริการ'}),
             'facilities':        forms.Textarea(attrs={'class': 'form-control', 'rows': 4,
                                      'placeholder': 'โปรเจกเตอร์\nระบบเสียง\nไมโครโฟน\nจอ LED'}),
             'rules':             forms.Textarea(attrs={'class': 'form-control', 'rows': 4,
@@ -59,6 +61,7 @@ class RoomForm(forms.ModelForm):
             'open_time':         'เวลาเปิด',
             'close_time':        'เวลาปิด',
             'eligible_users':    'ผู้มีสิทธิ์ใช้บริการ',
+            'how_to_use':        'ขั้นตอนการใช้บริการ',
             'facilities':        'อุปกรณ์ / สิ่งอำนวยความสะดวก',
             'rules':             'กฎระเบียบการใช้ห้อง',
             'is_active':         'เปิดใช้งาน',

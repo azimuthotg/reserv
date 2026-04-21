@@ -15,6 +15,7 @@ class Room(models.Model):
     eligible_users   = models.TextField(blank=True, help_text='ผู้มีสิทธิ์ใช้บริการ เช่น นักศึกษา, บุคลากร')
     facilities       = models.TextField(blank=True, help_text='อุปกรณ์/สิ่งอำนวยความสะดวก (แต่ละรายการขึ้นบรรทัดใหม่)')
     rules            = models.TextField(blank=True, help_text='กฎระเบียบการใช้ห้อง (แต่ละข้อขึ้นบรรทัดใหม่)')
+    how_to_use       = models.TextField(blank=True, help_text='ขั้นตอนการใช้บริการ (แต่ละขั้นตอนขึ้นบรรทัดใหม่)')
     open_time        = models.TimeField()
     close_time       = models.TimeField()
     is_active        = models.BooleanField(default=True)
