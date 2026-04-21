@@ -144,8 +144,14 @@
         </div>
         <div class="nav-item">
             <a href="{% url 'manage_bookings' %}"
-               class="{% if request.resolver_match.url_name == 'manage_bookings' %}active{% endif %}">
+               class="{% if request.resolver_match.url_name == 'manage_bookings' or request.resolver_match.url_name == 'manage_booking_logs' %}active{% endif %}">
                 <i class="bi bi-calendar-check"></i> รายการจอง
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{% url 'manage_calendar' %}"
+               class="{% if request.resolver_match.url_name == 'manage_calendar' %}active{% endif %}">
+                <i class="bi bi-calendar3"></i> ปฏิทินภาพรวม
             </a>
         </div>
         <div class="nav-item">

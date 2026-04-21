@@ -366,6 +366,17 @@ def manage_staff_toggle(request, pk):
     return redirect('manage_staff_list')
 
 
+# ── Calendar ───────────────────────────────────────────────────────────────────
+
+@staff_required
+def manage_calendar(request):
+    rooms = Room.objects.filter(is_active=True).order_by('name')
+    return render(request, 'booking/manage/calendar.html', {
+        'rooms': rooms,
+        'events_url': request.build_absolute_uri('/reserv/api/calendar-events/'),
+    })
+
+
 # ── LINE Messaging ─────────────────────────────────────────────────────────────
 
 @staff_required

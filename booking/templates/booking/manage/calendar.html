@@ -1,0 +1,248 @@
+{% extends "booking/manage/base.html" %}
+{% block title %}ปฏิทินภาพรวม{% endblock %}
+{% block page_title %}ปฏิทินภาพรวม{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css">
+<style>
+    /* Room filter pills */
+    .room-filter-wrap {
+        display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px;
+    }
+    .filter-pill {
+        padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+        cursor: pointer; border: 2px solid transparent; transition: all .15s;
+    }
+    .filter-pill.all { background: #1a1f2e; color: #fff; border-color: #1a1f2e; }
+
+    /* FullCalendar overrides */
+    .fc { font-family: 'Sarabun', sans-serif !important; font-size: 13px; }
+    .fc-toolbar-title { font-size: 16px !important; font-weight: 700 !important; }
+    .fc-button {
+        background: #06C755 !important; border-color: #06C755 !important;
+        font-size: 12px !important; padding: 4px 10px !important;
+    }
+    .fc-button:hover  { background: #059944 !important; border-color: #059944 !important; }
+    .fc-button-active { background: #059944 !important; border-color: #059944 !important; }
+    .fc-event { border-radius: 6px !important; border: none !important; font-size: 12px !important; cursor: pointer; }
+    .fc-daygrid-event { padding: 2px 5px !important; }
+    .fc-event-title { font-weight: 600 !important; }
+    .fc-col-header-cell { background: #f8f9fa !important; }
+    .fc-day-today { background: #f0faf4 !important; }
+
+    /* Legend */
+    .legend-wrap { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #555; }
+    .legend-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+    /* Popup */
+    .event-popup {
+        position: fixed; z-index: 9999;
+        background: #fff; border-radius: 14px;
+        box-shadow: 0 8px 32px rgba(0,0,0,.18);
+        padding: 16px; min-width: 260px; max-width: 320px;
+        display: none;
+    }
+    .popup-close {
+        position: absolute; top: 10px; right: 12px;
+        font-size: 18px; cursor: pointer; color: #aaa;
+        background: none; border: none; line-height: 1;
+    }
+    .popup-room  { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 6px; }
+    .popup-group { font-size: 16px; font-weight: 700; color: #1a1a1a; margin-bottom: 6px; }
+    .popup-row   { font-size: 13px; color: #555; margin-bottom: 3px; display: flex; align-items: flex-start; gap: 6px; }
+    .popup-actions { display: flex; gap: 6px; margin-top: 12px; border-top: 1px solid #f0f0f0; padding-top: 10px; }
+</style>
+
+<!-- Room filter -->
+<div class="room-filter-wrap">
+    <button class="filter-pill all" onclick="filterRoom('')" id="pill-all">ทุกห้อง</button>
+    {% for room in rooms %}
+    <button class="filter-pill" id="pill-{{ room.booking_name }}"
+            onclick="filterRoom('{{ room.booking_name }}')"
+            data-room="{{ room.booking_name }}">
+        {{ room.name }}
+    </button>
+    {% endfor %}
+</div>
+
+<!-- Legend -->
+<div class="legend-wrap" id="legend"></div>
+
+<!-- Calendar -->
+<div class="table-card" style="padding:16px;">
+    <div id="calendar"></div>
+</div>
+
+<!-- Event popup -->
+<div class="event-popup" id="event-popup">
+    <button class="popup-close" onclick="closePopup()">×</button>
+    <div class="popup-room"  id="pop-room"></div>
+    <div class="popup-group" id="pop-group"></div>
+    <div class="popup-row"><span>🕐</span><span id="pop-time"></span></div>
+    <div class="popup-row"><span>👤</span><span id="pop-booker"></span></div>
+    <div class="popup-row" id="pop-fac-row"><span>🏛️</span><span id="pop-fac"></span></div>
+    <div class="popup-actions">
+        <a id="pop-logs-btn" href="#" class="btn btn-sm btn-outline-secondary" style="font-size:12px;">
+            <i class="bi bi-clock-history"></i> ดู Logs
+        </a>
+        <button id="pop-cancel-btn" class="btn btn-sm btn-outline-danger" style="font-size:12px;"
+                data-bs-toggle="modal" data-bs-target="#cancelModal">
+            ยกเลิก
+        </button>
+    </div>
+</div>
+
+<!-- Cancel Modal -->
+<div class="modal fade" id="cancelModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title">ยืนยันการยกเลิกการจอง</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="cancelForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <p style="font-size:14px;">ยืนยันยกเลิกการจอง "<strong id="cancelName"></strong>" ?</p>
+                    <div class="mb-3">
+                        <label class="form-label" style="font-size:13px;font-weight:600;">เหตุผล (ถ้ามี)</label>
+                        <textarea name="cancel_reason" class="form-control" rows="2" placeholder="เช่น ห้องปิดปรับปรุง"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-sm btn-danger">ยืนยันยกเลิก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+<script>
+    const EVENTS_URL   = "{{ events_url }}";
+    const ROOM_COLORS  = ['#06C755','#3b82f6','#f59e0b','#8b5cf6','#ef4444','#06b6d4'];
+    const ROOMS        = [{% for r in rooms %}{ name: "{{ r.name }}", key: "{{ r.booking_name }}" },{% endfor %}];
+
+    const roomColorMap = {};
+    ROOMS.forEach((r, i) => { roomColorMap[r.key] = ROOM_COLORS[i % ROOM_COLORS.length]; });
+
+    // Legend
+    const legendEl = document.getElementById('legend');
+    ROOMS.forEach(r => {
+        const color = roomColorMap[r.key];
+        const item  = document.createElement('div');
+        item.className = 'legend-item';
+        item.innerHTML = `<div class="legend-dot" style="background:${color};"></div>${r.name}`;
+        legendEl.appendChild(item);
+        const pill = document.getElementById('pill-' + r.key);
+        if (pill) {
+            pill.style.borderColor = color;
+            pill.style.color = color;
+        }
+    });
+
+    let currentRoom = '';
+    let calendar;
+    let currentBookingId = null;
+
+    function filterRoom(roomKey) {
+        currentRoom = roomKey;
+        document.getElementById('pill-all').style.background = roomKey === '' ? '#1a1f2e' : '#fff';
+        document.getElementById('pill-all').style.color      = roomKey === '' ? '#fff' : '#333';
+        document.querySelectorAll('.filter-pill[data-room]').forEach(pill => {
+            const key   = pill.dataset.room;
+            const color = roomColorMap[key];
+            if (key === roomKey) {
+                pill.style.background = color;
+                pill.style.color      = '#fff';
+            } else {
+                pill.style.background = '#fff';
+                pill.style.color      = color;
+            }
+        });
+        calendar.refetchEvents();
+    }
+
+    function closePopup() {
+        document.getElementById('event-popup').style.display = 'none';
+    }
+
+    document.addEventListener('click', e => {
+        const popup = document.getElementById('event-popup');
+        if (!popup.contains(e.target) && !e.target.closest('.fc-event')) closePopup();
+    });
+
+    // Cancel modal — set form action from current booking id
+    document.getElementById('cancelModal').addEventListener('show.bs.modal', () => {
+        if (currentBookingId) {
+            document.getElementById('cancelName').textContent =
+                document.getElementById('pop-group').textContent;
+            document.getElementById('cancelForm').action =
+                '/reserv/manage/bookings/' + currentBookingId + '/cancel/';
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+            locale: 'th',
+            initialView: 'dayGridMonth',
+            headerToolbar: {
+                left:   'prev,next today',
+                center: 'title',
+                right:  'dayGridMonth,timeGridWeek,listWeek'
+            },
+            buttonText: { today: 'วันนี้', month: 'เดือน', week: 'สัปดาห์', list: 'รายการ' },
+            height: 'auto',
+            events: function(info, success, failure) {
+                const params = new URLSearchParams({
+                    start: info.startStr.slice(0, 10),
+                    end:   info.endStr.slice(0, 10),
+                });
+                if (currentRoom) params.set('room', currentRoom);
+                fetch(EVENTS_URL + '?' + params).then(r => r.json()).then(success).catch(failure);
+            },
+            eventDidMount: function(info) {
+                const color = roomColorMap[info.event.extendedProps.room_key] || '#06C755';
+                info.el.style.backgroundColor = color;
+                info.el.style.borderColor     = color;
+                info.el.style.color           = '#fff';
+            },
+            eventClick: function(info) {
+                const p   = info.event.extendedProps;
+                const id  = info.event.id;
+                currentBookingId = id;
+
+                document.getElementById('pop-room').textContent   = p.room;
+                document.getElementById('pop-room').style.color   = info.event.backgroundColor;
+                document.getElementById('pop-group').textContent  = p.group_name;
+                document.getElementById('pop-time').textContent   = `${p.start_time} – ${p.end_time} น.`;
+                document.getElementById('pop-booker').textContent = p.booker || '—';
+
+                const facRow = document.getElementById('pop-fac-row');
+                if (p.faculty) {
+                    document.getElementById('pop-fac').textContent = p.faculty;
+                    facRow.style.display = 'flex';
+                } else {
+                    facRow.style.display = 'none';
+                }
+
+                document.getElementById('pop-logs-btn').href = '/reserv/manage/bookings/' + id + '/logs/';
+
+                const popup = document.getElementById('event-popup');
+                popup.style.display = 'block';
+                const rect = info.el.getBoundingClientRect();
+                let top  = rect.bottom + window.scrollY + 8;
+                let left = rect.left   + window.scrollX;
+                if (left + 330 > window.innerWidth) left = window.innerWidth - 340;
+                popup.style.top  = top  + 'px';
+                popup.style.left = left + 'px';
+            },
+        });
+        calendar.render();
+    });
+</script>
+{% endblock %}

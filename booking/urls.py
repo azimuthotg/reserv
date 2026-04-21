@@ -26,6 +26,7 @@ urlpatterns = [
     path('api/walai-card/',        views.walai_card,       name='walai_card'),
 
     # ── Staff Portal ──────────────────────────────────────────────────────────
+    path('manage/calendar/', manage_views.manage_calendar, name='manage_calendar'),
     path('manage/login/',   manage_views.manage_login,   name='manage_login'),
     path('manage/logout/',  manage_views.manage_logout,  name='manage_logout'),
     path('manage/',         manage_views.manage_dashboard, name='manage_dashboard'),
