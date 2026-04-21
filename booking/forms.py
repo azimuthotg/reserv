@@ -22,29 +22,47 @@ class HolidayDateForm(forms.ModelForm):
 class RoomForm(forms.ModelForm):
     class Meta:
         model  = Room
-        fields = ['name', 'booking_name', 'description', 'location',
-                  'capacity', 'open_time', 'close_time', 'is_active', 'ha_entity_id']
+        fields = [
+            'name', 'booking_name', 'description', 'location',
+            'capacity', 'min_attendees', 'max_booking_hours',
+            'open_time', 'close_time',
+            'eligible_users', 'facilities', 'rules',
+            'is_active', 'ha_entity_id',
+        ]
         widgets = {
-            'name':         forms.TextInput(attrs={'class': 'form-control'}),
-            'booking_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'เช่น netflix, mini'}),
-            'description':  forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
-            'location':     forms.TextInput(attrs={'class': 'form-control'}),
-            'capacity':     forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
-            'open_time':    forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
-            'close_time':   forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
-            'is_active':    forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'ha_entity_id': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Phase 2: IoT entity ID'}),
+            'name':              forms.TextInput(attrs={'class': 'form-control'}),
+            'booking_name':      forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'เช่น mini, canva'}),
+            'description':       forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'location':          forms.TextInput(attrs={'class': 'form-control'}),
+            'capacity':          forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
+            'min_attendees':     forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
+            'max_booking_hours': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
+            'open_time':         forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
+            'close_time':        forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
+            'eligible_users':    forms.Textarea(attrs={'class': 'form-control', 'rows': 2,
+                                     'placeholder': 'เช่น นักศึกษา บุคลากร และอาจารย์ มนพ.'}),
+            'facilities':        forms.Textarea(attrs={'class': 'form-control', 'rows': 4,
+                                     'placeholder': 'โปรเจกเตอร์\nระบบเสียง\nไมโครโฟน\nจอ LED'}),
+            'rules':             forms.Textarea(attrs={'class': 'form-control', 'rows': 4,
+                                     'placeholder': 'ห้ามนำอาหารและเครื่องดื่มเข้าห้อง\nต้องคืนกุญแจหลังใช้งาน'}),
+            'is_active':         forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'ha_entity_id':      forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Phase 2: IoT entity ID'}),
         }
         labels = {
-            'name':         'ชื่อห้อง',
-            'booking_name': 'Booking Key (URL param)',
-            'description':  'คำอธิบาย',
-            'location':     'ที่ตั้ง',
-            'capacity':     'ความจุ (คน)',
-            'open_time':    'เวลาเปิด',
-            'close_time':   'เวลาปิด',
-            'is_active':    'เปิดใช้งาน',
-            'ha_entity_id': 'Home Assistant Entity ID',
+            'name':              'ชื่อห้อง',
+            'booking_name':      'Booking Key (URL param)',
+            'description':       'คำอธิบาย',
+            'location':          'ที่ตั้ง',
+            'capacity':          'ความจุสูงสุด (คน)',
+            'min_attendees':     'จำนวนผู้ใช้ขั้นต่ำ (คน)',
+            'max_booking_hours': 'เวลาจองสูงสุดต่อครั้ง (ชั่วโมง)',
+            'open_time':         'เวลาเปิด',
+            'close_time':        'เวลาปิด',
+            'eligible_users':    'ผู้มีสิทธิ์ใช้บริการ',
+            'facilities':        'อุปกรณ์ / สิ่งอำนวยความสะดวก',
+            'rules':             'กฎระเบียบการใช้ห้อง',
+            'is_active':         'เปิดใช้งาน',
+            'ha_entity_id':      'Home Assistant Entity ID',
         }
 
 

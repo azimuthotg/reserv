@@ -4,33 +4,126 @@
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-7">
-        <div class="table-card p-4">
-            <form method="post">
-                {% csrf_token %}
+    <div class="col-lg-8">
+        <form method="post">
+            {% csrf_token %}
+
+            {# ── ข้อมูลทั่วไป ───────────────────────────────────────── #}
+            <div class="table-card p-4 mb-3">
+                <h6 style="font-weight:700;color:#1a1f2e;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #f0f0f0;">
+                    <i class="bi bi-info-circle me-2" style="color:#06C755;"></i>ข้อมูลทั่วไป
+                </h6>
                 <div class="row g-3">
-                    {% for field in form %}
-                    <div class="{% if field.name == 'description' or field.name == 'ha_entity_id' %}col-12{% elif field.name == 'is_active' %}col-12{% else %}col-md-6{% endif %}">
-                        {% if field.name == 'is_active' %}
-                        <div class="form-check mt-2">
-                            {{ field }}
-                            <label class="form-check-label" style="font-size:13px;font-weight:600;">{{ field.label }}</label>
-                        </div>
-                        {% else %}
-                        <label class="form-label" style="font-size:13px;font-weight:600;">{{ field.label }}</label>
-                        {{ field }}
-                        {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-                        {% endif %}
-                        {% if field.errors %}<div class="text-danger" style="font-size:12px;">{{ field.errors.0 }}</div>{% endif %}
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold" style="font-size:13px;">{{ form.name.label }}</label>
+                        {{ form.name }}
+                        {% if form.name.errors %}<div class="text-danger" style="font-size:12px;">{{ form.name.errors.0 }}</div>{% endif %}
                     </div>
-                    {% endfor %}
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold" style="font-size:13px;">{{ form.booking_name.label }}</label>
+                        {{ form.booking_name }}
+                        {% if form.booking_name.help_text %}<div class="form-text">{{ form.booking_name.help_text }}</div>{% endif %}
+                        {% if form.booking_name.errors %}<div class="text-danger" style="font-size:12px;">{{ form.booking_name.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold" style="font-size:13px;">{{ form.description.label }}</label>
+                        {{ form.description }}
+                        {% if form.description.errors %}<div class="text-danger" style="font-size:12px;">{{ form.description.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold" style="font-size:13px;">{{ form.location.label }}</label>
+                        {{ form.location }}
+                        {% if form.location.errors %}<div class="text-danger" style="font-size:12px;">{{ form.location.errors.0 }}</div>{% endif %}
+                    </div>
                 </div>
-                <div class="d-flex gap-2 mt-4">
-                    <button type="submit" class="btn btn-green">บันทึก</button>
-                    <a href="{% url 'manage_rooms' %}" class="btn btn-outline-secondary">ยกเลิก</a>
+            </div>
+
+            {# ── กำหนดการใช้งาน ─────────────────────────────────────── #}
+            <div class="table-card p-4 mb-3">
+                <h6 style="font-weight:700;color:#1a1f2e;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #f0f0f0;">
+                    <i class="bi bi-clock me-2" style="color:#06C755;"></i>กำหนดการใช้งาน
+                </h6>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold" style="font-size:13px;">{{ form.open_time.label }}</label>
+                        {{ form.open_time }}
+                        {% if form.open_time.errors %}<div class="text-danger" style="font-size:12px;">{{ form.open_time.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold" style="font-size:13px;">{{ form.close_time.label }}</label>
+                        {{ form.close_time }}
+                        {% if form.close_time.errors %}<div class="text-danger" style="font-size:12px;">{{ form.close_time.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold" style="font-size:13px;">{{ form.max_booking_hours.label }}</label>
+                        {{ form.max_booking_hours }}
+                        {% if form.max_booking_hours.errors %}<div class="text-danger" style="font-size:12px;">{{ form.max_booking_hours.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold" style="font-size:13px;">{{ form.capacity.label }}</label>
+                        {{ form.capacity }}
+                        {% if form.capacity.errors %}<div class="text-danger" style="font-size:12px;">{{ form.capacity.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold" style="font-size:13px;">{{ form.min_attendees.label }}</label>
+                        {{ form.min_attendees }}
+                        {% if form.min_attendees.errors %}<div class="text-danger" style="font-size:12px;">{{ form.min_attendees.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold" style="font-size:13px;">{{ form.eligible_users.label }}</label>
+                        {{ form.eligible_users }}
+                        {% if form.eligible_users.errors %}<div class="text-danger" style="font-size:12px;">{{ form.eligible_users.errors.0 }}</div>{% endif %}
+                    </div>
                 </div>
-            </form>
-        </div>
+            </div>
+
+            {# ── รายละเอียดบริการ ────────────────────────────────────── #}
+            <div class="table-card p-4 mb-3">
+                <h6 style="font-weight:700;color:#1a1f2e;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #f0f0f0;">
+                    <i class="bi bi-list-ul me-2" style="color:#06C755;"></i>รายละเอียดบริการ
+                </h6>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold" style="font-size:13px;">{{ form.facilities.label }}</label>
+                        <div class="form-text mb-1">แต่ละรายการขึ้นบรรทัดใหม่</div>
+                        {{ form.facilities }}
+                        {% if form.facilities.errors %}<div class="text-danger" style="font-size:12px;">{{ form.facilities.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold" style="font-size:13px;">{{ form.rules.label }}</label>
+                        <div class="form-text mb-1">แต่ละข้อขึ้นบรรทัดใหม่</div>
+                        {{ form.rules }}
+                        {% if form.rules.errors %}<div class="text-danger" style="font-size:12px;">{{ form.rules.errors.0 }}</div>{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            {# ── การตั้งค่า ──────────────────────────────────────────── #}
+            <div class="table-card p-4 mb-4">
+                <h6 style="font-weight:700;color:#1a1f2e;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #f0f0f0;">
+                    <i class="bi bi-gear me-2" style="color:#06C755;"></i>การตั้งค่า
+                </h6>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold" style="font-size:13px;">{{ form.ha_entity_id.label }}</label>
+                        {{ form.ha_entity_id }}
+                        {% if form.ha_entity_id.help_text %}<div class="form-text">{{ form.ha_entity_id.help_text }}</div>{% endif %}
+                        {% if form.ha_entity_id.errors %}<div class="text-danger" style="font-size:12px;">{{ form.ha_entity_id.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check mt-1">
+                            {{ form.is_active }}
+                            <label class="form-check-label fw-semibold" style="font-size:13px;">{{ form.is_active.label }}</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-green">บันทึก</button>
+                <a href="{% url 'manage_rooms' %}" class="btn btn-outline-secondary">ยกเลิก</a>
+            </div>
+        </form>
     </div>
 </div>
 {% endblock %}

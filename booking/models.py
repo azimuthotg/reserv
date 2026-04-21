@@ -7,13 +7,18 @@ class Room(models.Model):
         max_length=50, unique=True,
         help_text='key ที่ใช้ใน URL เช่น netflix, mini, canva, chat-gpt, meeting_f1'
     )
-    description  = models.TextField(blank=True)
-    location     = models.CharField(max_length=200)
-    capacity     = models.IntegerField()
-    open_time    = models.TimeField()
-    close_time   = models.TimeField()
-    is_active    = models.BooleanField(default=True)
-    ha_entity_id = models.CharField(max_length=200, blank=True)
+    description      = models.TextField(blank=True)
+    location         = models.CharField(max_length=200)
+    capacity         = models.IntegerField()
+    min_attendees    = models.IntegerField(default=1, help_text='จำนวนผู้ใช้ขั้นต่ำ')
+    max_booking_hours = models.IntegerField(default=2, help_text='เวลาจองสูงสุดต่อครั้ง (ชั่วโมง)')
+    eligible_users   = models.TextField(blank=True, help_text='ผู้มีสิทธิ์ใช้บริการ เช่น นักศึกษา, บุคลากร')
+    facilities       = models.TextField(blank=True, help_text='อุปกรณ์/สิ่งอำนวยความสะดวก (แต่ละรายการขึ้นบรรทัดใหม่)')
+    rules            = models.TextField(blank=True, help_text='กฎระเบียบการใช้ห้อง (แต่ละข้อขึ้นบรรทัดใหม่)')
+    open_time        = models.TimeField()
+    close_time       = models.TimeField()
+    is_active        = models.BooleanField(default=True)
+    ha_entity_id     = models.CharField(max_length=200, blank=True)
 
     class Meta:
         ordering = ['name']
