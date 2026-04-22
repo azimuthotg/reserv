@@ -183,8 +183,8 @@ def _get_or_refresh_line_user(line_user_id, display_name, user_ldap, user_type):
 
     lu = LineUser.objects.filter(line_user_id=line_user_id).first()
 
-    # fast path: cache ยังใหม่อยู่
-    if (lu and lu.full_name and
+    # fast path: cache ยังใหม่อยู่ และมีข้อมูล faculty แล้ว
+    if (lu and lu.full_name and lu.faculty and
             lu.profile_updated_at and lu.profile_updated_at > cache_cutoff):
         return lu
 

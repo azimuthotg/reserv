@@ -445,12 +445,10 @@
       document.getElementById('card-type').textContent = userType;
 
       const orgEl = document.getElementById('card-org');
-      if (isStudent && userData.faculty) {
+      if (userData.faculty) {
         orgEl.textContent = userData.faculty;
-      } else if (!isStudent && userData.department) {
+      } else if (userData.department) {
         orgEl.textContent = userData.department;
-      } else if (userData.faculty) {
-        orgEl.textContent = userData.faculty;
       }
 
       showCard();
