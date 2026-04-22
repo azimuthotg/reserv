@@ -60,12 +60,11 @@ class Command(BaseCommand):
 
             # ── แจ้งก่อนเริ่ม 15 นาที ────────────────────────────────────────
             if not b.notified_15min:
-                target = (
-                    timezone.make_aware(
-                        timezone.datetime.combine(today, b.start_time)
-                    ) - timedelta(minutes=15)
+                start_dt = timezone.make_aware(
+                    timezone.datetime.combine(today, b.start_time)
                 )
-                if target - window <= now <= target + window:
+                target = start_dt - timedelta(minutes=15)
+                if target - window <= now < start_dt:
                     msg = (
                         f'⏰ อีก 15 นาทีถึงเวลาใช้พื้นที่\n'
                         f'📍 {b.room.name}\n'
