@@ -39,6 +39,9 @@
                     </td>
                     <td style="white-space:nowrap;">
                         <a href="{% url 'manage_room_edit' r.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:12px;">แก้ไข</a>
+                        <a href="{% url 'manage_room_devices' r.pk %}" class="btn btn-sm btn-outline-primary" style="font-size:12px;" title="จัดการอุปกรณ์ IoT">
+                            <i class="bi bi-plug"></i> อุปกรณ์
+                        </a>
                         <form method="post" action="{% url 'manage_room_toggle' r.pk %}" style="display:inline;">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-sm {% if r.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}" style="font-size:12px;">

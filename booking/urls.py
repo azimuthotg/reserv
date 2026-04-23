@@ -59,7 +59,9 @@ urlpatterns = [
     path('manage/rooms/',                   manage_views.manage_rooms,       name='manage_rooms'),
     path('manage/rooms/add/',               manage_views.manage_room_add,    name='manage_room_add'),
     path('manage/rooms/<int:pk>/edit/',     manage_views.manage_room_edit,   name='manage_room_edit'),
-    path('manage/rooms/<int:pk>/toggle/',   manage_views.manage_room_toggle, name='manage_room_toggle'),
+    path('manage/rooms/<int:pk>/toggle/',   manage_views.manage_room_toggle,        name='manage_room_toggle'),
+    path('manage/rooms/<int:pk>/devices/',  manage_views.manage_room_devices,       name='manage_room_devices'),
+    path('manage/devices/<int:pk>/delete/', manage_views.manage_room_device_delete, name='manage_room_device_delete'),
 
     # Staff (admin only)
     path('manage/staff/',                   manage_views.manage_staff_list,  name='manage_staff_list'),

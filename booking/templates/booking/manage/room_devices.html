@@ -1,0 +1,81 @@
+{% extends "booking/manage/base.html" %}
+{% block title %}อุปกรณ์ — {{ room.name }}{% endblock %}
+{% block page_title %}อุปกรณ์ IoT — {{ room.name }}{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <a href="{% url 'manage_rooms' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> กลับรายการห้อง
+    </a>
+</div>
+
+<div class="row g-3">
+    <!-- รายการอุปกรณ์ -->
+    <div class="col-lg-7">
+        <div class="table-card">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0" style="font-size:13px;">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:40px;">ลำดับ</th>
+                            <th>ชื่ออุปกรณ์</th>
+                            <th>Entity ID</th>
+                            <th style="width:60px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in devices %}
+                        <tr>
+                            <td class="text-muted">{{ d.order }}</td>
+                            <td><strong>{{ d.device_name }}</strong></td>
+                            <td><code style="font-size:11px;">{{ d.entity_id }}</code></td>
+                            <td>
+                                <form method="post" action="{% url 'manage_room_device_delete' d.pk %}"
+                                      onsubmit="return confirm('ลบ {{ d.device_name }} ?')">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" style="font-size:11px;">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-4">ยังไม่มีอุปกรณ์</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ฟอร์มเพิ่มอุปกรณ์ -->
+    <div class="col-lg-5">
+        <div class="table-card p-3">
+            <h6 class="fw-bold mb-3"><i class="bi bi-plus-circle text-success"></i> เพิ่มอุปกรณ์</h6>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-2">
+                    <label class="form-label" style="font-size:13px;">ชื่ออุปกรณ์</label>
+                    <input type="text" name="device_name" class="form-control form-control-sm"
+                           placeholder="เช่น ประตู, โปรเจคเตอร์" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="font-size:13px;">Entity ID</label>
+                    <input type="text" name="entity_id" class="form-control form-control-sm"
+                           placeholder="switch.sonoff_xxxxxxxx" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" style="font-size:13px;">ลำดับ</label>
+                    <input type="number" name="order" class="form-control form-control-sm"
+                           value="{{ devices|length }}" min="0">
+                </div>
+                <button type="submit" class="btn btn-sm btn-green w-100">
+                    <i class="bi bi-plus-lg"></i> เพิ่มอุปกรณ์
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

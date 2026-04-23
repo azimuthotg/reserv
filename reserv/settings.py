@@ -100,6 +100,9 @@ NPU_API_BASE = 'https://api.npu.ac.th'
 
 # ── Phase 2: IoT ──────────────────────────────────────────────────────────────
 HA_ACCESS_SECRET = os.getenv('HA_ACCESS_SECRET', '')
+HA_IP            = os.getenv('HA_IP', '')
+HA_PORT          = os.getenv('HA_PORT', '8123')
+HA_TOKEN         = os.getenv('HA_TOKEN', '')
 
 # ── Session ───────────────────────────────────────────────────────────────────
 SESSION_ENGINE   = 'django.contrib.sessions.backends.db'

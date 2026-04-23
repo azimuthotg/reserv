@@ -28,6 +28,19 @@ class Room(models.Model):
         return f'{self.name} ({self.booking_name})'
 
 
+class RoomDevice(models.Model):
+    room        = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='devices')
+    device_name = models.CharField(max_length=100, verbose_name='ชื่ออุปกรณ์')
+    entity_id   = models.CharField(max_length=200, verbose_name='Entity ID (Home Assistant)')
+    order       = models.PositiveSmallIntegerField(default=0, verbose_name='ลำดับ')
+
+    class Meta:
+        ordering = ['order', 'id']
+
+    def __str__(self):
+        return f'{self.room.name} — {self.device_name}'
+
+
 class LineUser(models.Model):
     line_user_id     = models.CharField(max_length=100, unique=True)
     display_name     = models.CharField(max_length=200)          # ชื่อ LINE

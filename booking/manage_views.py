@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .forms import HolidayDateForm, RoomForm, StaffAddForm, StaffEditForm
-from .models import Booking, BookingLog, HolidayDate, LineUser, Room
+from .models import Booking, BookingLog, HolidayDate, LineUser, Room, RoomDevice
 from .views import _notify_booking_cancelled, _push_text
 
 
@@ -300,6 +300,36 @@ def manage_room_toggle(request, pk):
     room.is_active = not room.is_active
     room.save()
     return redirect('manage_rooms')
+
+
+# ── Room Devices (admin only) ──────────────────────────────────────────────────
+
+@admin_required
+def manage_room_devices(request, pk):
+    room = get_object_or_404(Room, pk=pk)
+    if request.method == 'POST':
+        device_name = request.POST.get('device_name', '').strip()
+        entity_id   = request.POST.get('entity_id', '').strip()
+        order       = request.POST.get('order', '0').strip()
+        if device_name and entity_id:
+            RoomDevice.objects.create(
+                room=room,
+                device_name=device_name,
+                entity_id=entity_id,
+                order=int(order) if order.isdigit() else 0,
+            )
+        return redirect('manage_room_devices', pk=pk)
+    devices = room.devices.all()
+    return render(request, 'booking/manage/room_devices.html', {'room': room, 'devices': devices})
+
+
+@admin_required
+@require_POST
+def manage_room_device_delete(request, pk):
+    device = get_object_or_404(RoomDevice, pk=pk)
+    room_pk = device.room_id
+    device.delete()
+    return redirect('manage_room_devices', pk=room_pk)
 
 
 # ── Staff (admin only) ─────────────────────────────────────────────────────────
