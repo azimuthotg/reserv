@@ -27,6 +27,8 @@ urlpatterns = [
     path('api/my-bookings/',       views.my_bookings,      name='my_bookings'),
     path('api/cancel-booking/',    views.cancel_booking,   name='cancel_booking'),
     path('api/walai-card/',        views.walai_card,       name='walai_card'),
+    path('api/room-status/',       views.room_status,      name='room_status'),
+    path('api/device-toggle/',     views.device_toggle,    name='device_toggle'),
 
     # ── Staff Portal ──────────────────────────────────────────────────────────
     path('manage/calendar/', manage_views.manage_calendar, name='manage_calendar'),

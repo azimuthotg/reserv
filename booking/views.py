@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from .models import Booking, BookingLog, HolidayDate, LineUser, Room
+from .models import Booking, BookingLog, HolidayDate, LineUser, Room, RoomDevice
 
 NPU_API_BASE       = 'https://api.npu.ac.th'
 PROFILE_CACHE_DAYS = 30
@@ -238,6 +238,8 @@ def landing_page(request):
         'register_url':    request.build_absolute_uri(reverse('register')),
         'my_bookings_url':    request.build_absolute_uri(reverse('my_bookings')),
         'cancel_booking_url': request.build_absolute_uri(reverse('cancel_booking')),
+        'room_status_url':    request.build_absolute_uri(reverse('room_status')),
+        'device_toggle_url':  request.build_absolute_uri(reverse('device_toggle')),
     })
 
 
@@ -681,6 +683,127 @@ def walai_card(request):
         pass
 
     return JsonResponse({'is_member': False, 'error': 'ไม่สามารถตรวจสอบ Walai ได้'})
+
+
+# ── Home Assistant helpers ─────────────────────────────────────────────────────
+
+def _ha_url(path):
+    return f'http://{settings.HA_IP}:{settings.HA_PORT}{path}'
+
+def _ha_headers():
+    return {'Authorization': f'Bearer {settings.HA_TOKEN}', 'Content-Type': 'application/json'}
+
+def _ha_get_state(entity_id):
+    """คืน 'on'/'off'/None"""
+    try:
+        r = requests.get(_ha_url(f'/api/states/{entity_id}'), headers=_ha_headers(), timeout=5)
+        if r.status_code == 200:
+            return r.json().get('state', 'unknown')
+    except requests.RequestException:
+        pass
+    return None
+
+def _ha_call_service(service, entity_id):
+    """service: 'turn_on' | 'turn_off' | 'toggle'"""
+    try:
+        r = requests.post(
+            _ha_url(f'/api/services/switch/{service}'),
+            headers=_ha_headers(),
+            json={'entity_id': entity_id},
+            timeout=5,
+        )
+        return r.status_code in (200, 201)
+    except requests.RequestException:
+        return False
+
+def _get_active_booking(user_id, room_key):
+    """คืน Booking ที่กำลัง active อยู่ หรือ None"""
+    now   = timezone.localtime(timezone.now())
+    today = now.date()
+    cur   = now.time()
+    return (
+        Booking.objects
+        .select_related('room')
+        .filter(
+            line_user__line_user_id=user_id,
+            room__booking_name=room_key,
+            booking_date=today,
+            status='confirmed',
+            start_time__lte=cur,
+            end_time__gt=cur,
+        )
+        .first()
+    )
+
+
+@csrf_exempt
+@require_http_methods(['GET'])
+def room_status(request):
+    """
+    GET /api/room-status/?userId=X&room_key=Y
+    → ตรวจสิทธิ์ → คืนรายการอุปกรณ์ + สถานะปัจจุบันจาก HA
+    """
+    user_id  = request.GET.get('userId', '').strip()
+    room_key = request.GET.get('room_key', '').strip()
+    if not user_id or not room_key:
+        return JsonResponse({'error': 'userId and room_key required'}, status=400)
+
+    booking = _get_active_booking(user_id, room_key)
+    if not booking:
+        return JsonResponse({'access': False, 'error': 'ไม่มีสิทธิ์เข้าห้องในขณะนี้'})
+
+    devices = RoomDevice.objects.filter(room=booking.room)
+    result  = []
+    for d in devices:
+        state = _ha_get_state(d.entity_id)
+        result.append({
+            'id':          d.pk,
+            'device_name': d.device_name,
+            'entity_id':   d.entity_id,
+            'state':       state or 'unknown',
+        })
+
+    now = timezone.localtime(timezone.now())
+    return JsonResponse({
+        'access':    True,
+        'room_name': booking.room.name,
+        'end_time':  booking.end_time.strftime('%H:%M'),
+        'devices':   result,
+    })
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def device_toggle(request):
+    """
+    POST { userId, room_key, entity_id }
+    → ตรวจสิทธิ์ → toggle อุปกรณ์ผ่าน HA → คืนสถานะใหม่
+    """
+    try:
+        body      = json.loads(request.body)
+        user_id   = body.get('userId', '').strip()
+        room_key  = body.get('room_key', '').strip()
+        entity_id = body.get('entity_id', '').strip()
+    except (json.JSONDecodeError, AttributeError):
+        return JsonResponse({'error': 'invalid request'}, status=400)
+
+    if not all([user_id, room_key, entity_id]):
+        return JsonResponse({'error': 'userId, room_key, entity_id required'}, status=400)
+
+    booking = _get_active_booking(user_id, room_key)
+    if not booking:
+        return JsonResponse({'success': False, 'error': 'ไม่มีสิทธิ์ควบคุมอุปกรณ์'})
+
+    # ตรวจว่า entity_id นี้เป็นของห้องนี้จริง
+    if not RoomDevice.objects.filter(room=booking.room, entity_id=entity_id).exists():
+        return JsonResponse({'success': False, 'error': 'ไม่พบอุปกรณ์'})
+
+    ok = _ha_call_service('toggle', entity_id)
+    if not ok:
+        return JsonResponse({'success': False, 'error': 'ไม่สามารถติดต่อ Home Assistant ได้'})
+
+    new_state = _ha_get_state(entity_id)
+    return JsonResponse({'success': True, 'state': new_state or 'unknown'})
 
 
 def calendar_page(request):

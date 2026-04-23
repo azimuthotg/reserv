@@ -164,6 +164,42 @@
             background: #fff; border-radius: 12px; padding: 14px 16px;
             text-align: center; font-size: 13px; color: #bbb; margin-bottom: 10px;
         }
+        /* ── Active room section ── */
+        .active-room-card {
+            background: #fff; border-radius: 14px;
+            box-shadow: 0 2px 10px rgba(6,199,85,.15);
+            border: 2px solid #06C755;
+            margin-bottom: 16px; overflow: hidden;
+        }
+        .active-room-header {
+            background: linear-gradient(135deg,#06C755,#00a844);
+            padding: 12px 16px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .active-room-header .arc-title { font-size:14px; font-weight:700; color:#fff; }
+        .active-room-header .arc-time  { font-size:12px; color:rgba(255,255,255,.85); }
+        .device-list { padding: 10px 14px 14px; }
+        .device-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 9px 0; border-bottom: 1px solid #f3f4f6;
+        }
+        .device-row:last-child { border-bottom: none; }
+        .device-name { font-size:13px; font-weight:600; color:#333; }
+        .device-state { font-size:11px; color:#aaa; margin-top:2px; }
+        .toggle-btn {
+            position: relative; width: 44px; height: 24px;
+            background: #ddd; border-radius: 12px; border: none;
+            cursor: pointer; transition: background .2s; flex-shrink: 0;
+        }
+        .toggle-btn.on  { background: #06C755; }
+        .toggle-btn::after {
+            content:''; position:absolute; top:3px; left:3px;
+            width:18px; height:18px; border-radius:50%; background:#fff;
+            transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2);
+        }
+        .toggle-btn.on::after { transform: translateX(20px); }
+        .toggle-btn:disabled { opacity:.5; cursor:not-allowed; }
+
         /* Toast */
         #toast {
             position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
@@ -232,6 +268,20 @@
             <a href="calendar/" class="btn-cal-go">ดูปฏิทิน →</a>
         </div>
 
+        <!-- Active Room Control -->
+        <div id="active-room-section" style="display:none;">
+            <div class="section-hd">กำลังใช้งาน</div>
+            <div id="active-room-card" class="active-room-card">
+                <div class="active-room-header">
+                    <span class="arc-title" id="arc-room-name">—</span>
+                    <span class="arc-time" id="arc-time">หมดเวลา —</span>
+                </div>
+                <div class="device-list" id="device-list">
+                    <div style="text-align:center;padding:16px;color:#aaa;font-size:13px;">กำลังโหลด…</div>
+                </div>
+            </div>
+        </div>
+
         <!-- My Bookings -->
         <div id="my-bookings-section" style="display:none;">
             <div class="section-hd">การจองของฉัน</div>
@@ -251,9 +301,13 @@
     const REGISTER_URL     = "{{ register_url }}";
     const MY_BOOKING_URL   = "{{ my_bookings_url }}";
     const CANCEL_URL       = "{{ cancel_booking_url }}";
-    const ROOM_DETAIL_BASE = "room/";
-    const ROOMS            = {{ rooms_json|safe }};
-    let currentUserId    = null;
+    const ROOM_DETAIL_BASE   = "room/";
+    const ROOMS              = {{ rooms_json|safe }};
+    const ROOM_STATUS_URL    = "{{ room_status_url }}";
+    const DEVICE_TOGGLE_URL  = "{{ device_toggle_url }}";
+    let currentUserId        = null;
+    let activeRoomKey        = null;
+    let pollTimer            = null;
 
     const ACCENT_COLORS = ['#06C755','#3b82f6','#f59e0b','#8b5cf6','#ef4444','#06b6d4'];
 
@@ -424,6 +478,115 @@
         return data;
     }
 
+    // ── Active Room Control ────────────────────────────────────────────────────
+
+    async function loadRoomStatus(roomKey) {
+        if (!currentUserId || !roomKey) return;
+        try {
+            const resp = await fetch(
+                `${ROOM_STATUS_URL}?userId=${encodeURIComponent(currentUserId)}&room_key=${encodeURIComponent(roomKey)}`
+            );
+            const data = await resp.json();
+            if (!data.access) {
+                hideActiveRoom();
+                return;
+            }
+            document.getElementById('arc-room-name').textContent = data.room_name;
+            document.getElementById('arc-time').textContent = `หมดเวลา ${data.end_time} น.`;
+            renderDevices(data.devices, roomKey);
+            document.getElementById('active-room-section').style.display = 'block';
+        } catch(e) { /* silent */ }
+    }
+
+    function renderDevices(devices, roomKey) {
+        const list = document.getElementById('device-list');
+        if (!devices.length) {
+            list.innerHTML = '<div style="text-align:center;padding:12px;color:#aaa;font-size:13px;">ไม่มีอุปกรณ์</div>';
+            return;
+        }
+        list.innerHTML = devices.map(d => `
+            <div class="device-row" id="dev-${d.id}">
+                <div>
+                    <div class="device-name">${d.device_name}</div>
+                    <div class="device-state" id="state-${d.id}">${d.state === 'on' ? '🟢 เปิดอยู่' : d.state === 'off' ? '⚫ ปิดอยู่' : '❓ ไม่ทราบสถานะ'}</div>
+                </div>
+                <button class="toggle-btn ${d.state === 'on' ? 'on' : ''}"
+                        id="btn-${d.id}"
+                        onclick="toggleDevice('${d.entity_id}', ${d.id}, '${roomKey}')">
+                </button>
+            </div>
+        `).join('');
+    }
+
+    async function toggleDevice(entityId, deviceId, roomKey) {
+        const btn = document.getElementById(`btn-${deviceId}`);
+        if (!btn) return;
+        btn.disabled = true;
+        try {
+            const resp = await fetch(DEVICE_TOGGLE_URL, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ userId: currentUserId, room_key: roomKey, entity_id: entityId }),
+            });
+            const data = await resp.json();
+            if (data.success) {
+                updateDeviceUI(deviceId, data.state);
+            } else {
+                showToast(data.error || 'เกิดข้อผิดพลาด', true);
+            }
+        } catch(e) {
+            showToast('ไม่สามารถติดต่อระบบได้', true);
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    function updateDeviceUI(deviceId, state) {
+        const btn       = document.getElementById(`btn-${deviceId}`);
+        const stateEl   = document.getElementById(`state-${deviceId}`);
+        if (!btn || !stateEl) return;
+        if (state === 'on') {
+            btn.classList.add('on');
+            stateEl.textContent = '🟢 เปิดอยู่';
+        } else {
+            btn.classList.remove('on');
+            stateEl.textContent = state === 'off' ? '⚫ ปิดอยู่' : '❓ ไม่ทราบสถานะ';
+        }
+    }
+
+    function hideActiveRoom() {
+        document.getElementById('active-room-section').style.display = 'none';
+        if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    }
+
+    function startPolling(roomKey) {
+        if (pollTimer) clearInterval(pollTimer);
+        pollTimer = setInterval(() => loadRoomStatus(roomKey), 10000);
+    }
+
+    async function checkActiveBooking(userId) {
+        try {
+            const resp = await fetch(`${MY_BOOKING_URL}?userId=${encodeURIComponent(userId)}`);
+            const data = await resp.json();
+            const now  = new Date();
+            const todayStr = now.toISOString().slice(0, 10);
+            const curMin   = now.getHours() * 60 + now.getMinutes();
+
+            const active = (data.bookings || []).find(b => {
+                if (b.status !== 'confirmed' || b.booking_date !== todayStr) return false;
+                const [sh, sm] = b.start_time.split(':').map(Number);
+                const [eh, em] = b.end_time.split(':').map(Number);
+                return curMin >= sh * 60 + sm && curMin < eh * 60 + em;
+            });
+
+            if (active) {
+                activeRoomKey = active.room_key;
+                await loadRoomStatus(activeRoomKey);
+                startPolling(activeRoomKey);
+            }
+        } catch(e) { /* silent */ }
+    }
+
     liff.init({ liffId: LIFF_ID })
         .then(async () => {
             if (!liff.isLoggedIn()) {
@@ -444,6 +607,7 @@
             }
             showContent(data, profile);
             loadMyBookings(profile.userId);
+            checkActiveBooking(profile.userId);
         })
         .catch(err => {
             const msg = err.message && err.message.includes('network')
