@@ -698,14 +698,14 @@ def _ha_headers():
     return {'Authorization': f'Bearer {settings.HA_TOKEN}', 'Content-Type': 'application/json'}
 
 def _ha_get_state(entity_id):
-    """คืน 'on'/'off'/None"""
+    """คืน (state, error) — state: 'on'/'off'/'unknown'/None, error: str|None"""
     try:
         r = requests.get(_ha_url(f'/api/states/{entity_id}'), headers=_ha_headers(), timeout=5)
         if r.status_code == 200:
-            return r.json().get('state', 'unknown')
-    except requests.RequestException:
-        pass
-    return None
+            return r.json().get('state', 'unknown'), None
+        return None, f'HA HTTP {r.status_code}'
+    except requests.RequestException as e:
+        return None, str(e)
 
 def _ha_call_service(service, entity_id):
     """service: 'turn_on' | 'turn_off' | 'toggle'"""
@@ -758,8 +758,11 @@ def room_status(request):
 
     devices = RoomDevice.objects.filter(room=booking.room)
     result  = []
+    ha_errors = []
     for d in devices:
-        state = _ha_get_state(d.entity_id)
+        state, err = _ha_get_state(d.entity_id)
+        if err:
+            ha_errors.append(f'{d.entity_id}: {err}')
         result.append({
             'id':          d.pk,
             'device_name': d.device_name,
@@ -767,12 +770,13 @@ def room_status(request):
             'state':       state or 'unknown',
         })
 
-    now = timezone.localtime(timezone.now())
     return JsonResponse({
         'access':    True,
         'room_name': booking.room.name,
         'end_time':  booking.end_time.strftime('%H:%M'),
         'devices':   result,
+        'ha_url':    _ha_url(''),
+        'ha_errors': ha_errors,
     })
 
 
