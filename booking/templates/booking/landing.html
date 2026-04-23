@@ -337,6 +337,14 @@
             <div class="sheet-value" id="sh-id">—</div>
         </div>
         <div class="sheet-row">
+            <span class="sheet-label">ผู้จอง</span>
+            <div class="sheet-value" id="sh-fullname">—</div>
+        </div>
+        <div class="sheet-row">
+            <span class="sheet-label">คณะ/หน่วยงาน</span>
+            <div class="sheet-value" id="sh-faculty">—</div>
+        </div>
+        <div class="sheet-row">
             <span class="sheet-label">ห้อง</span>
             <div class="sheet-value">
                 <div id="sh-room">—</div>
@@ -355,9 +363,9 @@
             <span class="sheet-label">ชื่อกลุ่ม</span>
             <div class="sheet-value" id="sh-group">—</div>
         </div>
-        <div class="sheet-row" id="sh-faculty-row">
-            <span class="sheet-label">คณะ/หน่วยงาน</span>
-            <div class="sheet-value" id="sh-faculty">—</div>
+        <div class="sheet-row" id="sh-attendees-row" style="display:none;">
+            <span class="sheet-label">ผู้เข้าร่วม</span>
+            <div class="sheet-value" id="sh-attendees" style="white-space:pre-line;text-align:right;">—</div>
         </div>
     </div>
 </div>
@@ -556,15 +564,23 @@
     // ── Bottom Sheet ──────────────────────────────────────────────────────────
 
     function openSheet(b) {
-        const d        = b.booking_date.split('-');
-        const dateStr  = `${parseInt(d[2])} ${TH_MONTHS[parseInt(d[1])]} ${parseInt(d[0])+543}`;
+        const d       = b.booking_date.split('-');
+        const dateStr = `${parseInt(d[2])} ${TH_MONTHS[parseInt(d[1])]} ${parseInt(d[0])+543}`;
         document.getElementById('sh-id').textContent       = `#${b.id}`;
+        document.getElementById('sh-fullname').textContent = b.full_name || '—';
+        document.getElementById('sh-faculty').textContent  = b.faculty   || '—';
         document.getElementById('sh-room').textContent     = b.room_name;
         document.getElementById('sh-location').textContent = b.room_location || '';
         document.getElementById('sh-date').textContent     = dateStr;
         document.getElementById('sh-time').textContent     = `${b.start_time} – ${b.end_time} น.`;
         document.getElementById('sh-group').textContent    = b.group_name;
-        document.getElementById('sh-faculty').textContent  = b.faculty || '—';
+        const attRow = document.getElementById('sh-attendees-row');
+        if (b.attendees && b.attendees.trim()) {
+            document.getElementById('sh-attendees').textContent = b.attendees.trim();
+            attRow.style.display = 'flex';
+        } else {
+            attRow.style.display = 'none';
+        }
         document.getElementById('sheet-overlay').classList.add('open');
         document.getElementById('booking-sheet').classList.add('open');
         document.body.style.overflow = 'hidden';
