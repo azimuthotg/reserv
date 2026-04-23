@@ -209,6 +209,39 @@
         }
         #toast.show { opacity: 1; }
 
+        /* ── Bottom sheet ── */
+        .sheet-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,.45);
+            z-index: 1000; opacity: 0; pointer-events: none; transition: opacity .25s;
+        }
+        .sheet-overlay.open { opacity: 1; pointer-events: auto; }
+        .bottom-sheet {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: #fff; border-radius: 20px 20px 0 0;
+            z-index: 1001; padding: 0 0 env(safe-area-inset-bottom);
+            transform: translateY(100%); transition: transform .3s cubic-bezier(.4,0,.2,1);
+            max-height: 85vh; overflow-y: auto;
+        }
+        .bottom-sheet.open { transform: translateY(0); }
+        .sheet-handle {
+            width: 36px; height: 4px; background: #ddd; border-radius: 2px;
+            margin: 12px auto 0;
+        }
+        .sheet-header {
+            padding: 12px 20px 14px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 15px; font-weight: 700; color: #1a1a1a;
+        }
+        .sheet-body { padding: 14px 20px 24px; }
+        .sheet-row {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            padding: 10px 0; border-bottom: 1px solid #f5f5f5; gap: 12px;
+        }
+        .sheet-row:last-child { border-bottom: none; }
+        .sheet-label { font-size: 12px; color: #999; flex-shrink: 0; padding-top: 1px; }
+        .sheet-value { font-size: 13px; font-weight: 600; color: #333; text-align: right; }
+        .sheet-id    { font-size: 11px; color: #aaa; margin-top: 2px; font-weight: 400; }
+
         /* ── Calendar card ── */
         .calendar-banner {
             background: #fff; border-radius: 14px;
@@ -293,6 +326,42 @@
     </div>
 </div>
 
+<!-- Bottom Sheet — รายละเอียดการจอง -->
+<div class="sheet-overlay" id="sheet-overlay" onclick="closeSheet()"></div>
+<div class="bottom-sheet" id="booking-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header" id="sheet-title">รายละเอียดการจอง</div>
+    <div class="sheet-body">
+        <div class="sheet-row">
+            <span class="sheet-label">เลขที่</span>
+            <div class="sheet-value" id="sh-id">—</div>
+        </div>
+        <div class="sheet-row">
+            <span class="sheet-label">ห้อง</span>
+            <div class="sheet-value">
+                <div id="sh-room">—</div>
+                <div class="sheet-id" id="sh-location"></div>
+            </div>
+        </div>
+        <div class="sheet-row">
+            <span class="sheet-label">วันที่</span>
+            <div class="sheet-value" id="sh-date">—</div>
+        </div>
+        <div class="sheet-row">
+            <span class="sheet-label">เวลา</span>
+            <div class="sheet-value" id="sh-time">—</div>
+        </div>
+        <div class="sheet-row">
+            <span class="sheet-label">ชื่อกลุ่ม</span>
+            <div class="sheet-value" id="sh-group">—</div>
+        </div>
+        <div class="sheet-row" id="sh-faculty-row">
+            <span class="sheet-label">คณะ/หน่วยงาน</span>
+            <div class="sheet-value" id="sh-faculty">—</div>
+        </div>
+    </div>
+</div>
+
 <script src="https://static.line-scdn.net/liff/edge/versions/2.15.0/sdk.js"></script>
 <script>
     const LIFF_ID          = "{{ liff_id }}";
@@ -362,6 +431,8 @@
         setTimeout(() => t.classList.remove('show'), 3000);
     }
 
+    const bookingCache = {};
+
     function renderMyBookings(bookings) {
         const section = document.getElementById('my-bookings-section');
         const list    = document.getElementById('my-bookings-list');
@@ -371,6 +442,8 @@
             list.innerHTML = '<div class="no-booking">ยังไม่มีการจองที่กำลังจะมาถึง</div>';
             return;
         }
+
+        bookings.forEach(b => { bookingCache[b.id] = b; });
 
         list.innerHTML = bookings.map(b => {
             const idx      = ROOMS.findIndex(r => r.booking_name === b.room_key);
@@ -383,11 +456,12 @@
             const actionHtml  = isCancelled
                 ? `<span class="badge-cancelled-bk">ยกเลิกแล้ว</span>`
                 : `<button class="btn-cancel-bk"
-                       onclick="cancelBooking(${b.id},'${b.room_name}','${dateStr}')">
+                       onclick="event.stopPropagation();cancelBooking(${b.id},'${b.room_name}','${dateStr}')">
                        ยกเลิกการจอง
                    </button>`;
             return `
-            <div class="my-booking-card ${extraClass}" id="bk-${b.id}">
+            <div class="my-booking-card ${extraClass}" id="bk-${b.id}"
+                 onclick="openSheet(bookingCache[${b.id}])" style="cursor:pointer;">
                 <div class="my-booking-accent" style="background:${accentColor};"></div>
                 <div class="my-booking-body">
                     <div class="my-booking-main">
@@ -398,6 +472,7 @@
                     <div class="my-booking-right">
                         <div class="mbk-date">${dateStr}</div>
                         <div class="mbk-time">${b.start_time} – ${b.end_time}</div>
+                        <div style="font-size:11px;color:#aaa;margin-top:4px;">แตะเพื่อดูรายละเอียด</div>
                     </div>
                 </div>
             </div>`;
@@ -476,6 +551,29 @@
             sessionStorage.setItem(CACHE_KEY, JSON.stringify(data));
         }
         return data;
+    }
+
+    // ── Bottom Sheet ──────────────────────────────────────────────────────────
+
+    function openSheet(b) {
+        const d        = b.booking_date.split('-');
+        const dateStr  = `${parseInt(d[2])} ${TH_MONTHS[parseInt(d[1])]} ${parseInt(d[0])+543}`;
+        document.getElementById('sh-id').textContent       = `#${b.id}`;
+        document.getElementById('sh-room').textContent     = b.room_name;
+        document.getElementById('sh-location').textContent = b.room_location || '';
+        document.getElementById('sh-date').textContent     = dateStr;
+        document.getElementById('sh-time').textContent     = `${b.start_time} – ${b.end_time} น.`;
+        document.getElementById('sh-group').textContent    = b.group_name;
+        document.getElementById('sh-faculty').textContent  = b.faculty || '—';
+        document.getElementById('sheet-overlay').classList.add('open');
+        document.getElementById('booking-sheet').classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeSheet() {
+        document.getElementById('sheet-overlay').classList.remove('open');
+        document.getElementById('booking-sheet').classList.remove('open');
+        document.body.style.overflow = '';
     }
 
     // ── Active Room Control ────────────────────────────────────────────────────

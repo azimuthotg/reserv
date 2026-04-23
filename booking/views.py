@@ -622,10 +622,12 @@ def my_bookings(request):
             'id':           b.pk,
             'room_name':    b.room.name,
             'room_key':     b.room.booking_name,
+            'room_location': b.room.location or '',
             'booking_date': b.booking_date.strftime('%Y-%m-%d'),
             'start_time':   b.start_time.strftime('%H:%M'),
             'end_time':     b.end_time.strftime('%H:%M'),
             'group_name':   b.group_name,
+            'faculty':      b.faculty or '',
             'status':       b.status,
         }
         for b in bookings
