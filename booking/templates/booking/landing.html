@@ -445,7 +445,7 @@
             const actionHtml = isCancelled
                 ? `<span class="badge-cancelled-bk">ยกเลิกแล้ว</span>`
                 : `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-                    ${isActive ? `<a class="btn-ctrl-bk" href="room-control/"
+                    ${isActive ? `<a class="btn-ctrl-bk" href="room-control/?room=${b.room_key}"
                         onclick="event.stopPropagation();">🎛️ ควบคุมอุปกรณ์</a>` : ''}
                     ${isCheckinWindow ? `<button class="btn-checkin-bk" id="btn-ci-${b.id}"
                         onclick="event.stopPropagation();checkinBooking(${b.id})">✅ Check-in</button>` : ''}

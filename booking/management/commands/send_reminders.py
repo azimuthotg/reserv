@@ -17,10 +17,10 @@ LINE_PUSH_URL = 'https://api.line.me/v2/bot/message/push'
 TH_MONTHS = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
              'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
 
-RESERV_URL = 'https://lib.npu.ac.th/reserv/room-control/'
+RESERV_URL  = 'https://lib.npu.ac.th/reserv/'
 
 
-def _push_text(user_id, text):
+def _push_messages(user_id, messages):
     token = settings.LINE_CHANNEL_ACCESS_TOKEN
     if not token or not user_id:
         return False
@@ -31,12 +31,16 @@ def _push_text(user_id, text):
                 'Authorization': f'Bearer {token}',
                 'Content-Type':  'application/json',
             },
-            json={'to': user_id, 'messages': [{'type': 'text', 'text': text}]},
+            json={'to': user_id, 'messages': messages},
             timeout=10,
         )
         return resp.status_code == 200
     except requests.RequestException:
         return False
+
+
+def _push_text(user_id, text):
+    return _push_messages(user_id, [{'type': 'text', 'text': text}])
 
 
 def _ha_turn_off(entity_id):
@@ -79,23 +83,45 @@ class Command(BaseCommand):
             user_id  = b.line_user.line_user_id
             date_str = f'{b.booking_date.day} {TH_MONTHS[b.booking_date.month]} {b.booking_date.year + 543}'
 
-            # ── แจ้งก่อนเริ่ม 15 นาที + ลิงก์เข้าห้อง ───────────────────────
+            # ── แจ้งก่อนเริ่ม 15 นาที + ปุ่ม Check-in ──────────────────────
             if not b.notified_15min:
                 start_dt = timezone.make_aware(
                     timezone.datetime.combine(today, b.start_time)
                 )
                 target = start_dt - timedelta(minutes=15)
                 if target - window <= now < start_dt:
-                    msg = (
+                    checkin_deadline = (start_dt + timedelta(minutes=15)).strftime('%H:%M')
+                    alt_text = (
                         f'⏰ อีก 15 นาทีถึงเวลาใช้พื้นที่\n'
-                        f'📍 {b.room.name}\n'
-                        f'📅 {date_str}\n'
-                        f'🕐 {b.start_time.strftime("%H:%M")} – {b.end_time.strftime("%H:%M")}\n'
-                        f'👥 {b.group_name}\n'
-                        f'กรุณามาถึงตรงเวลา\n\n'
-                        f'🎛️ ควบคุมอุปกรณ์ห้อง: {RESERV_URL}'
+                        f'📍 {b.room.name} | {b.start_time.strftime("%H:%M")} – {b.end_time.strftime("%H:%M")}\n'
+                        f'กรุณา Check-in ภายใน {checkin_deadline} น.'
                     )
-                    if _push_text(user_id, msg):
+                    body_text = (
+                        f'📍 {b.room.name}\n'
+                        f'📅 {date_str}  🕐 {b.start_time.strftime("%H:%M")} – {b.end_time.strftime("%H:%M")}\n'
+                        f'👥 {b.group_name}\n'
+                        f'กรุณา Check-in ภายใน {checkin_deadline} น.\n'
+                        f'หากไม่ check-in ระบบจะยกเลิกการจองอัตโนมัติ'
+                    )
+                    messages = [
+                        {
+                            'type': 'template',
+                            'altText': alt_text,
+                            'template': {
+                                'type': 'buttons',
+                                'title': '⏰ อีก 15 นาทีถึงเวลาใช้พื้นที่',
+                                'text': body_text,
+                                'actions': [
+                                    {
+                                        'type':  'uri',
+                                        'label': '✅ Check-in เลย',
+                                        'uri':   RESERV_URL,
+                                    }
+                                ],
+                            },
+                        }
+                    ]
+                    if _push_messages(user_id, messages):
                         b.notified_15min = True
                         b.save(update_fields=['notified_15min'])
                         BookingLog.objects.create(booking=b, action='notified_15min')

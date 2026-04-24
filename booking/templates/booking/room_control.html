@@ -295,8 +295,10 @@
             const todayStr = now.toISOString().slice(0, 10);
             const curMin   = now.getHours() * 60 + now.getMinutes();
 
+            const roomParam = new URLSearchParams(window.location.search).get('room');
             const active = (mbData.bookings || []).find(b => {
                 if (b.status !== 'confirmed' || b.booking_date !== todayStr) return false;
+                if (roomParam && b.room_key !== roomParam) return false;
                 const [sh, sm] = b.start_time.split(':').map(Number);
                 const [eh, em] = b.end_time.split(':').map(Number);
                 return curMin >= sh * 60 + sm && curMin < eh * 60 + em;
