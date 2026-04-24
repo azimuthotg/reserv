@@ -82,6 +82,9 @@ class Booking(models.Model):
     notified_15min    = models.BooleanField(default=False)  # แจ้งก่อนเริ่ม 15 นาที
     notified_10min    = models.BooleanField(default=False)  # แจ้งก่อนหมด 10 นาที
     notified_auto_off = models.BooleanField(default=False)  # ปิดอุปกรณ์อัตโนมัติเมื่อหมดเวลา
+    # Check-in
+    checked_in    = models.BooleanField(default=False)
+    checked_in_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-booking_date', '-start_time']

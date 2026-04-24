@@ -238,8 +238,7 @@ def landing_page(request):
         'register_url':    request.build_absolute_uri(reverse('register')),
         'my_bookings_url':    request.build_absolute_uri(reverse('my_bookings')),
         'cancel_booking_url': request.build_absolute_uri(reverse('cancel_booking')),
-        'room_status_url':    request.build_absolute_uri(reverse('room_status')),
-        'device_toggle_url':  request.build_absolute_uri(reverse('device_toggle')),
+        'checkin_url':        request.build_absolute_uri(reverse('checkin_booking')),
     })
 
 
@@ -631,10 +630,69 @@ def my_bookings(request):
             'faculty':       b.faculty or '',
             'attendees':     b.attendees or '',
             'status':        b.status,
+            'checked_in':    b.checked_in,
         }
         for b in bookings
     ]
     return JsonResponse({'bookings': data})
+
+
+# ── Check-in ───────────────────────────────────────────────────────────────────
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def checkin_booking(request):
+    """
+    POST { userId, bookingId }
+    → ทำ check-in การจอง (ถ้ายังอยู่ใน window -15min ถึง +15min ของ start_time)
+    → คืน { success, already_checked_in }
+    """
+    try:
+        body       = json.loads(request.body)
+        user_id    = body.get('userId', '').strip()
+        booking_id = body.get('bookingId')
+    except (json.JSONDecodeError, AttributeError):
+        return JsonResponse({'error': 'invalid request'}, status=400)
+
+    if not user_id or not booking_id:
+        return JsonResponse({'error': 'userId และ bookingId จำเป็น'}, status=400)
+
+    try:
+        booking = Booking.objects.select_related('line_user').get(pk=booking_id)
+    except Booking.DoesNotExist:
+        return JsonResponse({'error': 'ไม่พบการจอง'}, status=404)
+
+    if booking.line_user.line_user_id != user_id:
+        return JsonResponse({'error': 'ไม่มีสิทธิ์'}, status=403)
+
+    if booking.status != 'confirmed':
+        return JsonResponse({'error': 'การจองนี้ไม่ได้อยู่ในสถานะ confirmed'}, status=400)
+
+    if booking.checked_in:
+        return JsonResponse({'success': True, 'already_checked_in': True})
+
+    now      = timezone.localtime(timezone.now())
+    today    = now.date()
+    if booking.booking_date != today:
+        return JsonResponse({'error': 'ไม่สามารถ check-in ล่วงหน้าได้'}, status=400)
+
+    start_dt = timezone.make_aware(
+        timezone.datetime.combine(today, booking.start_time)
+    )
+    checkin_open  = start_dt - timedelta(minutes=15)
+    checkin_close = start_dt + timedelta(minutes=15)
+
+    if now < checkin_open:
+        return JsonResponse({'error': 'ยังไม่ถึงเวลา check-in (เปิดก่อนเริ่ม 15 นาที)'}, status=400)
+    if now >= checkin_close:
+        return JsonResponse({'error': 'หมดเวลา check-in แล้ว'}, status=400)
+
+    booking.checked_in    = True
+    booking.checked_in_at = timezone.now()
+    booking.save(update_fields=['checked_in', 'checked_in_at'])
+    BookingLog.objects.create(booking=booking, action='checked_in')
+
+    return JsonResponse({'success': True, 'already_checked_in': False})
 
 
 # ── Room Control ───────────────────────────────────────────────────────────────
@@ -645,6 +703,7 @@ def room_control_page(request):
         'liff_id':           settings.LINE_LIFF_ID,
         'room_status_url':   request.build_absolute_uri(reverse('room_status')),
         'device_toggle_url': request.build_absolute_uri(reverse('device_toggle')),
+        'checkin_url':       request.build_absolute_uri(reverse('checkin_booking')),
         'landing_url':       request.build_absolute_uri(reverse('landing')),
     })
 

@@ -73,7 +73,7 @@ class Command(BaseCommand):
             status='confirmed',
         ).select_related('line_user', 'room')
 
-        sent_15 = sent_10 = auto_off = 0
+        sent_15 = sent_10 = auto_off = auto_cancel = 0
 
         for b in confirmed:
             user_id  = b.line_user.line_user_id
@@ -121,6 +121,30 @@ class Command(BaseCommand):
                         BookingLog.objects.create(booking=b, action='notified_10min')
                         sent_10 += 1
 
+            # ── auto-cancel ถ้าไม่ check-in ภายใน 15 นาทีหลังเริ่ม ──────────
+            if not b.checked_in:
+                start_dt = timezone.make_aware(
+                    timezone.datetime.combine(today, b.start_time)
+                )
+                cancel_at = start_dt + timedelta(minutes=15)
+                if now >= cancel_at:
+                    b.status        = 'cancelled'
+                    b.cancelled_at  = timezone.now()
+                    b.cancel_reason = 'ไม่ check-in ภายในเวลาที่กำหนด (auto-cancel)'
+                    b.save(update_fields=['status', 'cancelled_at', 'cancel_reason'])
+                    BookingLog.objects.create(booking=b, action='auto_cancelled',
+                                             note='ไม่ check-in ภายใน 15 นาทีหลังเริ่ม')
+                    msg = (
+                        f'❌ การจองถูกยกเลิกอัตโนมัติ\n'
+                        f'📍 {b.room.name}\n'
+                        f'📅 {date_str}\n'
+                        f'🕐 {b.start_time.strftime("%H:%M")} – {b.end_time.strftime("%H:%M")}\n'
+                        f'เนื่องจากไม่มีการ check-in ภายใน 15 นาทีหลังเวลาเริ่ม'
+                    )
+                    _push_text(user_id, msg)
+                    auto_cancel += 1
+                    continue  # ไม่ต้องตรวจ auto_off สำหรับการจองที่ถูก cancel แล้ว
+
             # ── ปิดอุปกรณ์อัตโนมัติเมื่อหมดเวลา ────────────────────────────
             if not b.notified_auto_off:
                 end_dt = timezone.make_aware(
@@ -137,5 +161,5 @@ class Command(BaseCommand):
 
         self.stdout.write(
             f'[{now.strftime("%H:%M:%S")}] แจ้ง 15min: {sent_15}, '
-            f'แจ้ง 10min: {sent_10}, auto_off: {auto_off}'
+            f'แจ้ง 10min: {sent_10}, auto_off: {auto_off}, auto_cancel: {auto_cancel}'
         )

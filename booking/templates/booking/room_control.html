@@ -160,6 +160,7 @@
     const LIFF_ID          = "{{ liff_id }}";
     const ROOM_STATUS_URL  = "{{ room_status_url }}";
     const DEVICE_TOGGLE_URL = "{{ device_toggle_url }}";
+    const CHECKIN_URL      = "{{ checkin_url }}";
     let currentUserId = null;
     let activeRoomKey = null;
     let pollTimer     = null;
@@ -308,6 +309,16 @@
             }
 
             activeRoomKey = active.room_key;
+
+            // auto check-in เมื่อเข้าหน้าควบคุมห้อง
+            if (!active.checked_in) {
+                fetch(CHECKIN_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: profile.userId, bookingId: active.id }),
+                }).catch(() => {});
+            }
+
             const data = await loadInitialStatus(profile.userId, active.room_key);
 
             if (!data) {
