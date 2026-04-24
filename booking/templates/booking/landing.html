@@ -594,6 +594,8 @@
 
     // ── Active Room Control ────────────────────────────────────────────────────
 
+    let isToggling = false;
+
     async function loadRoomStatus(roomKey) {
         if (!currentUserId || !roomKey) return;
         try {
@@ -607,7 +609,13 @@
             }
             document.getElementById('arc-room-name').textContent = data.room_name;
             document.getElementById('arc-time').textContent = `หมดเวลา ${data.end_time} น.`;
-            renderDevices(data.devices, roomKey);
+            // ครั้งแรก: render ทั้งหมด — ครั้งต่อไป: อัปเดตเฉพาะสถานะ
+            const alreadyRendered = !!document.getElementById(`btn-${data.devices[0]?.id}`);
+            if (!alreadyRendered) {
+                renderDevices(data.devices, roomKey);
+            } else if (!isToggling) {
+                data.devices.forEach(d => updateDeviceUI(d.id, d.state));
+            }
             document.getElementById('active-room-section').style.display = 'block';
         } catch(e) { /* silent */ }
     }
@@ -636,6 +644,7 @@
         const btn = document.getElementById(`btn-${deviceId}`);
         if (!btn) return;
         btn.disabled = true;
+        isToggling = true;
         try {
             const resp = await fetch(DEVICE_TOGGLE_URL, {
                 method:  'POST',
@@ -652,6 +661,7 @@
             showToast('ไม่สามารถติดต่อระบบได้', true);
         } finally {
             btn.disabled = false;
+            isToggling = false;
         }
     }
 
@@ -675,7 +685,7 @@
 
     function startPolling(roomKey) {
         if (pollTimer) clearInterval(pollTimer);
-        pollTimer = setInterval(() => loadRoomStatus(roomKey), 10000);
+        pollTimer = setInterval(() => loadRoomStatus(roomKey), 2000);
     }
 
     async function checkActiveBooking(userId) {
