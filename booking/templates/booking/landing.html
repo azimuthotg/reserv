@@ -594,6 +594,13 @@
 
     // ── Active Room Control ────────────────────────────────────────────────────
 
+    function stateLabel(state) {
+        if (state === 'on')          return '🟢 เปิดอยู่';
+        if (state === 'off')         return '⚫ ปิดอยู่';
+        if (state === 'unavailable') return '🔴 อุปกรณ์ออฟไลน์';
+        return '❓ ไม่ทราบสถานะ';
+    }
+
     let isToggling = false;
 
     async function loadRoomStatus(roomKey) {
@@ -630,10 +637,11 @@
             <div class="device-row" id="dev-${d.id}">
                 <div>
                     <div class="device-name">${d.device_name}</div>
-                    <div class="device-state" id="state-${d.id}">${d.state === 'on' ? '🟢 เปิดอยู่' : d.state === 'off' ? '⚫ ปิดอยู่' : '❓ ไม่ทราบสถานะ'}</div>
+                    <div class="device-state" id="state-${d.id}">${stateLabel(d.state)}</div>
                 </div>
                 <button class="toggle-btn ${d.state === 'on' ? 'on' : ''}"
                         id="btn-${d.id}"
+                        ${d.state === 'unavailable' || d.state === 'unknown' ? 'disabled' : ''}
                         onclick="toggleDevice('${d.entity_id}', ${d.id}, '${roomKey}')">
                 </button>
             </div>
@@ -642,9 +650,14 @@
 
     async function toggleDevice(entityId, deviceId, roomKey) {
         const btn = document.getElementById(`btn-${deviceId}`);
-        if (!btn) return;
-        btn.disabled = true;
+        if (!btn || btn.disabled) return;
         isToggling = true;
+
+        // Optimistic UI — เปลี่ยนสถานะทันทีก่อน API ตอบ
+        const wasOn = btn.classList.contains('on');
+        updateDeviceUI(deviceId, wasOn ? 'off' : 'on');
+        btn.disabled = true;
+
         try {
             const resp = await fetch(DEVICE_TOGGLE_URL, {
                 method:  'POST',
@@ -653,11 +666,13 @@
             });
             const data = await resp.json();
             if (data.success) {
-                updateDeviceUI(deviceId, data.state);
+                updateDeviceUI(deviceId, data.state);  // confirm ด้วยสถานะจริงจาก HA
             } else {
+                updateDeviceUI(deviceId, wasOn ? 'on' : 'off');  // revert
                 showToast(data.error || 'เกิดข้อผิดพลาด', true);
             }
         } catch(e) {
+            updateDeviceUI(deviceId, wasOn ? 'on' : 'off');  // revert
             showToast('ไม่สามารถติดต่อระบบได้', true);
         } finally {
             btn.disabled = false;
@@ -666,16 +681,12 @@
     }
 
     function updateDeviceUI(deviceId, state) {
-        const btn       = document.getElementById(`btn-${deviceId}`);
-        const stateEl   = document.getElementById(`state-${deviceId}`);
+        const btn     = document.getElementById(`btn-${deviceId}`);
+        const stateEl = document.getElementById(`state-${deviceId}`);
         if (!btn || !stateEl) return;
-        if (state === 'on') {
-            btn.classList.add('on');
-            stateEl.textContent = '🟢 เปิดอยู่';
-        } else {
-            btn.classList.remove('on');
-            stateEl.textContent = state === 'off' ? '⚫ ปิดอยู่' : '❓ ไม่ทราบสถานะ';
-        }
+        stateEl.textContent = stateLabel(state);
+        btn.classList.toggle('on', state === 'on');
+        btn.disabled = (state === 'unavailable' || state === 'unknown');
     }
 
     function hideActiveRoom() {
