@@ -147,9 +147,21 @@
         .my-booking-right .mbk-time { font-size: 11px; color: #aaa; margin-top: 2px; }
         .my-booking-card.cancelled  { opacity: .5; }
         .my-booking-card.cancelled .mbk-room { text-decoration: line-through; }
+        .my-booking-card.past { opacity: .45; }
+        .my-booking-card.past .mbk-room { color: #999; }
         .badge-cancelled-bk {
             display: inline-block; font-size: 10px; font-weight: 700;
             background: #fee2e2; color: #dc2626; border-radius: 4px;
+            padding: 1px 6px; margin-top: 4px;
+        }
+        .badge-past-bk {
+            display: inline-block; font-size: 10px; font-weight: 700;
+            background: #f3f4f6; color: #9ca3af; border-radius: 4px;
+            padding: 1px 6px; margin-top: 4px;
+        }
+        .badge-checkedin-bk {
+            display: inline-block; font-size: 10px; font-weight: 700;
+            background: #dcfce7; color: #16a34a; border-radius: 4px;
             padding: 1px 6px; margin-top: 4px;
         }
         .btn-cancel-bk {
@@ -427,33 +439,50 @@
             const d        = b.booking_date.split('-');
             const dateStr  = `${parseInt(d[2])} ${TH_MONTHS[parseInt(d[1])]} ${parseInt(d[0])+543}`;
             const isCancelled = b.status === 'cancelled';
-            const accentColor = isCancelled ? '#ddd' : color;
-            const extraClass  = isCancelled ? 'cancelled' : '';
 
-            // ตรวจว่า booking นี้ active อยู่ไหม
-            let isActive = false;
-            let isCheckinWindow = false;
-            if (!isCancelled && b.booking_date === todayStr) {
+            // ตรวจสถานะเวลา
+            let isPast = false, isStarted = false, isActive = false, isCheckinWindow = false;
+            if (b.booking_date === todayStr) {
                 const [sh, sm] = b.start_time.split(':').map(Number);
                 const [eh, em] = b.end_time.split(':').map(Number);
                 const startMin = sh * 60 + sm;
                 const endMin   = eh * 60 + em;
-                isActive        = curMin >= startMin && curMin < endMin;
+                isPast          = curMin >= endMin;
+                isStarted       = curMin >= startMin;
+                isActive        = isStarted && !isPast;
                 isCheckinWindow = curMin >= startMin - 15 && curMin < startMin + 15 && !b.checked_in;
             }
 
-            const actionHtml = isCancelled
-                ? `<span class="badge-cancelled-bk">ยกเลิกแล้ว</span>`
-                : `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-                    ${isActive ? `<a class="btn-ctrl-bk" href="room-control/?room=${b.room_key}"
-                        onclick="event.stopPropagation();">🎛️ ควบคุมอุปกรณ์</a>` : ''}
+            const accentColor = (isCancelled || isPast) ? '#ddd' : color;
+            const extraClass  = isCancelled ? 'cancelled' : isPast ? 'past' : '';
+
+            // canCancel: ยังไม่เริ่ม + ยังไม่ checked_in + ยังไม่ cancel
+            const canCancel = !isCancelled && !isPast && !isStarted && !b.checked_in;
+
+            let actionHtml;
+            if (isCancelled) {
+                actionHtml = `<span class="badge-cancelled-bk">ยกเลิกแล้ว</span>`;
+            } else if (isPast) {
+                actionHtml = `<span class="badge-past-bk">หมดเวลาแล้ว</span>`;
+            } else if (isActive) {
+                // กำลังใช้งาน: ปุ่มควบคุม + badge เช็คอิน (ถ้า checked_in แล้ว)
+                actionHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+                    <a class="btn-ctrl-bk" href="room-control/?room=${b.room_key}"
+                        onclick="event.stopPropagation();">🎛️ ควบคุมอุปกรณ์</a>
+                    ${b.checked_in ? `<span class="badge-checkedin-bk">✅ เช็คอินแล้ว</span>` : ''}
+                </div>`;
+            } else {
+                // ยังไม่ถึงเวลา
+                actionHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
                     ${isCheckinWindow ? `<button class="btn-checkin-bk" id="btn-ci-${b.id}"
                         onclick="event.stopPropagation();checkinBooking(${b.id})">✅ Check-in</button>` : ''}
-                    <button class="btn-cancel-bk"
+                    ${b.checked_in ? `<span class="badge-checkedin-bk">✅ เช็คอินแล้ว</span>` : ''}
+                    ${canCancel ? `<button class="btn-cancel-bk"
                         onclick="event.stopPropagation();cancelBooking(${b.id},'${b.room_name}','${dateStr}')">
                         ยกเลิกการจอง
-                    </button>
-                   </div>`;
+                    </button>` : ''}
+                </div>`;
+            }
 
             return `
             <div class="my-booking-card ${extraClass}" id="bk-${b.id}"
