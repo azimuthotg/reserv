@@ -304,13 +304,18 @@
         <!-- Active Room Control -->
         <div id="active-room-section" style="display:none;">
             <div class="section-hd">กำลังใช้งาน</div>
-            <div id="active-room-card" class="active-room-card">
+            <div class="active-room-card">
                 <div class="active-room-header">
                     <span class="arc-title" id="arc-room-name">—</span>
                     <span class="arc-time" id="arc-time">หมดเวลา —</span>
                 </div>
-                <div class="device-list" id="device-list">
-                    <div style="text-align:center;padding:16px;color:#aaa;font-size:13px;">กำลังโหลด…</div>
+                <div style="padding:12px 14px 14px;">
+                    <a id="btn-room-control" href="room-control/"
+                       style="display:block;text-align:center;padding:10px;border-radius:12px;
+                              background:#06C755;color:#fff;font-size:14px;font-weight:700;
+                              text-decoration:none;">
+                        🎛️ ควบคุมอุปกรณ์ห้อง →
+                    </a>
                 </div>
             </div>
         </div>
@@ -703,7 +708,7 @@
         try {
             const resp = await fetch(`${MY_BOOKING_URL}?userId=${encodeURIComponent(userId)}`);
             const data = await resp.json();
-            const now  = new Date();
+            const now      = new Date();
             const todayStr = now.toISOString().slice(0, 10);
             const curMin   = now.getHours() * 60 + now.getMinutes();
 
@@ -715,9 +720,11 @@
             });
 
             if (active) {
-                activeRoomKey = active.room_key;
-                await loadRoomStatus(activeRoomKey);
-                startPolling(activeRoomKey);
+                const d        = active.booking_date.split('-');
+                const [sh, sm] = active.start_time.split(':').map(Number);
+                document.getElementById('arc-room-name').textContent = active.room_name;
+                document.getElementById('arc-time').textContent = `หมดเวลา ${active.end_time} น.`;
+                document.getElementById('active-room-section').style.display = 'block';
             }
         } catch(e) { /* silent */ }
     }

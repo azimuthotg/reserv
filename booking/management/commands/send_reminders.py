@@ -17,7 +17,7 @@ LINE_PUSH_URL = 'https://api.line.me/v2/bot/message/push'
 TH_MONTHS = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
              'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
 
-RESERV_URL = 'https://lib.npu.ac.th/reserv/'
+RESERV_URL = 'https://lib.npu.ac.th/reserv/room-control/'
 
 
 def _push_text(user_id, text):
@@ -93,7 +93,7 @@ class Command(BaseCommand):
                         f'🕐 {b.start_time.strftime("%H:%M")} – {b.end_time.strftime("%H:%M")}\n'
                         f'👥 {b.group_name}\n'
                         f'กรุณามาถึงตรงเวลา\n\n'
-                        f'🔗 เปิดอุปกรณ์ห้อง: {RESERV_URL}'
+                        f'🎛️ ควบคุมอุปกรณ์ห้อง: {RESERV_URL}'
                     )
                     if _push_text(user_id, msg):
                         b.notified_15min = True

@@ -11,7 +11,8 @@ urlpatterns = [
     path('booking/success/', views.booking_success, name='booking_success'),
 
     # ── Virtual Card (LIFF) ───────────────────────────────────────────────────
-    path('card/',            views.card_page,  name='card'),
+    path('card/',            views.card_page,         name='card'),
+    path('room-control/',    views.room_control_page, name='room_control'),
 
     # ── Calendar (public) ─────────────────────────────────────────────────────
     path('calendar/', views.calendar_page, name='calendar'),

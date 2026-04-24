@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ควบคุมอุปกรณ์ — Library@NPU</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #f0f2f5; font-family: 'Sarabun', sans-serif; min-height: 100vh; }
+
+        /* ── Loader ── */
+        #loader {
+            position: fixed; inset: 0; display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            background: #fff; z-index: 9999; gap: 14px;
+        }
+        .spinner {
+            width: 44px; height: 44px; border: 4px solid #e8e8e8;
+            border-top-color: #06C755; border-radius: 50%;
+            animation: spin .8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        #content { display: none; }
+
+        /* ── Header ── */
+        .ctrl-header {
+            background: linear-gradient(135deg, #1a1f2e 0%, #2a3148 100%);
+            padding: 20px 20px 16px;
+        }
+        .ctrl-header .back-btn {
+            color: rgba(255,255,255,.6); font-size: 13px;
+            text-decoration: none; display: inline-flex; align-items: center; gap: 4px;
+            margin-bottom: 12px;
+        }
+        .ctrl-header .back-btn:hover { color: #fff; }
+        .ctrl-header .room-title {
+            font-size: 22px; font-weight: 700; color: #fff; line-height: 1.2;
+        }
+        .ctrl-header .room-meta {
+            display: flex; align-items: center; gap: 10px; margin-top: 8px;
+        }
+        .time-badge {
+            background: rgba(255,255,255,.12); border-radius: 20px;
+            padding: 4px 12px; font-size: 12px; font-weight: 600; color: rgba(255,255,255,.85);
+            display: inline-flex; align-items: center; gap: 5px;
+        }
+        .time-badge.ending-soon { background: rgba(239,68,68,.25); color: #fca5a5; }
+
+        /* ── Body ── */
+        .ctrl-body { padding: 20px 16px; max-width: 480px; margin: 0 auto; }
+
+        /* ── Device card ── */
+        .device-card {
+            background: #fff; border-radius: 16px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.07);
+            padding: 18px 20px;
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 10px; gap: 16px;
+        }
+        .device-icon {
+            width: 44px; height: 44px; border-radius: 12px;
+            background: #f3f4f6; display: flex; align-items: center; justify-content: center;
+            font-size: 20px; flex-shrink: 0; transition: background .2s;
+        }
+        .device-card.on .device-icon { background: #dcfce7; }
+        .device-card.unavailable .device-icon { background: #fef2f2; }
+        .device-info { flex: 1; min-width: 0; }
+        .device-info .dev-name { font-size: 15px; font-weight: 700; color: #1a1a1a; }
+        .device-info .dev-status {
+            font-size: 12px; color: #aaa; margin-top: 3px;
+            display: flex; align-items: center; gap: 4px;
+        }
+        .status-dot {
+            width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+            background: #d1d5db;
+        }
+        .device-card.on   .status-dot { background: #22c55e; }
+        .device-card.off  .status-dot { background: #9ca3af; }
+        .device-card.unavailable .status-dot { background: #ef4444; }
+
+        /* ── Toggle ── */
+        .toggle-wrap { flex-shrink: 0; }
+        .toggle-btn {
+            position: relative; width: 52px; height: 30px;
+            background: #d1d5db; border-radius: 15px; border: none;
+            cursor: pointer; transition: background .25s; outline: none;
+        }
+        .toggle-btn.on { background: #06C755; }
+        .toggle-btn::after {
+            content: ''; position: absolute; top: 3px; left: 3px;
+            width: 24px; height: 24px; border-radius: 50%; background: #fff;
+            transition: transform .25s; box-shadow: 0 1px 4px rgba(0,0,0,.2);
+        }
+        .toggle-btn.on::after { transform: translateX(22px); }
+        .toggle-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+        /* ── No booking ── */
+        #no-booking {
+            display: none; text-align: center;
+            padding: 60px 24px;
+        }
+        #no-booking .nb-icon { font-size: 56px; margin-bottom: 16px; }
+        #no-booking .nb-title { font-size: 17px; font-weight: 700; color: #333; margin-bottom: 6px; }
+        #no-booking .nb-sub   { font-size: 13px; color: #999; line-height: 1.6; }
+        .btn-back {
+            display: inline-block; margin-top: 24px;
+            padding: 10px 28px; border-radius: 24px;
+            background: #06C755; color: #fff; font-size: 14px; font-weight: 600;
+            text-decoration: none; transition: background .15s;
+        }
+        .btn-back:hover { background: #059944; color: #fff; }
+
+        /* ── Section label ── */
+        .section-label {
+            font-size: 11px; font-weight: 700; color: #aaa;
+            text-transform: uppercase; letter-spacing: .8px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="loader">
+    <div class="spinner"></div>
+    <div style="font-size:13px;color:#aaa;">กำลังตรวจสอบสิทธิ์…</div>
+</div>
+
+<div id="content">
+    <!-- Header -->
+    <div class="ctrl-header">
+        <a href="{{ landing_url }}" class="back-btn">
+            <i class="bi bi-arrow-left"></i> กลับหน้าหลัก
+        </a>
+        <div class="room-title" id="ctrl-room-name">—</div>
+        <div class="room-meta">
+            <span class="time-badge" id="ctrl-time-badge">
+                <i class="bi bi-clock"></i> <span id="ctrl-end-time">—</span>
+            </span>
+        </div>
+    </div>
+
+    <!-- Devices -->
+    <div class="ctrl-body">
+        <div class="section-label">อุปกรณ์ในห้อง</div>
+        <div id="device-list"></div>
+    </div>
+</div>
+
+<!-- No booking -->
+<div id="no-booking">
+    <div class="nb-icon">🚪</div>
+    <div class="nb-title">ไม่มีการจองในขณะนี้</div>
+    <div class="nb-sub">คุณไม่มีการจองที่กำลังใช้งานอยู่<br>หรือหมดเวลาการจองแล้ว</div>
+    <a href="{{ landing_url }}" class="btn-back">กลับหน้าหลัก</a>
+</div>
+
+<script src="https://static.line-scdn.net/liff/edge/versions/2.15.0/sdk.js"></script>
+<script>
+    const LIFF_ID          = "{{ liff_id }}";
+    const ROOM_STATUS_URL  = "{{ room_status_url }}";
+    const DEVICE_TOGGLE_URL = "{{ device_toggle_url }}";
+    let currentUserId = null;
+    let activeRoomKey = null;
+    let pollTimer     = null;
+    let isToggling    = false;
+
+    function stateLabel(state) {
+        if (state === 'on')          return 'เปิดอยู่';
+        if (state === 'off')         return 'ปิดอยู่';
+        if (state === 'unavailable') return 'อุปกรณ์ออฟไลน์';
+        return 'ไม่ทราบสถานะ';
+    }
+
+    function deviceIcon(state) {
+        if (state === 'unavailable') return '⚠️';
+        return '💡';
+    }
+
+    function renderDevices(devices) {
+        const list = document.getElementById('device-list');
+        list.innerHTML = devices.map(d => `
+            <div class="device-card ${d.state}" id="dev-${d.id}">
+                <div class="device-icon" id="icon-${d.id}">${deviceIcon(d.state)}</div>
+                <div class="device-info">
+                    <div class="dev-name">${d.device_name}</div>
+                    <div class="dev-status">
+                        <span class="status-dot" id="dot-${d.id}"></span>
+                        <span id="state-${d.id}">${stateLabel(d.state)}</span>
+                    </div>
+                </div>
+                <div class="toggle-wrap">
+                    <button class="toggle-btn ${d.state === 'on' ? 'on' : ''}"
+                            id="btn-${d.id}"
+                            ${d.state === 'unavailable' || d.state === 'unknown' ? 'disabled' : ''}
+                            onclick="toggleDevice('${d.entity_id}', ${d.id})">
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function updateDeviceUI(deviceId, state) {
+        const card    = document.getElementById(`dev-${deviceId}`);
+        const btn     = document.getElementById(`btn-${deviceId}`);
+        const stateEl = document.getElementById(`state-${deviceId}`);
+        if (!card || !btn || !stateEl) return;
+        card.className = `device-card ${state}`;
+        btn.classList.toggle('on', state === 'on');
+        btn.disabled = (state === 'unavailable' || state === 'unknown');
+        stateEl.textContent = stateLabel(state);
+    }
+
+    async function toggleDevice(entityId, deviceId) {
+        const btn = document.getElementById(`btn-${deviceId}`);
+        if (!btn || btn.disabled) return;
+        isToggling = true;
+
+        const wasOn = btn.classList.contains('on');
+        updateDeviceUI(deviceId, wasOn ? 'off' : 'on');
+        btn.disabled = true;
+
+        try {
+            const resp = await fetch(DEVICE_TOGGLE_URL, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ userId: currentUserId, room_key: activeRoomKey, entity_id: entityId }),
+            });
+            const data = await resp.json();
+            if (data.success) {
+                updateDeviceUI(deviceId, data.state);
+            } else {
+                updateDeviceUI(deviceId, wasOn ? 'on' : 'off');
+            }
+        } catch(e) {
+            updateDeviceUI(deviceId, wasOn ? 'on' : 'off');
+        } finally {
+            btn.disabled = false;
+            isToggling = false;
+        }
+    }
+
+    async function pollStatus() {
+        if (!currentUserId || !activeRoomKey || isToggling) return;
+        try {
+            const resp = await fetch(
+                `${ROOM_STATUS_URL}?userId=${encodeURIComponent(currentUserId)}&room_key=${encodeURIComponent(activeRoomKey)}`
+            );
+            const data = await resp.json();
+            if (!data.access) {
+                clearInterval(pollTimer);
+                document.getElementById('content').style.display   = 'none';
+                document.getElementById('no-booking').style.display = 'block';
+                document.getElementById('loader').style.display     = 'none';
+                return;
+            }
+            data.devices.forEach(d => updateDeviceUI(d.id, d.state));
+
+            // เตือนเมื่อเหลือ 5 นาที
+            const [h, m] = data.end_time.split(':').map(Number);
+            const endMin  = h * 60 + m;
+            const now     = new Date();
+            const curMin  = now.getHours() * 60 + now.getMinutes();
+            const badge   = document.getElementById('ctrl-time-badge');
+            if (endMin - curMin <= 5) badge.classList.add('ending-soon');
+        } catch(e) { /* silent */ }
+    }
+
+    async function loadInitialStatus(userId, roomKey) {
+        const resp = await fetch(
+            `${ROOM_STATUS_URL}?userId=${encodeURIComponent(userId)}&room_key=${encodeURIComponent(roomKey)}`
+        );
+        const data = await resp.json();
+        if (!data.access) return null;
+        return data;
+    }
+
+    liff.init({ liffId: LIFF_ID })
+        .then(async () => {
+            if (!liff.isLoggedIn()) {
+                liff.login({ redirectUri: window.location.href });
+                return;
+            }
+
+            const profile = await liff.getProfile();
+            currentUserId = profile.userId;
+
+            // ดึง my-bookings หา active booking
+            const mbResp = await fetch(
+                `/reserv/api/my-bookings/?userId=${encodeURIComponent(profile.userId)}`
+            );
+            const mbData = await mbResp.json();
+            const now     = new Date();
+            const todayStr = now.toISOString().slice(0, 10);
+            const curMin   = now.getHours() * 60 + now.getMinutes();
+
+            const active = (mbData.bookings || []).find(b => {
+                if (b.status !== 'confirmed' || b.booking_date !== todayStr) return false;
+                const [sh, sm] = b.start_time.split(':').map(Number);
+                const [eh, em] = b.end_time.split(':').map(Number);
+                return curMin >= sh * 60 + sm && curMin < eh * 60 + em;
+            });
+
+            if (!active) {
+                document.getElementById('loader').style.display    = 'none';
+                document.getElementById('no-booking').style.display = 'block';
+                return;
+            }
+
+            activeRoomKey = active.room_key;
+            const data = await loadInitialStatus(profile.userId, active.room_key);
+
+            if (!data) {
+                document.getElementById('loader').style.display    = 'none';
+                document.getElementById('no-booking').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('ctrl-room-name').textContent = data.room_name;
+            document.getElementById('ctrl-end-time').textContent  = `หมดเวลา ${data.end_time} น.`;
+            renderDevices(data.devices);
+
+            document.getElementById('loader').style.display  = 'none';
+            document.getElementById('content').style.display = 'block';
+
+            pollTimer = setInterval(pollStatus, 2000);
+        })
+        .catch(() => {
+            document.getElementById('loader').innerHTML =
+                `<div style="text-align:center;padding:32px 24px;">
+                    <div style="font-size:40px;margin-bottom:12px;">⚠️</div>
+                    <div style="font-size:15px;color:#333;font-weight:600;">ไม่สามารถเชื่อมต่อ LINE ได้</div>
+                    <button onclick="location.reload()"
+                        style="margin-top:16px;padding:9px 24px;border-radius:20px;
+                               background:#06C755;color:#fff;border:none;font-size:14px;cursor:pointer;">
+                        ลองใหม่
+                    </button>
+                 </div>`;
+        });
+</script>
+</body>
+</html>

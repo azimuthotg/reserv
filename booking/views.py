@@ -637,6 +637,18 @@ def my_bookings(request):
     return JsonResponse({'bookings': data})
 
 
+# ── Room Control ───────────────────────────────────────────────────────────────
+
+def room_control_page(request):
+    """หน้าควบคุมอุปกรณ์ IoT — เปิดจาก LINE หรือ LIFF"""
+    return render(request, 'booking/room_control.html', {
+        'liff_id':           settings.LINE_LIFF_ID,
+        'room_status_url':   request.build_absolute_uri(reverse('room_status')),
+        'device_toggle_url': request.build_absolute_uri(reverse('device_toggle')),
+        'landing_url':       request.build_absolute_uri(reverse('landing')),
+    })
+
+
 # ── Calendar ───────────────────────────────────────────────────────────────────
 
 def card_page(request):
