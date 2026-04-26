@@ -1,0 +1,122 @@
+{% extends "booking/manage/base.html" %}
+{% block title %}IoT Monitor{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+        <h5 class="mb-0 fw-bold">IoT Monitor</h5>
+        <div class="text-muted" style="font-size:13px;">สถานะอุปกรณ์ทุกห้อง</div>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        <span class="text-muted" style="font-size:12px;" id="last-updated"></span>
+        <button class="btn btn-sm btn-outline-success" id="btn-refresh" onclick="refreshStatus()">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
+    </div>
+</div>
+
+{% if not ha_configured %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle"></i>
+    ยังไม่ได้ตั้งค่า <code>HA_IP</code> และ <code>HA_TOKEN</code> ใน .env — ไม่สามารถดึงสถานะได้
+</div>
+{% endif %}
+
+{% if not group_configured %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i>
+    ยังไม่ได้ตั้งค่า <code>LINE_GROUP_ID</code> ใน .env — รายงานเช้าจะยังไม่ถูกส่ง
+</div>
+{% endif %}
+
+<div id="monitor-grid" class="row g-3">
+{% for item in room_data %}
+<div class="col-12 col-md-6 col-xl-4" id="room-card-{{ item.room.booking_name }}">
+    <div class="card h-100 shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center py-2">
+            <span class="fw-bold" style="font-size:14px;">{{ item.room.name }}</span>
+            <span class="badge bg-secondary room-status-badge" id="badge-{{ item.room.booking_name }}">รอโหลด</span>
+        </div>
+        <div class="card-body p-0">
+            {% if item.has_devices %}
+            <table class="table table-sm mb-0" id="table-{{ item.room.booking_name }}">
+                <tbody>
+                {% for d in item.devices %}
+                <tr id="row-device-{{ d.pk }}">
+                    <td class="ps-3" style="font-size:13px; width:50%;">{{ d.device_name }}</td>
+                    <td style="font-size:12px; color:#888;">{{ d.entity_id }}</td>
+                    <td class="pe-3 text-end device-state" data-id="{{ d.pk }}">
+                        <span class="badge bg-secondary">รอ...</span>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="text-muted text-center py-3" style="font-size:13px;">ยังไม่มีอุปกรณ์ในห้องนี้</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endfor %}
+</div>
+
+<script>
+const REFRESH_URL = "{% url 'manage_iot_refresh' %}";
+
+function stateBadge(state, error) {
+    if (error && !state) return `<span class="badge bg-secondary" title="${error}">❓ ไม่ทราบ</span>`;
+    if (state === 'on')      return `<span class="badge bg-success">🟢 On</span>`;
+    if (state === 'off')     return `<span class="badge" style="background:#6c757d;">⚫ Standby</span>`;
+    if (state === 'unavailable' || state === null)
+        return `<span class="badge bg-danger" title="${error||''}">🔴 Offline</span>`;
+    return `<span class="badge bg-warning text-dark">${state}</span>`;
+}
+
+async function refreshStatus() {
+    const btn = document.getElementById('btn-refresh');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> กำลังเช็ค...';
+
+    try {
+        const resp = await fetch(REFRESH_URL);
+        const data = await resp.json();
+
+        data.rooms.forEach(room => {
+            let roomOk = true;
+            room.devices.forEach(d => {
+                const cell = document.querySelector(`.device-state[data-id="${d.id}"]`);
+                if (cell) cell.innerHTML = stateBadge(d.state, d.error);
+                if (d.state === null || d.state === 'unavailable') roomOk = false;
+            });
+
+            const badge = document.getElementById(`badge-${room.room_key}`);
+            if (badge) {
+                if (!room.devices.length) {
+                    badge.className = 'badge bg-secondary room-status-badge';
+                    badge.textContent = 'ไม่มีอุปกรณ์';
+                } else if (roomOk) {
+                    badge.className = 'badge bg-success room-status-badge';
+                    badge.textContent = '✅ ปกติ';
+                } else {
+                    badge.className = 'badge bg-danger room-status-badge';
+                    badge.textContent = '⚠️ ผิดปกติ';
+                }
+            }
+        });
+
+        const now = new Date();
+        document.getElementById('last-updated').textContent =
+            `อัปเดตล่าสุด: ${now.toLocaleTimeString('th-TH')}`;
+    } catch (e) {
+        alert('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh';
+    }
+}
+
+// โหลดสถานะอัตโนมัติเมื่อเปิดหน้า
+window.addEventListener('DOMContentLoaded', refreshStatus);
+</script>
+{% endblock %}

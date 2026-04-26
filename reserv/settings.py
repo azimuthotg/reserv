@@ -104,6 +104,9 @@ HA_IP            = os.getenv('HA_IP', '')
 HA_PORT          = os.getenv('HA_PORT', '8123')
 HA_TOKEN         = os.getenv('HA_TOKEN', '')
 
+# ── Phase 4: IoT Monitor ───────────────────────────────────────────────────────
+LINE_GROUP_ID    = os.getenv('LINE_GROUP_ID', '')  # Group ID สำหรับส่งรายงานเช้า
+
 # ── Session ───────────────────────────────────────────────────────────────────
 SESSION_ENGINE   = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 86400  # 24 hours

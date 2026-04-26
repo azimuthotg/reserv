@@ -1,6 +1,8 @@
 from datetime import date, timedelta
 from functools import wraps
 
+import requests
+from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
@@ -330,6 +332,64 @@ def manage_room_device_delete(request, pk):
     room_pk = device.room_id
     device.delete()
     return redirect('manage_room_devices', pk=room_pk)
+
+
+# ── IoT Monitor (staff) ────────────────────────────────────────────────────────
+
+def _ha_get_state_manage(entity_id):
+    """ดึงสถานะ HA สำหรับหน้า monitor คืน dict {state, error}"""
+    if not getattr(settings, 'HA_IP', '') or not getattr(settings, 'HA_TOKEN', ''):
+        return {'state': None, 'error': 'HA ยังไม่ได้ตั้งค่า'}
+    try:
+        r = requests.get(
+            f'http://{settings.HA_IP}:{settings.HA_PORT}/api/states/{entity_id}',
+            headers={'Authorization': f'Bearer {settings.HA_TOKEN}', 'Content-Type': 'application/json'},
+            timeout=5,
+        )
+        if r.status_code == 200:
+            return {'state': r.json().get('state', 'unknown'), 'error': None}
+        return {'state': None, 'error': f'HA HTTP {r.status_code}'}
+    except requests.RequestException as e:
+        return {'state': None, 'error': str(e)}
+
+
+@staff_required
+def manage_iot_monitor(request):
+    """หน้า IoT Monitor — แสดงสถานะอุปกรณ์ทุกห้อง"""
+    rooms = Room.objects.filter(is_active=True).prefetch_related('devices')
+    room_data = []
+    for room in rooms:
+        devices = list(room.devices.all())
+        room_data.append({'room': room, 'devices': devices, 'has_devices': bool(devices)})
+    return render(request, 'booking/manage/iot_monitor.html', {
+        'room_data':        room_data,
+        'ha_configured':    bool(getattr(settings, 'HA_IP', '') and getattr(settings, 'HA_TOKEN', '')),
+        'group_configured': bool(getattr(settings, 'LINE_GROUP_ID', '')),
+    })
+
+
+@staff_required
+def manage_iot_refresh(request):
+    """
+    GET /manage/iot-monitor/refresh/
+    คืน JSON สถานะอุปกรณ์ทุกห้อง (เรียกจาก JS ปุ่ม Refresh)
+    """
+    from django.http import JsonResponse
+    rooms = Room.objects.filter(is_active=True).prefetch_related('devices')
+    result = []
+    for room in rooms:
+        devices = []
+        for d in room.devices.all():
+            info = _ha_get_state_manage(d.entity_id)
+            devices.append({
+                'id':          d.pk,
+                'device_name': d.device_name,
+                'entity_id':   d.entity_id,
+                'state':       info['state'],
+                'error':       info['error'],
+            })
+        result.append({'room_name': room.name, 'room_key': room.booking_name, 'devices': devices})
+    return JsonResponse({'rooms': result})
 
 
 # ── Staff (admin only) ─────────────────────────────────────────────────────────

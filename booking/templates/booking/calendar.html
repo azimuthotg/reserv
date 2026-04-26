@@ -168,6 +168,11 @@
         const btn = document.getElementById('btn-' + r.key);
         if (btn) btn.style.borderColor = color;
     });
+    // legend วันหยุด
+    const holidayLegend = document.createElement('div');
+    holidayLegend.className = 'legend-item';
+    holidayLegend.innerHTML = `<div class="legend-dot" style="background:#ef4444;"></div>วันหยุด/ปิดบริการ`;
+    legendEl.appendChild(holidayLegend);
 
     let currentRoom = '';
     let calendar;
@@ -230,6 +235,8 @@
                     .catch(failure);
             },
             eventDidMount: function(info) {
+                // ไม่ override สีของวันหยุด
+                if (info.event.extendedProps.type === 'holiday') return;
                 const key   = info.event.extendedProps.room_key;
                 const color = roomColorMap[key] || '#06C755';
                 info.el.style.backgroundColor = color;
@@ -240,18 +247,28 @@
                 const p = info.event.extendedProps;
                 const popup = document.getElementById('event-popup');
 
-                document.getElementById('pop-room').textContent  = p.room;
-                document.getElementById('pop-room').style.color  = info.event.backgroundColor;
-                document.getElementById('pop-group').textContent = p.group_name;
-                document.getElementById('pop-time').textContent  = `${p.start_time} – ${p.end_time} น.`;
-                document.getElementById('pop-booker').textContent = p.booker || '—';
-
-                const facRow = document.getElementById('pop-fac-row');
-                if (p.faculty) {
-                    document.getElementById('pop-fac').textContent = p.faculty;
-                    facRow.style.display = 'flex';
+                if (p.type === 'holiday') {
+                    document.getElementById('pop-room').textContent  = '🔴 วันหยุด / ปิดบริการ';
+                    document.getElementById('pop-room').style.color  = '#ef4444';
+                    document.getElementById('pop-group').textContent = p.description;
+                    document.getElementById('pop-time').textContent  = 'ปิดบริการทั้งวัน';
+                    document.getElementById('pop-booker').textContent = '';
+                    document.getElementById('pop-fac-row').style.display = 'none';
+                    document.querySelector('.popup-row:has(#pop-booker)').style.display = 'none';
                 } else {
-                    facRow.style.display = 'none';
+                    document.getElementById('pop-room').textContent  = p.room;
+                    document.getElementById('pop-room').style.color  = info.event.backgroundColor;
+                    document.getElementById('pop-group').textContent = p.group_name;
+                    document.getElementById('pop-time').textContent  = `${p.start_time} – ${p.end_time} น.`;
+                    document.getElementById('pop-booker').textContent = p.booker || '—';
+                    document.querySelector('.popup-row:has(#pop-booker)').style.display = 'flex';
+                    const facRow = document.getElementById('pop-fac-row');
+                    if (p.faculty) {
+                        document.getElementById('pop-fac').textContent = p.faculty;
+                        facRow.style.display = 'flex';
+                    } else {
+                        facRow.style.display = 'none';
+                    }
                 }
 
                 // Position popup

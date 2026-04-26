@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from .models import Booking, BookingLog, HolidayDate, LineUser, Room, RoomDevice
+from .models import Booking, BookingLog, HolidayDate, LineUser, Room, RoomClosure, RoomDevice
 
 NPU_API_BASE       = 'https://api.npu.ac.th'
 PROFILE_CACHE_DAYS = 30
@@ -55,6 +55,23 @@ def _push_text(user_id, text):
 def _holiday_dates_set():
     """คืน set ของวันหยุดที่ active ทั้งหมด"""
     return set(HolidayDate.objects.filter(is_active=True).values_list('date', flat=True))
+
+
+def _check_room_closure(room, b_date, s_time, e_time):
+    """
+    ตรวจว่าช่วงเวลาที่จองตรงกับ RoomClosure หรือไม่
+    คืน (blocked: bool, reason: str)
+    """
+    MIDDAY = datetime.strptime('12:00', '%H:%M').time()
+    closures = RoomClosure.objects.filter(room=room, date=b_date, is_active=True)
+    for c in closures:
+        if c.period == 'all_day':
+            return True, c.reason
+        if c.period == 'am' and s_time < MIDDAY:
+            return True, f'ช่วงเช้า: {c.reason}'
+        if c.period == 'pm' and e_time > MIDDAY:
+            return True, f'ช่วงบ่าย: {c.reason}'
+    return False, ''
 
 
 def _is_workday(d, holidays):
@@ -297,20 +314,20 @@ def booking_page(request):
 
     # วันหยุดในอีก 60 วันข้างหน้า สำหรับ disable ใน date picker
     today = date.today()
-    holiday_list = list(
-        HolidayDate.objects.filter(
-            is_active=True,
-            date__gte=today,
-            date__lte=today + timedelta(days=60),
-        ).values_list('date', flat=True)
+    holiday_qs = HolidayDate.objects.filter(
+        is_active=True,
+        date__gte=today,
+        date__lte=today + timedelta(days=60),
     )
-    holiday_strs = [d.strftime('%Y-%m-%d') for d in holiday_list]
+    # คืน dict date → description เพื่อแสดงชื่อวันหยุดทันที
+    holidays_map = {h.date.strftime('%Y-%m-%d'): h.description for h in holiday_qs}
 
     context = {
-        'liff_id':      settings.LINE_LIFF_ID,
-        'room_json':    json.dumps(room_data),
-        'register_url': request.build_absolute_uri(reverse('register')),
-        'holidays_json': json.dumps(holiday_strs),
+        'liff_id':         settings.LINE_LIFF_ID,
+        'room_json':       json.dumps(room_data),
+        'register_url':    request.build_absolute_uri(reverse('register')),
+        'holidays_json':   json.dumps(holidays_map),
+        'closure_url':     request.build_absolute_uri(reverse('room_closure_info')),
         'max_advance_days': MAX_ADVANCE_DAYS,
     }
     return render(request, 'booking/booking.html', context)
@@ -430,6 +447,11 @@ def create_booking(request):
     except Room.DoesNotExist:
         return JsonResponse({'error': 'ไม่พบข้อมูลห้อง'}, status=404)
 
+    # ตรวจว่าห้องนี้ปิดชั่วคราวในวัน/ช่วงเวลานั้นไหม
+    blocked, closure_reason = _check_room_closure(room, b_date, s_time, e_time)
+    if blocked:
+        return JsonResponse({'error': f'ห้อง {room.name} ปิดบริการชั่วคราว — {closure_reason}'}, status=400)
+
     try:
         lu = LineUser.objects.get(line_user_id=user_id)
     except LineUser.DoesNotExist:
@@ -509,6 +531,31 @@ def _notify_booking_confirmed(booking):
     )
     if _push_text(b.line_user.line_user_id, msg):
         Booking.objects.filter(pk=b.pk).update(notified_start=True)
+
+
+@require_http_methods(['GET'])
+def room_closure_info(request):
+    """
+    GET /api/room-closure/?room=<key>&date=<YYYY-MM-DD>
+    คืนข้อมูลการปิดห้องชั่วคราวของวันที่ระบุ
+    """
+    room_key = request.GET.get('room', '')
+    date_str = request.GET.get('date', '')
+    if not room_key or not date_str:
+        return JsonResponse({'error': 'room and date required'}, status=400)
+    try:
+        b_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return JsonResponse({'error': 'invalid date'}, status=400)
+    try:
+        room = Room.objects.get(booking_name=room_key, is_active=True)
+    except Room.DoesNotExist:
+        return JsonResponse({'closures': []})
+
+    closures = RoomClosure.objects.filter(room=room, date=b_date, is_active=True)
+    data = [{'period': c.period, 'period_label': c.get_period_display(), 'reason': c.reason}
+            for c in closures]
+    return JsonResponse({'closures': data})
 
 
 @require_http_methods(['GET'])
@@ -926,24 +973,30 @@ def room_detail(request, booking_name):
 def calendar_events(request):
     """
     GET /api/calendar-events/?start=YYYY-MM-DD&end=YYYY-MM-DD&room=<key>
-    คืน FullCalendar events format
+    คืน FullCalendar events format (รวมวันหยุด)
     """
     start_str = request.GET.get('start', '')
     end_str   = request.GET.get('end', '')
     room_key  = request.GET.get('room', '')
 
-    qs = Booking.objects.select_related('room', 'line_user').filter(status='confirmed')
-
+    start_date = None
+    end_date   = None
     if start_str:
         try:
-            qs = qs.filter(booking_date__gte=datetime.strptime(start_str[:10], '%Y-%m-%d').date())
+            start_date = datetime.strptime(start_str[:10], '%Y-%m-%d').date()
         except ValueError:
             pass
     if end_str:
         try:
-            qs = qs.filter(booking_date__lte=datetime.strptime(end_str[:10], '%Y-%m-%d').date())
+            end_date = datetime.strptime(end_str[:10], '%Y-%m-%d').date()
         except ValueError:
             pass
+
+    qs = Booking.objects.select_related('room', 'line_user').filter(status='confirmed')
+    if start_date:
+        qs = qs.filter(booking_date__gte=start_date)
+    if end_date:
+        qs = qs.filter(booking_date__lte=end_date)
     if room_key:
         qs = qs.filter(room__booking_name=room_key)
 
@@ -964,5 +1017,27 @@ def calendar_events(request):
                 'end_time':   b.end_time.strftime('%H:%M'),
             },
         })
+
+    # เพิ่มวันหยุดเป็น allDay event (ไม่กรองตาม room_key — วันหยุดปิดทุกห้อง)
+    if not room_key:
+        holiday_qs = HolidayDate.objects.filter(is_active=True)
+        if start_date:
+            holiday_qs = holiday_qs.filter(date__gte=start_date)
+        if end_date:
+            holiday_qs = holiday_qs.filter(date__lte=end_date)
+        for h in holiday_qs:
+            events.append({
+                'id':              f'holiday-{h.pk}',
+                'title':           f'ปิดบริการ — {h.description}',
+                'start':           str(h.date),
+                'allDay':          True,
+                'backgroundColor': '#ef4444',
+                'borderColor':     '#dc2626',
+                'textColor':       '#fff',
+                'extendedProps': {
+                    'type':        'holiday',
+                    'description': h.description,
+                },
+            })
 
     return JsonResponse(events, safe=False)

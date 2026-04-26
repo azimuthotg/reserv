@@ -94,6 +94,29 @@ class Booking(models.Model):
         return f'{self.room.name} — {self.booking_date} {self.start_time:%H:%M}-{self.end_time:%H:%M}'
 
 
+class RoomClosure(models.Model):
+    PERIOD_CHOICES = [
+        ('am',      'ช่วงเช้า (AM)'),
+        ('pm',      'ช่วงบ่าย (PM)'),
+        ('all_day', 'ทั้งวัน'),
+    ]
+    room      = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='closures',
+                                  verbose_name='ห้อง')
+    date      = models.DateField(verbose_name='วันที่')
+    period    = models.CharField(max_length=10, choices=PERIOD_CHOICES, verbose_name='ช่วงเวลา')
+    reason    = models.CharField(max_length=200, verbose_name='สาเหตุ')
+    is_active = models.BooleanField(default=True, verbose_name='เปิดใช้งาน')
+
+    class Meta:
+        ordering        = ['date', 'room']
+        verbose_name    = 'ปิดห้องชั่วคราว'
+        verbose_name_plural = 'ปิดห้องชั่วคราว'
+        unique_together = [['room', 'date', 'period']]
+
+    def __str__(self):
+        return f'{self.room.name} — {self.date} ({self.get_period_display()})'
+
+
 class HolidayDate(models.Model):
     date        = models.DateField(unique=True, verbose_name='วันที่')
     description = models.CharField(max_length=200, verbose_name='เหตุผล/ชื่อวันหยุด')

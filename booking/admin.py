@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Booking, BookingLog, HolidayDate, LineUser, Room
+from .models import Booking, BookingLog, HolidayDate, LineUser, Room, RoomClosure
 
 
 class BookingLogInline(admin.TabularInline):
@@ -7,6 +7,16 @@ class BookingLogInline(admin.TabularInline):
     extra   = 0
     readonly_fields = ('action', 'note', 'timestamp')
     can_delete = False
+
+
+@admin.register(RoomClosure)
+class RoomClosureAdmin(admin.ModelAdmin):
+    list_display  = ('room', 'date', 'period', 'reason', 'is_active')
+    list_editable = ('is_active',)
+    list_filter   = ('room', 'period', 'is_active')
+    ordering      = ('date', 'room')
+    search_fields = ('reason', 'room__name')
+    date_hierarchy = 'date'
 
 
 @admin.register(HolidayDate)

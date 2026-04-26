@@ -185,14 +185,15 @@
 </div>
 
 <script>
-    const LIFF_ID       = "{{ liff_id }}";
-    const ROOM_DATA     = {{ room_json|safe }};
-    const REGISTER_URL  = "{{ register_url }}";
-    const CHECK_URL     = "{% url 'check_user' %}";
-    const BOOKING_URL   = "{% url 'create_booking' %}";
-    const SUCCESS_URL   = "{% url 'booking_success' %}";
-    const BY_DATE_URL   = "{% url 'bookings_by_date' %}";
-    const HOLIDAYS      = new Set({{ holidays_json|safe }});
+    const LIFF_ID          = "{{ liff_id }}";
+    const ROOM_DATA        = {{ room_json|safe }};
+    const REGISTER_URL     = "{{ register_url }}";
+    const CHECK_URL        = "{% url 'check_user' %}";
+    const BOOKING_URL      = "{% url 'create_booking' %}";
+    const SUCCESS_URL      = "{% url 'booking_success' %}";
+    const BY_DATE_URL      = "{% url 'bookings_by_date' %}";
+    const CLOSURE_URL      = "{{ closure_url }}";
+    const HOLIDAYS         = {{ holidays_json|safe }};  // { 'YYYY-MM-DD': 'description' }
     const MAX_ADVANCE_DAYS = {{ max_advance_days }};
     const MAX_DURATION  = 210; // นาที = 3.5 ชม.
 
@@ -389,16 +390,35 @@
         loadBookingsByDate(el.value);
     }
 
-    document.getElementById('booking_date').addEventListener('change', function() {
+    document.getElementById('booking_date').addEventListener('change', async function() {
         const val = this.value;
         if (!val) return;
-        if (HOLIDAYS.has(val)) {
-            showFormError('วันที่เลือกเป็นวันหยุด กรุณาเลือกวันอื่น');
+
+        // เช็คว่าเป็นวันหยุดไหม
+        if (HOLIDAYS[val] !== undefined) {
+            showFormError(`วันที่เลือกเป็นวันหยุด: ${HOLIDAYS[val]} — กรุณาเลือกวันอื่น`);
             this.value = '';
             document.getElementById('booking-list-wrap').style.display = 'none';
             return;
         }
+
         hideFormError();
+
+        // เช็ค RoomClosure ของห้องนี้
+        if (ROOM_DATA) {
+            try {
+                const resp = await fetch(`${CLOSURE_URL}?room=${ROOM_DATA.booking_name}&date=${val}`);
+                const data = await resp.json();
+                if (data.closures && data.closures.length > 0) {
+                    const msgs = data.closures.map(c => `${c.period_label}: ${c.reason}`).join(' / ');
+                    showFormError(`ห้องนี้ปิดบริการชั่วคราว — ${msgs}`);
+                    // ไม่ล้างวันที่ เผื่อปิดแค่บางช่วง ให้ผู้ใช้ดูก่อน
+                }
+            } catch {
+                // ถ้าเรียก API ไม่ได้ ปล่อยผ่าน — server จะเช็คอีกรอบตอน submit
+            }
+        }
+
         loadBookingsByDate(val);
     });
 

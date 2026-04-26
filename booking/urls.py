@@ -29,6 +29,7 @@ urlpatterns = [
     path('api/cancel-booking/',    views.cancel_booking,   name='cancel_booking'),
     path('api/checkin/',           views.checkin_booking,  name='checkin_booking'),
     path('api/walai-card/',        views.walai_card,       name='walai_card'),
+    path('api/room-closure/',      views.room_closure_info, name='room_closure_info'),
     path('api/room-status/',       views.room_status,      name='room_status'),
     path('api/device-toggle/',     views.device_toggle,    name='device_toggle'),
 
@@ -66,6 +67,10 @@ urlpatterns = [
     path('manage/rooms/<int:pk>/toggle/',   manage_views.manage_room_toggle,        name='manage_room_toggle'),
     path('manage/rooms/<int:pk>/devices/',  manage_views.manage_room_devices,       name='manage_room_devices'),
     path('manage/devices/<int:pk>/delete/', manage_views.manage_room_device_delete, name='manage_room_device_delete'),
+
+    # IoT Monitor
+    path('manage/iot-monitor/',          manage_views.manage_iot_monitor, name='manage_iot_monitor'),
+    path('manage/iot-monitor/refresh/',  manage_views.manage_iot_refresh, name='manage_iot_refresh'),
 
     # Staff (admin only)
     path('manage/staff/',                   manage_views.manage_staff_list,  name='manage_staff_list'),
