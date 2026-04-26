@@ -33,11 +33,10 @@ def _ha_get_state(entity_id):
         return None
 
 
-def _push_group(messages):
-    """ส่ง push message ไปกลุ่ม LINE"""
-    group_id = getattr(settings, 'LINE_GROUP_ID', '')
-    token    = settings.LINE_CHANNEL_ACCESS_TOKEN
-    if not group_id or not token:
+def _push_to(target_id, messages):
+    """ส่ง push message ไปหา userId หรือ groupId"""
+    token = settings.LINE_CHANNEL_ACCESS_TOKEN
+    if not target_id or not token:
         return False
     try:
         resp = requests.post(
@@ -46,7 +45,7 @@ def _push_group(messages):
                 'Authorization': f'Bearer {token}',
                 'Content-Type':  'application/json',
             },
-            json={'to': group_id, 'messages': messages},
+            json={'to': target_id, 'messages': messages},
             timeout=10,
         )
         return resp.status_code == 200
@@ -116,10 +115,12 @@ class Command(BaseCommand):
 
         text = '\n'.join(lines)
 
-        ok = _push_group([{'type': 'text', 'text': text}])
+        # ส่ง 1:1 ให้คนรับผิดชอบ (daily auto report)
+        admin_id = getattr(settings, 'IOT_ADMIN_LINE_ID', '')
+        ok = _push_to(admin_id, [{'type': 'text', 'text': text}])
         if ok:
-            self.stdout.write(f'[{now.strftime("%H:%M:%S")}] ส่งรายงาน IoT เช้าสำเร็จ')
+            self.stdout.write(f'[{now.strftime("%H:%M:%S")}] ส่งรายงาน IoT เช้าสำเร็จ → {admin_id}')
         else:
             self.stdout.write(self.style.WARNING(
-                f'[{now.strftime("%H:%M:%S")}] ส่งรายงานไม่สำเร็จ (ตรวจสอบ LINE_GROUP_ID และ token)'
+                f'[{now.strftime("%H:%M:%S")}] ส่งรายงานไม่สำเร็จ (ตรวจสอบ IOT_ADMIN_LINE_ID และ token)'
             ))

@@ -424,6 +424,77 @@ def manage_iot_monitor(request):
 
 
 @staff_required
+def manage_iot_notify_group(request):
+    """
+    POST /manage/iot-monitor/notify/
+    ดึงสถานะ IoT ทั้งหมด แล้วส่งไปกลุ่ม LINE (manual trigger)
+    """
+    from django.http import JsonResponse
+    from django.utils import timezone
+
+    rooms = Room.objects.filter(is_active=True).prefetch_related('devices')
+    all_ok = True
+    total_online = total_offline = total_unknown = 0
+    room_lines = []
+
+    for room in rooms:
+        devices = list(room.devices.all())
+        if not devices:
+            continue
+        room_ok = True
+        device_lines = []
+        for d in devices:
+            info = _ha_get_state_manage(d.entity_id)
+            state = info['state']
+            if state is None:
+                icon, label = '❓', 'ไม่ทราบ'
+                total_unknown += 1
+                room_ok = False
+            elif state in ('on', 'off'):
+                icon  = '🟢' if state == 'on' else '⚫'
+                label = 'Online' if state == 'on' else 'Standby'
+                total_online += 1
+            else:
+                icon, label = '🔴', f'Offline ({state})'
+                total_offline += 1
+                room_ok = False
+            device_lines.append(f'  {icon} {d.device_name}: {label}')
+        if not room_ok:
+            all_ok = False
+        status_icon = '✅' if room_ok else '⚠️'
+        room_lines.append(f'{status_icon} {room.name}')
+        room_lines.extend(device_lines)
+
+    now      = timezone.localtime(timezone.now())
+    date_str = now.strftime('%d/%m/%Y %H:%M')
+    header   = f'✅ IoT ปกติทุกอุปกรณ์ — {date_str}' if all_ok else f'⚠️ พบอุปกรณ์ผิดปกติ — {date_str}'
+    summary  = f'Online: {total_online}  Offline: {total_offline}  ไม่ทราบ: {total_unknown}'
+    lines    = [header, '', summary, ''] + room_lines
+    if not all_ok:
+        lines += ['', 'กรุณาตรวจสอบและดำเนินการแก้ไข']
+    text = '\n'.join(lines)
+
+    group_id = getattr(settings, 'LINE_GROUP_ID', '')
+    token    = settings.LINE_CHANNEL_ACCESS_TOKEN
+    ok = False
+    if group_id and token:
+        try:
+            resp = requests.post(
+                'https://api.line.me/v2/bot/message/push',
+                headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'},
+                json={'to': group_id, 'messages': [{'type': 'text', 'text': text}]},
+                timeout=10,
+            )
+            ok = resp.status_code == 200
+        except requests.RequestException:
+            pass
+
+    if ok:
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False, 'error': 'ส่งไม่สำเร็จ ตรวจสอบ LINE_GROUP_ID'})
+
+
+@staff_required
 def manage_iot_refresh(request):
     """
     GET /manage/iot-monitor/refresh/

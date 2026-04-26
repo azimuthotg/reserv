@@ -105,7 +105,8 @@ HA_PORT          = os.getenv('HA_PORT', '8123')
 HA_TOKEN         = os.getenv('HA_TOKEN', '')
 
 # ── Phase 4: IoT Monitor ───────────────────────────────────────────────────────
-LINE_GROUP_ID    = os.getenv('LINE_GROUP_ID', '')  # Group ID สำหรับส่งรายงานเช้า
+LINE_GROUP_ID      = os.getenv('LINE_GROUP_ID', '')       # Group ID สำหรับส่งรายงานแบบ manual
+IOT_ADMIN_LINE_ID  = os.getenv('IOT_ADMIN_LINE_ID', '')   # userId คนรับผิดชอบ IoT (รายงานเช้าอัตโนมัติ)
 
 # ── Session ───────────────────────────────────────────────────────────────────
 SESSION_ENGINE   = 'django.contrib.sessions.backends.db'

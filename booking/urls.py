@@ -76,8 +76,9 @@ urlpatterns = [
     path('manage/devices/<int:pk>/delete/', manage_views.manage_room_device_delete, name='manage_room_device_delete'),
 
     # IoT Monitor
-    path('manage/iot-monitor/',          manage_views.manage_iot_monitor, name='manage_iot_monitor'),
-    path('manage/iot-monitor/refresh/',  manage_views.manage_iot_refresh, name='manage_iot_refresh'),
+    path('manage/iot-monitor/',          manage_views.manage_iot_monitor,      name='manage_iot_monitor'),
+    path('manage/iot-monitor/refresh/',  manage_views.manage_iot_refresh,      name='manage_iot_refresh'),
+    path('manage/iot-monitor/notify/',   manage_views.manage_iot_notify_group, name='manage_iot_notify_group'),
 
     # Staff (admin only)
     path('manage/staff/',                   manage_views.manage_staff_list,  name='manage_staff_list'),

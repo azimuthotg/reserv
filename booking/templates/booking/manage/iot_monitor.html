@@ -12,6 +12,9 @@
         <button class="btn btn-sm btn-outline-success" id="btn-refresh" onclick="refreshStatus()">
             <i class="bi bi-arrow-clockwise"></i> Refresh
         </button>
+        <button class="btn btn-sm btn-outline-primary" id="btn-notify" onclick="notifyGroup()">
+            <i class="bi bi-chat-dots"></i> แจ้งกลุ่ม LINE
+        </button>
     </div>
 </div>
 
@@ -113,6 +116,28 @@ async function refreshStatus() {
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh';
+    }
+}
+
+async function notifyGroup() {
+    const btn = document.getElementById('btn-notify');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> กำลังส่ง...';
+    try {
+        const resp = await fetch("{% url 'manage_iot_notify_group' %}", { method: 'POST', headers: {'X-CSRFToken': '{{ csrf_token }}'} });
+        const data = await resp.json();
+        if (data.success) {
+            btn.innerHTML = '<i class="bi bi-check-lg"></i> ส่งแล้ว';
+            setTimeout(() => { btn.innerHTML = '<i class="bi bi-chat-dots"></i> แจ้งกลุ่ม LINE'; btn.disabled = false; }, 3000);
+        } else {
+            alert(data.error || 'ส่งไม่สำเร็จ');
+            btn.innerHTML = '<i class="bi bi-chat-dots"></i> แจ้งกลุ่ม LINE';
+            btn.disabled = false;
+        }
+    } catch {
+        alert('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้');
+        btn.innerHTML = '<i class="bi bi-chat-dots"></i> แจ้งกลุ่ม LINE';
+        btn.disabled = false;
     }
 }
 
