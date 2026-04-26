@@ -1,0 +1,31 @@
+{% extends "booking/manage/base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="table-card p-4">
+            <form method="post">
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="mb-3">
+                    <label class="form-label" style="font-size:13px;font-weight:600;">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                    <div class="text-danger" style="font-size:12px;">{{ field.errors.0 }}</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger" style="font-size:13px;">{{ form.non_field_errors }}</div>
+                {% endif %}
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-green">บันทึก</button>
+                    <a href="{% url 'manage_closures' %}" class="btn btn-outline-secondary">ยกเลิก</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

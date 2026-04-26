@@ -161,6 +161,12 @@
             </a>
         </div>
         <div class="nav-item">
+            <a href="{% url 'manage_closures' %}"
+               class="{% if 'closure' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-door-closed"></i> ปิดห้องชั่วคราว
+            </a>
+        </div>
+        <div class="nav-item">
             <a href="{% url 'manage_line_users' %}"
                class="{% if request.resolver_match.url_name == 'manage_line_users' %}active{% endif %}">
                 <i class="bi bi-people"></i> ผู้ใช้ LINE

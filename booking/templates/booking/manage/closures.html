@@ -1,0 +1,111 @@
+{% extends "booking/manage/base.html" %}
+{% block title %}ปิดห้องชั่วคราว{% endblock %}
+{% block page_title %}ปิดห้องชั่วคราว{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div class="d-flex gap-2 flex-wrap align-items-center">
+        {% for y in years %}
+        <a href="?year={{ y }}{% if room_key %}&room={{ room_key }}{% endif %}"
+           class="btn btn-sm {% if y == year %}btn-green{% else %}btn-outline-secondary{% endif %}">{{ y }}</a>
+        {% endfor %}
+        <select class="form-select form-select-sm" style="width:auto;"
+                onchange="location.href='?year={{ year }}&room='+this.value">
+            <option value="">ทุกห้อง</option>
+            {% for r in rooms %}
+            <option value="{{ r.booking_name }}" {% if r.booking_name == room_key %}selected{% endif %}>{{ r.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <a href="{% url 'manage_closure_add' %}" class="btn btn-sm btn-green">
+        <i class="bi bi-plus-lg"></i> เพิ่มการปิดห้อง
+    </a>
+</div>
+
+<div class="table-card">
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0" style="font-size:13px;">
+            <thead class="table-light">
+                <tr>
+                    <th>วันที่</th>
+                    <th>ห้อง</th>
+                    <th>ช่วงเวลา</th>
+                    <th>สาเหตุ</th>
+                    <th>สถานะ</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in closures %}
+                <tr {% if not c.is_active %}style="opacity:.5;"{% endif %}>
+                    <td style="white-space:nowrap;font-weight:600;">{{ c.date|date:"d/m/Y" }}</td>
+                    <td>{{ c.room.name }}</td>
+                    <td>
+                        {% if c.period == 'am' %}
+                        <span class="badge bg-warning text-dark">ช่วงเช้า (AM)</span>
+                        {% elif c.period == 'pm' %}
+                        <span class="badge bg-info text-dark">ช่วงบ่าย (PM)</span>
+                        {% else %}
+                        <span class="badge bg-danger">ทั้งวัน</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ c.reason }}</td>
+                    <td>
+                        {% if c.is_active %}
+                        <span class="badge badge-confirmed">เปิดใช้</span>
+                        {% else %}
+                        <span class="badge badge-cancelled">ปิดใช้</span>
+                        {% endif %}
+                    </td>
+                    <td style="white-space:nowrap;">
+                        <form method="post" action="{% url 'manage_closure_toggle' c.pk %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm {% if c.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}" style="font-size:12px;">
+                                {% if c.is_active %}ปิดใช้{% else %}เปิดใช้{% endif %}
+                            </button>
+                        </form>
+                        <a href="{% url 'manage_closure_edit' c.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:12px;">แก้ไข</a>
+                        <button class="btn btn-sm btn-outline-danger" style="font-size:12px;"
+                            data-bs-toggle="modal" data-bs-target="#deleteModal"
+                            data-id="{{ c.pk }}" data-desc="{{ c.room.name }} {{ c.date|date:'d/m/Y' }} ({{ c.get_period_display }})">ลบ</button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center text-muted py-4">ไม่มีข้อมูลการปิดห้องในปี {{ year }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title">ยืนยันการลบ</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="font-size:14px;">
+                ลบรายการปิดห้อง "<strong id="deleteDesc"></strong>" ?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                <form method="post" id="deleteForm">{% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-danger">ลบ</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('deleteModal').addEventListener('show.bs.modal', function(e) {
+        const btn = e.relatedTarget;
+        document.getElementById('deleteDesc').textContent = btn.dataset.desc;
+        document.getElementById('deleteForm').action = '/reserv/manage/closures/' + btn.dataset.id + '/delete/';
+    });
+</script>
+{% endblock %}

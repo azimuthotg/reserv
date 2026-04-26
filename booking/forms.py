@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.models import User
-from .models import HolidayDate, Room
+from .models import HolidayDate, Room, RoomClosure
 
 
 class HolidayDateForm(forms.ModelForm):
@@ -16,6 +16,27 @@ class HolidayDateForm(forms.ModelForm):
             'date':        'วันที่',
             'description': 'คำอธิบาย / ชื่อวันหยุด',
             'is_active':   'เปิดใช้งาน',
+        }
+
+
+class RoomClosureForm(forms.ModelForm):
+    class Meta:
+        model  = RoomClosure
+        fields = ['room', 'date', 'period', 'reason', 'is_active']
+        widgets = {
+            'room':      forms.Select(attrs={'class': 'form-select'}),
+            'date':      forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'period':    forms.Select(attrs={'class': 'form-select'}),
+            'reason':    forms.TextInput(attrs={'class': 'form-control',
+                                               'placeholder': 'เช่น ซ่อมแอร์, ประชุมภายใน'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+        labels = {
+            'room':      'ห้อง',
+            'date':      'วันที่',
+            'period':    'ช่วงเวลา',
+            'reason':    'สาเหตุ',
+            'is_active': 'เปิดใช้งาน',
         }
 
 

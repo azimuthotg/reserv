@@ -11,8 +11,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .forms import HolidayDateForm, RoomForm, StaffAddForm, StaffEditForm
-from .models import Booking, BookingLog, HolidayDate, LineUser, Room, RoomDevice
+from .forms import HolidayDateForm, RoomClosureForm, RoomForm, StaffAddForm, StaffEditForm
+from .models import Booking, BookingLog, HolidayDate, LineUser, Room, RoomClosure, RoomDevice
 from .views import _notify_booking_cancelled, _push_text
 
 
@@ -194,6 +194,61 @@ def manage_holiday_toggle(request, pk):
     holiday.is_active = not holiday.is_active
     holiday.save()
     return redirect('manage_holidays')
+
+
+# ── Room Closures ──────────────────────────────────────────────────────────────
+
+@staff_required
+def manage_closures(request):
+    year     = int(request.GET.get('year', date.today().year))
+    room_key = request.GET.get('room', '')
+    closures = RoomClosure.objects.select_related('room').filter(date__year=year).order_by('date', 'room')
+    if room_key:
+        closures = closures.filter(room__booking_name=room_key)
+    rooms = Room.objects.filter(is_active=True).order_by('name')
+    years = list(range(date.today().year, date.today().year + 3))
+    return render(request, 'booking/manage/closures.html', {
+        'closures': closures,
+        'rooms':    rooms,
+        'year':     year,
+        'years':    years,
+        'room_key': room_key,
+    })
+
+
+@staff_required
+def manage_closure_add(request):
+    form = RoomClosureForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        return redirect('manage_closures')
+    return render(request, 'booking/manage/closure_form.html', {'form': form, 'title': 'เพิ่มการปิดห้องชั่วคราว'})
+
+
+@staff_required
+def manage_closure_edit(request, pk):
+    closure = get_object_or_404(RoomClosure, pk=pk)
+    form    = RoomClosureForm(request.POST or None, instance=closure)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        return redirect('manage_closures')
+    return render(request, 'booking/manage/closure_form.html', {'form': form, 'title': 'แก้ไขการปิดห้องชั่วคราว'})
+
+
+@staff_required
+@require_POST
+def manage_closure_delete(request, pk):
+    get_object_or_404(RoomClosure, pk=pk).delete()
+    return redirect('manage_closures')
+
+
+@staff_required
+@require_POST
+def manage_closure_toggle(request, pk):
+    closure           = get_object_or_404(RoomClosure, pk=pk)
+    closure.is_active = not closure.is_active
+    closure.save()
+    return redirect('manage_closures')
 
 
 # ── LINE Users ─────────────────────────────────────────────────────────────────

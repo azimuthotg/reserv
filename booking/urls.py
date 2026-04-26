@@ -43,6 +43,13 @@ urlpatterns = [
     path('manage/bookings/',                    manage_views.manage_bookings,       name='manage_bookings'),
     path('manage/bookings/<int:pk>/cancel/',    manage_views.manage_booking_cancel, name='manage_booking_cancel'),
 
+    # Room Closures
+    path('manage/closures/',                    manage_views.manage_closures,       name='manage_closures'),
+    path('manage/closures/add/',                manage_views.manage_closure_add,    name='manage_closure_add'),
+    path('manage/closures/<int:pk>/edit/',      manage_views.manage_closure_edit,   name='manage_closure_edit'),
+    path('manage/closures/<int:pk>/delete/',    manage_views.manage_closure_delete, name='manage_closure_delete'),
+    path('manage/closures/<int:pk>/toggle/',    manage_views.manage_closure_toggle, name='manage_closure_toggle'),
+
     # Holidays
     path('manage/holidays/',                    manage_views.manage_holidays,       name='manage_holidays'),
     path('manage/holidays/add/',                manage_views.manage_holiday_add,    name='manage_holiday_add'),
