@@ -48,13 +48,14 @@
                 <tr id="row-device-{{ d.pk }}">
                     <td class="ps-3" style="font-size:13px; width:40%;">{{ d.device_name }}</td>
                     <td style="font-size:12px; color:#888; width:35%;">{{ d.entity_id }}</td>
-                    <td class="device-state" data-id="{{ d.pk }}" style="width:10%;">
+                    <td class="device-state" data-id="{{ d.pk }}" style="width:10%; white-space:nowrap;">
                         <span class="badge bg-secondary">รอ...</span>
                     </td>
                     <td class="pe-3 text-end" style="width:15%;">
                         <button class="btn btn-sm btn-outline-secondary device-toggle-btn"
                                 data-id="{{ d.pk }}"
                                 data-control-url="{% url 'manage_iot_device_control' d.pk %}"
+                                style="min-width:68px;"
                                 disabled>
                             <i class="bi bi-toggle-off"></i>
                         </button>
@@ -86,6 +87,7 @@ function stateBadge(state, error) {
 }
 
 function updateToggleBtn(btn, state) {
+    btn.style.minWidth = '68px';
     if (state === 'on') {
         btn.disabled = false;
         btn.className = 'btn btn-sm btn-danger device-toggle-btn';
@@ -99,7 +101,7 @@ function updateToggleBtn(btn, state) {
     } else {
         btn.disabled = true;
         btn.className = 'btn btn-sm btn-outline-secondary device-toggle-btn';
-        btn.innerHTML = '<i class="bi bi-toggle-off"></i>';
+        btn.innerHTML = '<i class="bi bi-toggle-off"></i> —';
         btn.dataset.nextAction = '';
     }
 }
