@@ -8,11 +8,12 @@ from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .forms import HolidayDateForm, RoomClosureForm, RoomForm, StaffAddForm, StaffEditForm
-from .models import Booking, BookingLog, HolidayDate, LineUser, Room, RoomClosure, RoomDevice
+from .models import Booking, BookingLog, HolidayDate, HolidayImportLog, LineUser, Room, RoomClosure, RoomDevice
 from .views import _notify_booking_cancelled, _push_text
 
 
@@ -154,10 +155,12 @@ def manage_holidays(request):
     year = int(request.GET.get('year', date.today().year))
     holidays = HolidayDate.objects.filter(date__year=year).order_by('date')
     years = list(range(date.today().year, date.today().year + 3))
+    import_log = HolidayImportLog.objects.filter(year=year).first()
     return render(request, 'booking/manage/holidays.html', {
-        'holidays': holidays,
-        'year': year,
-        'years': years,
+        'holidays':   holidays,
+        'year':       year,
+        'years':      years,
+        'import_log': import_log,
     })
 
 
@@ -185,6 +188,57 @@ def manage_holiday_edit(request, pk):
 def manage_holiday_delete(request, pk):
     get_object_or_404(HolidayDate, pk=pk).delete()
     return redirect('manage_holidays')
+
+
+@staff_required
+@require_POST
+def manage_holiday_import(request, year):
+    """POST /manage/holidays/import/<year>/
+    ดึงวันหยุดราชการไทยจาก date.nager.at แล้ว import เข้า HolidayDate
+    วันที่มีอยู่แล้ว (unique=True) จะถูก skip อัตโนมัติ
+    """
+    from django.contrib import messages
+    from datetime import datetime as dt
+    try:
+        resp = requests.get(
+            f'https://date.nager.at/api/v3/PublicHolidays/{year}/TH',
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            messages.error(request, f'ดึงข้อมูลวันหยุดไม่สำเร็จ (HTTP {resp.status_code})')
+            return redirect(f"{reverse('manage_holidays')}?year={year}")
+
+        added = skipped = 0
+        for h in resp.json():
+            d = dt.strptime(h['date'], '%Y-%m-%d').date()
+            name = h.get('localName') or h.get('name') or 'วันหยุดราชการ'
+            _, created = HolidayDate.objects.get_or_create(
+                date=d,
+                defaults={'description': name, 'is_active': True},
+            )
+            if created:
+                added += 1
+            else:
+                skipped += 1
+
+        HolidayImportLog.objects.update_or_create(
+            year=year,
+            defaults={
+                'imported_at':   timezone.now(),
+                'added_count':   added,
+                'skipped_count': skipped,
+            },
+        )
+        year_be = year + 543
+        messages.success(
+            request,
+            f'นำเข้าวันหยุดราชการปี {year_be} สำเร็จ — '
+            f'เพิ่มใหม่ {added} รายการ | ซ้ำ/ข้าม {skipped} รายการ'
+        )
+    except requests.RequestException as e:
+        messages.error(request, f'เชื่อมต่อ API ไม่ได้: {e}')
+
+    return redirect(f"{reverse('manage_holidays')}?year={year}")
 
 
 @staff_required

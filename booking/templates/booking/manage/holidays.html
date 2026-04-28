@@ -4,15 +4,34 @@
 {% block page_title %}จัดการวันหยุด{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <div class="d-flex gap-2">
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div class="d-flex gap-2 align-items-center flex-wrap">
         {% for y in years %}
         <a href="?year={{ y }}" class="btn btn-sm {% if y == year %}btn-green{% else %}btn-outline-secondary{% endif %}">{{ y }}</a>
         {% endfor %}
+        {% if import_log %}
+        <span class="text-muted" style="font-size:12px;">
+            <i class="bi bi-cloud-download"></i>
+            อัปเดตล่าสุด: {{ import_log.imported_at|th_datetime }}
+            <span class="text-success">(+{{ import_log.added_count }})</span>
+            {% if import_log.skipped_count %}
+            <span class="text-secondary">ข้าม {{ import_log.skipped_count }}</span>
+            {% endif %}
+        </span>
+        {% endif %}
     </div>
-    <a href="{% url 'manage_holiday_add' %}" class="btn btn-sm btn-green">
-        <i class="bi bi-plus-lg"></i> เพิ่มวันหยุด
-    </a>
+    <div class="d-flex gap-2">
+        <form method="post" action="{% url 'manage_holiday_import' year %}" id="import-form">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-info" id="btn-import"
+                    onclick="this.disabled=true;this.innerHTML='<span class=\'spinner-border spinner-border-sm\'></span> กำลังดึงข้อมูล...';this.form.submit();">
+                <i class="bi bi-cloud-download"></i> นำเข้าวันหยุดราชการ
+            </button>
+        </form>
+        <a href="{% url 'manage_holiday_add' %}" class="btn btn-sm btn-green">
+            <i class="bi bi-plus-lg"></i> เพิ่มวันหยุด
+        </a>
+    </div>
 </div>
 
 <div class="table-card">
