@@ -46,10 +46,18 @@
                 <tbody>
                 {% for d in item.devices %}
                 <tr id="row-device-{{ d.pk }}">
-                    <td class="ps-3" style="font-size:13px; width:50%;">{{ d.device_name }}</td>
-                    <td style="font-size:12px; color:#888;">{{ d.entity_id }}</td>
-                    <td class="pe-3 text-end device-state" data-id="{{ d.pk }}">
+                    <td class="ps-3" style="font-size:13px; width:40%;">{{ d.device_name }}</td>
+                    <td style="font-size:12px; color:#888; width:35%;">{{ d.entity_id }}</td>
+                    <td class="device-state" data-id="{{ d.pk }}" style="width:10%;">
                         <span class="badge bg-secondary">รอ...</span>
+                    </td>
+                    <td class="pe-3 text-end" style="width:15%;">
+                        <button class="btn btn-sm btn-outline-secondary device-toggle-btn"
+                                data-id="{{ d.pk }}"
+                                data-control-url="{% url 'manage_iot_device_control' d.pk %}"
+                                disabled>
+                            <i class="bi bi-toggle-off"></i>
+                        </button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -66,6 +74,7 @@
 
 <script>
 const REFRESH_URL = "{% url 'manage_iot_refresh' %}";
+const CSRF_TOKEN  = '{{ csrf_token }}';
 
 function stateBadge(state, error) {
     if (error && !state) return `<span class="badge bg-secondary" title="${error}">❓ ไม่ทราบ</span>`;
@@ -74,6 +83,60 @@ function stateBadge(state, error) {
     if (state === 'unavailable' || state === null)
         return `<span class="badge bg-danger" title="${error||''}">🔴 Offline</span>`;
     return `<span class="badge bg-warning text-dark">${state}</span>`;
+}
+
+function updateToggleBtn(btn, state) {
+    if (state === 'on') {
+        btn.disabled = false;
+        btn.className = 'btn btn-sm btn-danger device-toggle-btn';
+        btn.innerHTML = '<i class="bi bi-toggle-on"></i> ปิด';
+        btn.dataset.nextAction = 'off';
+    } else if (state === 'off') {
+        btn.disabled = false;
+        btn.className = 'btn btn-sm btn-success device-toggle-btn';
+        btn.innerHTML = '<i class="bi bi-toggle-off"></i> เปิด';
+        btn.dataset.nextAction = 'on';
+    } else {
+        btn.disabled = true;
+        btn.className = 'btn btn-sm btn-outline-secondary device-toggle-btn';
+        btn.innerHTML = '<i class="bi bi-toggle-off"></i>';
+        btn.dataset.nextAction = '';
+    }
+}
+
+async function controlDevice(btn) {
+    const deviceId  = btn.dataset.id;
+    const action    = btn.dataset.nextAction;
+    const controlUrl = btn.dataset.controlUrl;
+    if (!action || !controlUrl) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+    try {
+        const fd = new FormData();
+        fd.append('action', action);
+        const resp = await fetch(controlUrl, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': CSRF_TOKEN },
+            body: fd,
+        });
+        const data = await resp.json();
+        if (data.success) {
+            const cell = document.querySelector(`.device-state[data-id="${deviceId}"]`);
+            if (cell) cell.innerHTML = stateBadge(data.state, null);
+            updateToggleBtn(btn, data.state);
+        } else {
+            alert('ควบคุมอุปกรณ์ไม่สำเร็จ: ' + (data.error || 'ไม่ทราบสาเหตุ'));
+            // คืนปุ่มตามสถานะเดิม
+            const prevAction = action === 'on' ? 'off' : 'on';
+            updateToggleBtn(btn, prevAction === 'off' ? 'on' : 'off');
+        }
+    } catch {
+        alert('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-toggle-off"></i>';
+    }
 }
 
 async function refreshStatus() {
@@ -90,6 +153,10 @@ async function refreshStatus() {
             room.devices.forEach(d => {
                 const cell = document.querySelector(`.device-state[data-id="${d.id}"]`);
                 if (cell) cell.innerHTML = stateBadge(d.state, d.error);
+
+                const toggleBtn = document.querySelector(`.device-toggle-btn[data-id="${d.id}"]`);
+                if (toggleBtn) updateToggleBtn(toggleBtn, d.state);
+
                 if (d.state === null || d.state === 'unavailable') roomOk = false;
             });
 
@@ -118,6 +185,12 @@ async function refreshStatus() {
         btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh';
     }
 }
+
+// delegate click สำหรับปุ่ม toggle ทุกตัว
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.device-toggle-btn');
+    if (btn && !btn.disabled) controlDevice(btn);
+});
 
 async function notifyGroup() {
     const btn = document.getElementById('btn-notify');

@@ -408,6 +408,57 @@ def _ha_get_state_manage(entity_id):
         return {'state': None, 'error': str(e)}
 
 
+def _ha_call_service(entity_id, action):
+    """สั่ง HA service (turn_on / turn_off) สำหรับ entity_id หนึ่งตัว
+    คืน {'success': bool, 'error': str|None}
+    """
+    if not getattr(settings, 'HA_IP', '') or not getattr(settings, 'HA_TOKEN', ''):
+        return {'success': False, 'error': 'HA ยังไม่ได้ตั้งค่า'}
+    domain = entity_id.split('.')[0]  # "switch", "light", ฯลฯ
+    try:
+        r = requests.post(
+            f'http://{settings.HA_IP}:{settings.HA_PORT}/api/services/{domain}/{action}',
+            headers={'Authorization': f'Bearer {settings.HA_TOKEN}', 'Content-Type': 'application/json'},
+            json={'entity_id': entity_id},
+            timeout=5,
+        )
+        if r.status_code in (200, 201):
+            return {'success': True, 'error': None}
+        return {'success': False, 'error': f'HA HTTP {r.status_code}'}
+    except requests.RequestException as e:
+        return {'success': False, 'error': str(e)}
+
+
+@staff_required
+@require_POST
+def manage_iot_device_control(request, pk):
+    """POST /manage/iot-monitor/control/<pk>/
+    body (form): action = on | off
+    คืน JSON {success, state, error}
+    """
+    from django.http import JsonResponse
+    device = get_object_or_404(RoomDevice, pk=pk)
+    action_raw = request.POST.get('action', '')
+    if action_raw not in ('on', 'off'):
+        return JsonResponse({'success': False, 'error': 'action ต้องเป็น on หรือ off'}, status=400)
+
+    ha_action = f'turn_{action_raw}'
+    result = _ha_call_service(device.entity_id, ha_action)
+
+    # ดึงสถานะล่าสุดหลังสั่งงาน
+    new_state = None
+    if result['success']:
+        import time; time.sleep(0.8)  # รอ HA อัปเดต state
+        info = _ha_get_state_manage(device.entity_id)
+        new_state = info['state']
+
+    return JsonResponse({
+        'success': result['success'],
+        'state':   new_state,
+        'error':   result['error'],
+    })
+
+
 @staff_required
 def manage_iot_monitor(request):
     """หน้า IoT Monitor — แสดงสถานะอุปกรณ์ทุกห้อง"""

@@ -77,8 +77,9 @@ urlpatterns = [
 
     # IoT Monitor
     path('manage/iot-monitor/',          manage_views.manage_iot_monitor,      name='manage_iot_monitor'),
-    path('manage/iot-monitor/refresh/',  manage_views.manage_iot_refresh,      name='manage_iot_refresh'),
-    path('manage/iot-monitor/notify/',   manage_views.manage_iot_notify_group, name='manage_iot_notify_group'),
+    path('manage/iot-monitor/refresh/',          manage_views.manage_iot_refresh,        name='manage_iot_refresh'),
+    path('manage/iot-monitor/notify/',           manage_views.manage_iot_notify_group,   name='manage_iot_notify_group'),
+    path('manage/iot-monitor/control/<int:pk>/', manage_views.manage_iot_device_control, name='manage_iot_device_control'),
 
     # Staff (admin only)
     path('manage/staff/',                   manage_views.manage_staff_list,  name='manage_staff_list'),
