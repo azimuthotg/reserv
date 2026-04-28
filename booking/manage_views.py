@@ -1,3 +1,4 @@
+import json
 from datetime import date, timedelta
 from functools import wraps
 
@@ -94,6 +95,81 @@ def manage_dashboard(request):
 
 
 # ── Bookings ───────────────────────────────────────────────────────────────────
+
+@staff_required
+def manage_daily_schedule(request):
+    """ตารางการจองรายวัน — แสดงทุกห้องในวันที่เลือก"""
+    TLINE_START = 420   # 07:00 น.
+    TLINE_RANGE = 780   # 07:00–20:00 = 780 นาที
+
+    date_str = request.GET.get('date', '')
+    try:
+        view_date = date.fromisoformat(date_str) if date_str else date.today()
+    except ValueError:
+        view_date = date.today()
+
+    today = date.today()
+    rooms = Room.objects.filter(is_active=True).order_by('name')
+    bookings_qs = (
+        Booking.objects
+        .filter(booking_date=view_date, status='confirmed')
+        .select_related('room', 'line_user')
+        .order_by('start_time', 'room__name')
+    )
+
+    # จัดกลุ่ม booking ตามห้อง
+    by_room = {r.id: [] for r in rooms}
+    for b in bookings_qs:
+        if b.room_id in by_room:
+            s = b.start_time.hour * 60 + b.start_time.minute
+            e = b.end_time.hour * 60 + b.end_time.minute
+            by_room[b.room_id].append({
+                'obj':       b,
+                'start_min': s,
+                'end_min':   e,
+                'left_pct':  round(max(0, (s - TLINE_START) / TLINE_RANGE * 100), 2),
+                'width_pct': round(min(100, (e - s) / TLINE_RANGE * 100), 2),
+            })
+
+    room_data = []
+    for room in rooms:
+        om = room.open_time.hour * 60 + room.open_time.minute
+        cm = room.close_time.hour * 60 + room.close_time.minute
+        room_data.append({
+            'room':           room,
+            'bookings':       by_room.get(room.id, []),
+            'open_left_pct':  round(max(0, (om - TLINE_START) / TLINE_RANGE * 100), 2),
+            'open_width_pct': round(min(100, (cm - om) / TLINE_RANGE * 100), 2),
+        })
+
+    # hour markers สำหรับ timeline (07:00–20:00)
+    hour_markers = [
+        {'h': h, 'pct': round((h * 60 - TLINE_START) / TLINE_RANGE * 100, 2)}
+        for h in range(7, 21)
+    ]
+
+    # JSON สำหรับ JS real-time status
+    bookings_json = json.dumps([
+        {
+            'id':        b.id,
+            'start_min': b.start_time.hour * 60 + b.start_time.minute,
+            'end_min':   b.end_time.hour * 60 + b.end_time.minute,
+        }
+        for b in bookings_qs
+    ])
+
+    return render(request, 'booking/manage/daily_schedule.html', {
+        'view_date':     view_date,
+        'is_today':      view_date == today,
+        'room_data':     room_data,
+        'all_bookings':  list(bookings_qs),
+        'total':         bookings_qs.count(),
+        'prev_date':     (view_date - timedelta(days=1)).isoformat(),
+        'next_date':     (view_date + timedelta(days=1)).isoformat(),
+        'hour_markers':  hour_markers,
+        'bookings_json': bookings_json,
+    })
+
 
 @staff_required
 def manage_bookings(request):

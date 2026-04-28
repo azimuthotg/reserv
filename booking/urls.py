@@ -39,6 +39,9 @@ urlpatterns = [
     path('manage/logout/',  manage_views.manage_logout,  name='manage_logout'),
     path('manage/',         manage_views.manage_dashboard, name='manage_dashboard'),
 
+    # Daily schedule
+    path('manage/daily/',  manage_views.manage_daily_schedule, name='manage_daily_schedule'),
+
     # Bookings
     path('manage/bookings/',                    manage_views.manage_bookings,       name='manage_bookings'),
     path('manage/bookings/<int:pk>/cancel/',    manage_views.manage_booking_cancel, name='manage_booking_cancel'),
