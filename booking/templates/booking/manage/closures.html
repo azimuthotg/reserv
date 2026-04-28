@@ -1,4 +1,5 @@
 {% extends "booking/manage/base.html" %}
+{% load th_filters %}
 {% block title %}ปิดห้องชั่วคราว{% endblock %}
 {% block page_title %}ปิดห้องชั่วคราว{% endblock %}
 
@@ -38,7 +39,7 @@
             <tbody>
                 {% for c in closures %}
                 <tr {% if not c.is_active %}style="opacity:.5;"{% endif %}>
-                    <td style="white-space:nowrap;font-weight:600;">{{ c.date|date:"d/m/Y" }}</td>
+                    <td style="white-space:nowrap;font-weight:600;">{{ c.date|th_date }}</td>
                     <td>{{ c.room.name }}</td>
                     <td>
                         {% if c.period == 'am' %}
@@ -67,7 +68,7 @@
                         <a href="{% url 'manage_closure_edit' c.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:12px;">แก้ไข</a>
                         <button class="btn btn-sm btn-outline-danger" style="font-size:12px;"
                             data-bs-toggle="modal" data-bs-target="#deleteModal"
-                            data-id="{{ c.pk }}" data-desc="{{ c.room.name }} {{ c.date|date:'d/m/Y' }} ({{ c.get_period_display }})">ลบ</button>
+                            data-id="{{ c.pk }}" data-desc="{{ c.room.name }} {{ c.date|th_date }} ({{ c.get_period_display }})">ลบ</button>
                     </td>
                 </tr>
                 {% empty %}

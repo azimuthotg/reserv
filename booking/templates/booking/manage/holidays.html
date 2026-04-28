@@ -1,4 +1,5 @@
 {% extends "booking/manage/base.html" %}
+{% load th_filters %}
 {% block title %}จัดการวันหยุด{% endblock %}
 {% block page_title %}จัดการวันหยุด{% endblock %}
 
@@ -29,8 +30,8 @@
             <tbody>
                 {% for h in holidays %}
                 <tr>
-                    <td style="white-space:nowrap;font-weight:600;">{{ h.date|date:"d/m/Y" }}</td>
-                    <td style="color:#888;">{{ h.date|date:"l" }}</td>
+                    <td style="white-space:nowrap;font-weight:600;">{{ h.date|th_date }}</td>
+                    <td style="color:#888;">{{ h.date|th_weekday }}</td>
                     <td>{{ h.description }}</td>
                     <td>
                         {% if h.is_active %}

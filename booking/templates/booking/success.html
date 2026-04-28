@@ -1,3 +1,4 @@
+{% load th_filters %}
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -40,11 +41,11 @@
         </div>
         <div class="info-row">
             <span class="info-label">วันที่</span>
-            <span class="info-value">{{ booking.booking_date|date:"j F Y" }}</span>
+            <span class="info-value">{{ booking.booking_date|th_date_long }}</span>
         </div>
         <div class="info-row">
             <span class="info-label">เวลา</span>
-            <span class="info-value">{{ booking.start_time|time:"H:i" }} – {{ booking.end_time|time:"H:i" }}</span>
+            <span class="info-value">{{ booking.start_time|time:"H:i" }} – {{ booking.end_time|time:"H:i" }} น.</span>
         </div>
         <div class="info-row">
             <span class="info-label">ชื่อกลุ่ม</span>

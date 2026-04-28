@@ -1,4 +1,5 @@
 {% extends "booking/manage/base.html" %}
+{% load th_filters %}
 {% block title %}Logs การจอง #{{ booking.id }}{% endblock %}
 {% block page_title %}Logs การจอง #{{ booking.id }}{% endblock %}
 
@@ -18,11 +19,11 @@
         </div>
         <div class="col-6 col-md-3">
             <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">วันที่</div>
-            <div style="font-size:15px;font-weight:700;margin-top:4px;">{{ booking.booking_date|date:"d/m/Y" }}</div>
+            <div style="font-size:15px;font-weight:700;margin-top:4px;">{{ booking.booking_date|th_date }}</div>
         </div>
         <div class="col-6 col-md-3">
             <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">เวลา</div>
-            <div style="font-size:15px;font-weight:700;margin-top:4px;">{{ booking.start_time|time:"H:i" }}–{{ booking.end_time|time:"H:i" }}</div>
+            <div style="font-size:15px;font-weight:700;margin-top:4px;">{{ booking.start_time|time:"H:i" }}–{{ booking.end_time|time:"H:i" }} น.</div>
         </div>
         <div class="col-6 col-md-3">
             <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">สถานะ</div>
@@ -90,7 +91,7 @@
                     <div style="font-size:13px;color:#718096;margin-top:2px;">{{ log.note }}</div>
                     {% endif %}
                     <div style="font-size:12px;color:#a0aec0;margin-top:4px;">
-                        <i class="bi bi-clock"></i> {{ log.timestamp|date:"d/m/Y H:i:s" }}
+                        <i class="bi bi-clock"></i> {{ log.timestamp|th_datetime_sec }}
                     </div>
                 </div>
             </div>

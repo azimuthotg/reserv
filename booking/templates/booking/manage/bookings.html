@@ -1,4 +1,5 @@
 {% extends "booking/manage/base.html" %}
+{% load th_filters %}
 {% block title %}รายการจอง{% endblock %}
 {% block page_title %}รายการจอง{% endblock %}
 
@@ -62,8 +63,8 @@
                 <tr>
                     <td class="text-muted">{{ b.id }}</td>
                     <td>{{ b.room.name }}</td>
-                    <td style="white-space:nowrap;">{{ b.booking_date|date:"d/m/Y" }}</td>
-                    <td style="white-space:nowrap;">{{ b.start_time|time:"H:i" }}–{{ b.end_time|time:"H:i" }}</td>
+                    <td style="white-space:nowrap;">{{ b.booking_date|th_date }}</td>
+                    <td style="white-space:nowrap;">{{ b.start_time|time:"H:i" }}–{{ b.end_time|time:"H:i" }} น.</td>
                     <td>
                         {{ b.group_name }}
                         {% if b.status == 'cancelled' and b.cancel_reason %}
