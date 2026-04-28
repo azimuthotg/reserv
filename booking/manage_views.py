@@ -100,7 +100,7 @@ def manage_dashboard(request):
 def manage_daily_schedule(request):
     """ตารางการจองรายวัน — แสดงทุกห้องในวันที่เลือก"""
     TLINE_START = 420   # 07:00 น.
-    TLINE_RANGE = 780   # 07:00–20:00 = 780 นาที
+    TLINE_RANGE = 600   # 07:00–17:00 = 600 นาที
 
     date_str = request.GET.get('date', '')
     try:
@@ -116,6 +116,13 @@ def manage_daily_schedule(request):
         .select_related('room', 'line_user')
         .order_by('start_time', 'room__name')
     )
+
+    # วันหยุดและการปิดห้องในวันนี้
+    holiday  = HolidayDate.objects.filter(date=view_date, is_active=True).first()
+    closures = RoomClosure.objects.filter(date=view_date, is_active=True).select_related('room')
+    closure_by_room = {}
+    for c in closures:
+        closure_by_room.setdefault(c.room_id, []).append(c)
 
     # จัดกลุ่ม booking ตามห้อง
     by_room = {r.id: [] for r in rooms}
@@ -140,12 +147,13 @@ def manage_daily_schedule(request):
             'bookings':       by_room.get(room.id, []),
             'open_left_pct':  round(max(0, (om - TLINE_START) / TLINE_RANGE * 100), 2),
             'open_width_pct': round(min(100, (cm - om) / TLINE_RANGE * 100), 2),
+            'closures':       closure_by_room.get(room.id, []),
         })
 
-    # hour markers สำหรับ timeline (07:00–20:00)
+    # hour markers สำหรับ timeline (07:00–17:00)
     hour_markers = [
         {'h': h, 'pct': round((h * 60 - TLINE_START) / TLINE_RANGE * 100, 2)}
-        for h in range(7, 21)
+        for h in range(7, 18)
     ]
 
     # JSON สำหรับ JS real-time status
@@ -168,6 +176,8 @@ def manage_daily_schedule(request):
         'next_date':     (view_date + timedelta(days=1)).isoformat(),
         'hour_markers':  hour_markers,
         'bookings_json': bookings_json,
+        'holiday':       holiday,
+        'closures':      list(closures),
     })
 
 

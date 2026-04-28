@@ -68,6 +68,28 @@
 .empty-day i { font-size:40px; display:block; margin-bottom:12px; }
 </style>
 
+<!-- ── Alert: วันหยุด / ปิดห้อง ── -->
+{% if holiday %}
+<div class="alert alert-warning d-flex align-items-center gap-2 mb-3" style="font-size:13px;">
+    <i class="bi bi-calendar-x-fill fs-5"></i>
+    <div>
+        <strong>วันหยุด:</strong> {{ holiday.description }}
+        — ระบบยังแสดงการจองที่มีอยู่ กรุณาตรวจสอบด้วยตนเอง
+    </div>
+</div>
+{% endif %}
+{% if closures %}
+<div class="alert alert-info d-flex align-items-center gap-2 mb-3" style="font-size:13px;">
+    <i class="bi bi-door-closed-fill fs-5"></i>
+    <div>
+        <strong>ปิดห้องชั่วคราว:</strong>
+        {% for c in closures %}
+        <span class="badge bg-secondary me-1">{{ c.room.name }} — {{ c.get_period_display }}{% if c.reason %} ({{ c.reason }}){% endif %}</span>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
 <!-- ── Zone 1: Date navigation ── -->
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
     <div class="date-nav">
@@ -123,6 +145,11 @@
         <div class="tl-room-name">
             {{ rd.room.name }}
             <div class="tl-room-sub">{{ rd.room.open_time|time:"H:i" }}–{{ rd.room.close_time|time:"H:i" }} น.</div>
+            {% for c in rd.closures %}
+            <span class="badge bg-danger" style="font-size:10px;font-weight:600;">
+                ปิด {{ c.get_period_display }}
+            </span>
+            {% endfor %}
         </div>
         <div class="tl-bar-wrap" id="tl-room-{{ rd.room.id }}">
             <!-- Available window -->
@@ -201,7 +228,7 @@
 <script>
 const IS_TODAY    = {{ is_today|yesno:"true,false" }};
 const TLINE_START = 420;   // 07:00
-const TLINE_RANGE = 780;   // 07:00–20:00
+const TLINE_RANGE = 600;   // 07:00–17:00
 const BOOKINGS    = {{ bookings_json }};
 
 function nowMinutes() {
