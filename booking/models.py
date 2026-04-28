@@ -131,20 +131,6 @@ class HolidayDate(models.Model):
         return f'{self.date} — {self.description}'
 
 
-class HolidayImportLog(models.Model):
-    """บันทึกการ import วันหยุดราชการอัตโนมัติแต่ละปี"""
-    year          = models.IntegerField(unique=True)
-    imported_at   = models.DateTimeField()
-    added_count   = models.IntegerField(default=0)
-    skipped_count = models.IntegerField(default=0)
-
-    class Meta:
-        ordering = ['-year']
-
-    def __str__(self):
-        return f'HolidayImport {self.year}'
-
-
 class BookingLog(models.Model):
     booking   = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='logs')
     action    = models.CharField(max_length=50)

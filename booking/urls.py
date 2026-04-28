@@ -56,7 +56,6 @@ urlpatterns = [
     path('manage/holidays/<int:pk>/edit/',      manage_views.manage_holiday_edit,   name='manage_holiday_edit'),
     path('manage/holidays/<int:pk>/delete/',    manage_views.manage_holiday_delete, name='manage_holiday_delete'),
     path('manage/holidays/<int:pk>/toggle/',    manage_views.manage_holiday_toggle, name='manage_holiday_toggle'),
-    path('manage/holidays/import/<int:year>/',  manage_views.manage_holiday_import, name='manage_holiday_import'),
 
     # LINE Users
     path('manage/line-users/',              manage_views.manage_line_users,       name='manage_line_users'),
