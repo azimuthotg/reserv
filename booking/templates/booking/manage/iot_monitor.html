@@ -224,7 +224,31 @@ async function notifyGroup() {
     }
 }
 
-// โหลดสถานะอัตโนมัติเมื่อเปิดหน้า
-window.addEventListener('DOMContentLoaded', refreshStatus);
+// Auto-poll ทุก 10 วิ เมื่อ tab active, หยุดเมื่อ hidden
+let pollTimer = null;
+
+function startPolling() {
+    if (pollTimer) return;
+    pollTimer = setInterval(refreshStatus, 10000);
+}
+
+function stopPolling() {
+    clearInterval(pollTimer);
+    pollTimer = null;
+}
+
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        stopPolling();
+    } else {
+        refreshStatus();   // fetch ทันทีเมื่อกลับมา
+        startPolling();
+    }
+});
+
+window.addEventListener('DOMContentLoaded', function() {
+    refreshStatus();
+    startPolling();
+});
 </script>
 {% endblock %}
