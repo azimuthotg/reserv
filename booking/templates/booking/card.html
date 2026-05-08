@@ -407,7 +407,7 @@
       text.textContent = '✓ สมาชิกห้องสมุด';
     } else {
       badge.className = 'walai-badge non-member';
-      text.textContent = '✗ ไม่ใช่สมาชิก';
+      text.textContent = 'ใช้บริการได้ (ยืมหนังสือไม่ได้)';
     }
   }
 
@@ -453,7 +453,10 @@
 
       showCard();
 
-      // fetch Walai status
+      // แสดง QR ทันทีจาก userLdap — ทุกคนที่ authen ผ่านมีสิทธิ์ใช้ห้องสมุด
+      renderQR(userData.userLdap);
+
+      // fetch Walai status เพื่อแสดง badge เสริม (สมาชิก = ยืมหนังสือได้)
       try {
         const wResp = await fetch(WALAI_URL, {
           method: 'POST',
@@ -461,19 +464,10 @@
           body: JSON.stringify({ userId: profile.userId, userLdap: userData.userLdap }),
         });
         const wData = await wResp.json();
-
-        if (wData.is_member && wData.barcode) {
-          setWalaiBadge(true);
-          renderQR(wData.barcode);
-        } else {
-          setWalaiBadge(false);
-          document.getElementById('qr-area').innerHTML =
-            '<div class="no-qr-text">ไม่พบข้อมูลสมาชิกในระบบ Walai<br><small style="opacity:.6">ติดต่อเจ้าหน้าที่เพื่อสมัครสมาชิก</small></div>';
-        }
+        setWalaiBadge(wData.is_member === true);
       } catch (e) {
+        // Walai ตรวจไม่ได้ — ไม่ต้องทำอะไร QR ยังแสดงอยู่
         setWalaiBadge(false);
-        document.getElementById('qr-area').innerHTML =
-          '<div class="no-qr-text">ไม่สามารถตรวจสอบ Walai ได้ในขณะนี้</div>';
       }
 
     } catch (err) {
