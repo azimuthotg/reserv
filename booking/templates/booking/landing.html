@@ -456,8 +456,8 @@
             const accentColor = (isCancelled || isPast) ? '#ddd' : color;
             const extraClass  = isCancelled ? 'cancelled' : isPast ? 'past' : '';
 
-            // canCancel: ยังไม่เริ่ม + ยังไม่ checked_in + ยังไม่ cancel
-            const canCancel = !isCancelled && !isPast && !isStarted && !b.checked_in;
+            // canCancel: ยังไม่เริ่ม + ยังไม่ checked_in + ยังไม่ cancel + ไม่อยู่ในช่วง check-in window
+            const canCancel = !isCancelled && !isPast && !isStarted && !b.checked_in && !isCheckinWindow;
 
             let actionHtml;
             if (isCancelled) {
@@ -465,8 +465,10 @@
             } else if (isPast) {
                 actionHtml = `<span class="badge-past-bk">หมดเวลาแล้ว</span>`;
             } else if (isActive) {
-                // กำลังใช้งาน: ปุ่มควบคุม + badge เช็คอิน (ถ้า checked_in แล้ว)
+                // กำลังใช้งาน: ปุ่มควบคุม + ปุ่ม check-in (ถ้ายังไม่ check-in) + badge (ถ้า checked_in แล้ว)
                 actionHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+                    ${!b.checked_in ? `<button class="btn-checkin-bk" id="btn-ci-${b.id}"
+                        onclick="event.stopPropagation();checkinBooking(${b.id})">✅ Check-in</button>` : ''}
                     <a class="btn-ctrl-bk" href="room-control/?room=${b.room_key}"
                         onclick="event.stopPropagation();">🎛️ ควบคุมอุปกรณ์</a>
                     ${b.checked_in ? `<span class="badge-checkedin-bk">✅ เช็คอินแล้ว</span>` : ''}

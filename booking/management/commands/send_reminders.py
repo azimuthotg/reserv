@@ -89,7 +89,7 @@ class Command(BaseCommand):
                     timezone.datetime.combine(today, b.start_time)
                 )
                 target = start_dt - timedelta(minutes=15)
-                if target - window <= now < start_dt:
+                if target <= now < start_dt:
                     checkin_deadline = (start_dt + timedelta(minutes=15)).strftime('%H:%M')
                     time_str = f'{b.start_time.strftime("%H:%M")} – {b.end_time.strftime("%H:%M")}'
                     note = f'กรุณา Check-in ภายใน {checkin_deadline} น.\nหากไม่ check-in ระบบจะยกเลิกอัตโนมัติ'
@@ -140,28 +140,9 @@ class Command(BaseCommand):
                         BookingLog.objects.create(booking=b, action='notified_15min')
                         sent_15 += 1
 
-            # ── แจ้งก่อนหมด 10 นาที ──────────────────────────────────────────
-            if not b.notified_10min:
-                target = (
-                    timezone.make_aware(
-                        timezone.datetime.combine(today, b.end_time)
-                    ) - timedelta(minutes=10)
-                )
-                if target - window <= now <= target + window:
-                    msg = (
-                        f'⚠️ อีก 10 นาทีหมดเวลาใช้พื้นที่\n'
-                        f'📍 {b.room.name}\n'
-                        f'🕐 หมดเวลา {b.end_time.strftime("%H:%M")} น.\n'
-                        f'กรุณาเก็บของและออกจากห้องให้เรียบร้อย'
-                    )
-                    if _push_text(user_id, msg):
-                        b.notified_10min = True
-                        b.save(update_fields=['notified_10min'])
-                        BookingLog.objects.create(booking=b, action='notified_10min')
-                        sent_10 += 1
-
             # ── auto-cancel ถ้าไม่ check-in ภายใน 15 นาทีหลังเริ่ม ──────────
-            if not b.checked_in:
+            # (ตรวจก่อน 10min เพื่อให้ continue ข้ามการแจ้งเตือนที่ไม่จำเป็น)
+            if not b.checked_in and b.notified_15min:
                 start_dt = timezone.make_aware(
                     timezone.datetime.combine(today, b.start_time)
                 )
@@ -182,7 +163,27 @@ class Command(BaseCommand):
                     )
                     _push_text(user_id, msg)
                     auto_cancel += 1
-                    continue  # ไม่ต้องตรวจ auto_off สำหรับการจองที่ถูก cancel แล้ว
+                    continue  # ไม่ต้องตรวจ 10min/auto_off สำหรับการจองที่ถูก cancel แล้ว
+
+            # ── แจ้งก่อนหมด 10 นาที ──────────────────────────────────────────
+            if not b.notified_10min:
+                target = (
+                    timezone.make_aware(
+                        timezone.datetime.combine(today, b.end_time)
+                    ) - timedelta(minutes=10)
+                )
+                if target - window <= now <= target + window:
+                    msg = (
+                        f'⚠️ อีก 10 นาทีหมดเวลาใช้พื้นที่\n'
+                        f'📍 {b.room.name}\n'
+                        f'🕐 หมดเวลา {b.end_time.strftime("%H:%M")} น.\n'
+                        f'กรุณาเก็บของและออกจากห้องให้เรียบร้อย'
+                    )
+                    if _push_text(user_id, msg):
+                        b.notified_10min = True
+                        b.save(update_fields=['notified_10min'])
+                        BookingLog.objects.create(booking=b, action='notified_10min')
+                        sent_10 += 1
 
             # ── ปิดอุปกรณ์อัตโนมัติเมื่อหมดเวลา ────────────────────────────
             if not b.notified_auto_off:
