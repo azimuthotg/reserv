@@ -54,7 +54,7 @@
                     <th>กลุ่ม / กิจกรรม</th>
                     <th>ผู้จอง</th>
                     <th>คณะ</th>
-                    <th>สถานะ</th>
+                    <th>สถานะ / ยกเลิก</th>
                     <th></th>
                 </tr>
             </thead>
@@ -84,6 +84,22 @@
                         <span class="badge badge-confirmed">ยืนยันแล้ว</span>
                         {% else %}
                         <span class="badge badge-cancelled">ยกเลิก</span>
+                        {% if b.cancelled_at %}
+                        <div style="font-size:11px;color:#888;margin-top:3px;white-space:nowrap;">
+                            {{ b.cancelled_at|date:"d/m/Y H:i" }}
+                        </div>
+                        {% endif %}
+                        {% if b.cancel_reason %}
+                        <div style="font-size:11px;color:#e53e3e;margin-top:1px;">
+                            {% if 'ผู้จอง' in b.cancel_reason %}
+                            <i class="bi bi-person-x"></i> ยกเลิกโดยผู้จอง
+                            {% elif 'auto-cancel' in b.cancel_reason %}
+                            <i class="bi bi-robot"></i> Auto-cancel (ไม่ check-in)
+                            {% else %}
+                            <i class="bi bi-person-gear"></i> เจ้าหน้าที่ยกเลิก{% if b.cancel_reason %}: {{ b.cancel_reason }}{% endif %}
+                            {% endif %}
+                        </div>
+                        {% endif %}
                         {% endif %}
                     </td>
                     <td style="white-space:nowrap;">

@@ -189,7 +189,7 @@ def manage_bookings(request):
 
     room_filter   = request.GET.get('room', '')
     date_filter   = request.GET.get('date', '')
-    status_filter = request.GET.get('status', 'confirmed')
+    status_filter = request.GET.get('status', '')
     search        = request.GET.get('search', '').strip()
 
     if room_filter:
