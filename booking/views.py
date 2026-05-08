@@ -1,4 +1,5 @@
 import json
+import time
 import requests
 from datetime import date, datetime, timedelta
 
@@ -73,21 +74,6 @@ def _check_room_closure(room, b_date, s_time, e_time):
             return True, f'ช่วงบ่าย: {c.reason}'
     return False, ''
 
-
-def _is_workday(d, holidays):
-    """วันทำงาน = จันทร์–ศุกร์ และไม่ใช่วันหยุด"""
-    return d.weekday() < 5 and d not in holidays
-
-
-def _count_workdays_between(start, end_inclusive, holidays):
-    """นับจำนวนวันทำงานระหว่าง start ถึง end_inclusive"""
-    count = 0
-    cur = start
-    while cur <= end_inclusive:
-        if _is_workday(cur, holidays):
-            count += 1
-        cur += timedelta(days=1)
-    return count
 
 
 # ── NPU API helpers ───────────────────────────────────────────────────────────
@@ -721,7 +707,7 @@ def my_bookings(request):
     today = date.today()
     bookings = (
         Booking.objects
-        .select_related('room')
+        .select_related('room', 'line_user')
         .filter(
             line_user__line_user_id=user_id,
             booking_date__gte=today,
@@ -999,8 +985,7 @@ def device_toggle(request):
         return JsonResponse({'success': False, 'error': 'ไม่สามารถติดต่อ Home Assistant ได้'})
 
     # รอให้ HA เปลี่ยนสถานะจริงก่อนดึงค่ากลับ
-    import time as _time
-    _time.sleep(0.6)
+    time.sleep(0.6)
     new_state, _ = _ha_get_state(entity_id)
     return JsonResponse({'success': True, 'state': new_state or 'unknown'})
 
