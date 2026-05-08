@@ -178,6 +178,8 @@ def manage_daily_schedule(request):
         'bookings_json': bookings_json,
         'holiday':       holiday,
         'closures':      list(closures),
+        'tline_start':   TLINE_START,
+        'tline_range':   TLINE_RANGE,
     })
 
 
