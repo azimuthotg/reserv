@@ -211,7 +211,7 @@
 
     let MORNING_START, MORNING_END, AFTERNOON_START, AFTERNOON_END;
 
-    function initQuickSlots() {
+    function initQuickSlots(dateStr) {
         if (!ROOM_DATA) return;
         const open  = timeToMin(ROOM_DATA.open_time);
         const close = timeToMin(ROOM_DATA.close_time);
@@ -223,6 +223,29 @@
             minToTime(MORNING_START) + '–' + minToTime(MORNING_END);
         document.getElementById('afternoon-time').textContent =
             minToTime(AFTERNOON_START) + '–' + minToTime(AFTERNOON_END);
+
+        // สำหรับวันนี้: ปิด quick slot ที่เวลาผ่านไปแล้ว (< cutoff)
+        const isToday = dateStr === toYMD(new Date());
+        [
+            { id: 'btn-morning',   s: MORNING_START },
+            { id: 'btn-afternoon', s: AFTERNOON_START },
+        ].forEach(({ id, s }) => {
+            const btn = document.getElementById(id);
+            btn.classList.remove('disabled');
+            const old = btn.querySelector('.q-badge');
+            if (old) old.remove();
+            if (isToday && s < getTodayCutoffMin()) {
+                btn.classList.add('disabled');
+                if (btn.classList.contains('active')) {
+                    btn.classList.remove('active');
+                    quickSelected = null;
+                }
+                const badge = document.createElement('div');
+                badge.className = 'q-badge';
+                badge.textContent = 'ผ่านไปแล้ว';
+                btn.appendChild(badge);
+            }
+        });
     }
 
     // ── Error helpers ─────────────────────────────────────────────────────────
@@ -252,30 +275,53 @@
     }
 
     // ── Time dropdown ─────────────────────────────────────────────────────────
-    function buildStartOptions() {
-        const sel = document.getElementById('start_time');
-        let min = timeToMin(ROOM_DATA.open_time);
-        const max = timeToMin(ROOM_DATA.close_time) - 30;
+    // คืนเวลาเร็วที่สุดที่จองได้วันนี้ (ปัจจุบัน + 15 นาที ปัดขึ้นทีละ 10 นาที)
+    function getTodayCutoffMin() {
+        const now    = new Date();
+        const nowMin = now.getHours() * 60 + now.getMinutes();
+        return Math.ceil((nowMin + 15) / 10) * 10;
+    }
+
+    function buildStartOptions(dateStr) {
+        const sel      = document.getElementById('start_time');
+        const open     = timeToMin(ROOM_DATA.open_time);
+        const close    = timeToMin(ROOM_DATA.close_time);
+        const todayStr = toYMD(new Date());
+        // ถ้าเป็นวันนี้ ต้องจองล่วงหน้า > 15 นาที
+        const minStart = (dateStr === todayStr)
+            ? Math.max(open, getTodayCutoffMin())
+            : open;
+
         sel.innerHTML = '<option value="">-- เลือกเวลาเริ่ม --</option>';
-        while (min <= max) {
-            const opt = document.createElement('option');
-            opt.value = opt.textContent = minToTime(min);
-            sel.appendChild(opt);
-            min += 30;
+        let added = 0;
+        for (let min = open; min <= close - 10; min += 10) {
+            if (min >= minStart) {
+                const opt = document.createElement('option');
+                opt.value = opt.textContent = minToTime(min);
+                sel.appendChild(opt);
+                added++;
+            }
         }
+        if (added === 0) {
+            const opt = document.createElement('option');
+            opt.value = ''; opt.disabled = true;
+            opt.textContent = 'ไม่มีช่วงเวลาว่างในวันนี้แล้ว';
+            sel.appendChild(opt);
+        }
+        // reset end time
+        document.getElementById('end_time').innerHTML =
+            '<option value="">-- เลือกเวลาสิ้นสุด --</option>';
     }
 
     function buildEndOptions(startMin) {
-        const sel = document.getElementById('end_time');
+        const sel      = document.getElementById('end_time');
         const closeMin = timeToMin(ROOM_DATA.close_time);
-        const maxEnd = Math.min(startMin + MAX_DURATION, closeMin);
-        sel.innerHTML = '<option value="">-- เลือกเวลาสิ้นสุด --</option>';
-        let min = startMin + 30;
-        while (min <= maxEnd) {
+        const maxEnd   = Math.min(startMin + MAX_DURATION, closeMin);
+        sel.innerHTML  = '<option value="">-- เลือกเวลาสิ้นสุด --</option>';
+        for (let min = startMin + 10; min <= maxEnd; min += 10) {
             const opt = document.createElement('option');
             opt.value = opt.textContent = minToTime(min);
             sel.appendChild(opt);
-            min += 30;
         }
     }
 
@@ -300,35 +346,40 @@
         const s = type === 'morning' ? MORNING_START : AFTERNOON_START;
         const e = type === 'morning' ? MORNING_END   : AFTERNOON_END;
 
-        // set start_time dropdown
-        const startSel = document.getElementById('start_time');
-        startSel.value = minToTime(s);
+        const startSel  = document.getElementById('start_time');
+        const targetVal = minToTime(s);
+        // ตรวจว่า option นี้ยังมีอยู่ (อาจถูก filter ออกเพราะเวลาผ่านไปแล้ว)
+        if (!Array.from(startSel.options).some(o => o.value === targetVal)) {
+            btn.classList.add('disabled');
+            quickSelected = null;
+            return;
+        }
+        startSel.value = targetVal;
         buildEndOptions(s);
         document.getElementById('end_time').value = minToTime(e);
         hideFormError();
     }
 
     // ── ตรวจ quick slot ว่าง/ไม่ว่างจาก booking list ──────────────────────────
-    function updateQuickBtnState(bookings) {
-        function overlaps(s, e, bs, be) {
-            return s < be && e > bs;
-        }
+    function updateQuickBtnState(bookings, dateStr) {
+        function overlaps(s, e, bs, be) { return s < be && e > bs; }
         [
             { id: 'btn-morning',   s: MORNING_START,   e: MORNING_END },
             { id: 'btn-afternoon', s: AFTERNOON_START, e: AFTERNOON_END },
         ].forEach(({ id, s, e }) => {
             const btn = document.getElementById(id);
+            // ถ้า badge เป็น "ผ่านไปแล้ว" ไม่ต้อง override (initQuickSlots จัดการแล้ว)
+            const existBadge = btn.querySelector('.q-badge');
+            if (existBadge && existBadge.textContent === 'ผ่านไปแล้ว') return;
+
             btn.classList.remove('disabled');
-            // ลบ badge เดิม
-            const old = btn.querySelector('.q-badge');
-            if (old) old.remove();
+            if (existBadge) existBadge.remove();
 
             const conflict = bookings.some(b =>
                 overlaps(s, e, timeToMin(b.start_time), timeToMin(b.end_time))
             );
             if (conflict) {
                 btn.classList.add('disabled');
-                // ถ้า active อยู่ให้ reset
                 if (btn.classList.contains('active')) {
                     btn.classList.remove('active');
                     quickSelected = null;
@@ -367,7 +418,7 @@
                     </div>`
                 ).join('');
             }
-            updateQuickBtnState(bookings);
+            updateQuickBtnState(bookings, dateStr);
         } catch {
             list.innerHTML = '<div style="color:#bbb;font-size:13px;">โหลดข้อมูลไม่ได้</div>';
         }
@@ -382,12 +433,17 @@
     }
 
     function setMinDate() {
-        const today = new Date();
-        const el = document.getElementById('booking_date');
-        el.min   = toYMD(today);
+        const today    = new Date();
+        const todayStr = toYMD(today);
+        const el       = document.getElementById('booking_date');
+        el.min   = todayStr;
         el.max   = toYMD(calcMaxDate());
-        el.value = toYMD(today);
-        loadBookingsByDate(el.value);
+        el.value = todayStr;
+        if (ROOM_DATA) {
+            buildStartOptions(todayStr);
+            initQuickSlots(todayStr);
+        }
+        loadBookingsByDate(todayStr);
     }
 
     document.getElementById('booking_date').addEventListener('change', async function() {
@@ -403,6 +459,11 @@
         }
 
         hideFormError();
+        // rebuild start options ตามวันที่เลือก (filter เวลาผ่านไปแล้วสำหรับวันนี้)
+        if (ROOM_DATA) {
+            buildStartOptions(val);
+            initQuickSlots(val);
+        }
 
         // เช็ค RoomClosure ของห้องนี้
         if (ROOM_DATA) {
@@ -487,9 +548,7 @@
 
     // ── Init ──────────────────────────────────────────────────────────────────
     setupRoom();
-    initQuickSlots();
-    if (ROOM_DATA) buildStartOptions();
-    setMinDate();
+    setMinDate();  // buildStartOptions + initQuickSlots ถูกเรียกใน setMinDate
 </script>
 
 <script src="https://static.line-scdn.net/liff/edge/versions/2.15.0/sdk.js"></script>

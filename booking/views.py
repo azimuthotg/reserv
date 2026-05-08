@@ -427,8 +427,11 @@ def create_booking(request):
     if b_date < date.today():
         return JsonResponse({'error': 'ไม่สามารถจองย้อนหลังได้'}, status=400)
 
-    if b_date == date.today() and s_time <= timezone.localtime(timezone.now()).time():
-        return JsonResponse({'error': 'ไม่สามารถจองสล็อตที่เริ่มแล้วหรือผ่านไปแล้ว'}, status=400)
+    if b_date == date.today():
+        now_local = timezone.localtime(timezone.now())
+        cutoff = (datetime.combine(date.today(), now_local.time()) + timedelta(minutes=15)).time()
+        if s_time < cutoff:
+            return JsonResponse({'error': 'กรุณาจองล่วงหน้าอย่างน้อย 15 นาที เพื่อให้ระบบแจ้งเตือนทำงานได้ถูกต้อง'}, status=400)
 
     holidays = _holiday_dates_set()
 
