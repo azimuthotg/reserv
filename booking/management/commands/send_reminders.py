@@ -91,36 +91,49 @@ class Command(BaseCommand):
                 target = start_dt - timedelta(minutes=15)
                 if target - window <= now < start_dt:
                     checkin_deadline = (start_dt + timedelta(minutes=15)).strftime('%H:%M')
-                    alt_text = (
-                        f'⏰ อีก 15 นาทีถึงเวลาใช้พื้นที่\n'
-                        f'📍 {b.room.name} | {b.start_time.strftime("%H:%M")} – {b.end_time.strftime("%H:%M")}\n'
-                        f'กรุณา Check-in ภายใน {checkin_deadline} น.'
-                    )
-                    body_text = (
-                        f'📍 {b.room.name}\n'
-                        f'📅 {date_str}  🕐 {b.start_time.strftime("%H:%M")} – {b.end_time.strftime("%H:%M")}\n'
-                        f'👥 {b.group_name}\n'
-                        f'กรุณา Check-in ภายใน {checkin_deadline} น.\n'
-                        f'หากไม่ check-in ระบบจะยกเลิกการจองอัตโนมัติ'
-                    )
-                    messages = [
-                        {
-                            'type': 'template',
-                            'altText': alt_text,
-                            'template': {
-                                'type': 'buttons',
-                                'title': '⏰ อีก 15 นาทีถึงเวลาใช้พื้นที่',
-                                'text': body_text,
-                                'actions': [
-                                    {
-                                        'type':  'uri',
-                                        'label': '✅ Check-in เลย',
-                                        'uri':   RESERV_URL,
-                                    }
+                    time_str = f'{b.start_time.strftime("%H:%M")} – {b.end_time.strftime("%H:%M")}'
+                    note = f'กรุณา Check-in ภายใน {checkin_deadline} น.\nหากไม่ check-in ระบบจะยกเลิกอัตโนมัติ'
+                    messages = [{
+                        'type': 'flex',
+                        'altText': f'⏰ อีก 15 นาทีถึงเวลาใช้พื้นที่ — {b.room.name}',
+                        'contents': {
+                            'type': 'bubble',
+                            'body': {
+                                'type': 'box', 'layout': 'vertical',
+                                'contents': [
+                                    {'type': 'text', 'text': '⏰ อีก 15 นาทีถึงเวลาใช้พื้นที่',
+                                     'weight': 'bold', 'size': 'lg', 'color': '#f59e0b', 'wrap': True},
+                                    {'type': 'separator', 'margin': 'md'},
+                                    {'type': 'box', 'layout': 'horizontal', 'margin': 'md', 'contents': [
+                                        {'type': 'text', 'text': 'ห้อง', 'color': '#888888', 'size': 'sm', 'flex': 2},
+                                        {'type': 'text', 'text': b.room.name, 'size': 'sm', 'flex': 4, 'wrap': True},
+                                    ]},
+                                    {'type': 'box', 'layout': 'horizontal', 'margin': 'sm', 'contents': [
+                                        {'type': 'text', 'text': 'วันที่', 'color': '#888888', 'size': 'sm', 'flex': 2},
+                                        {'type': 'text', 'text': date_str, 'size': 'sm', 'flex': 4, 'wrap': True},
+                                    ]},
+                                    {'type': 'box', 'layout': 'horizontal', 'margin': 'sm', 'contents': [
+                                        {'type': 'text', 'text': 'เวลา', 'color': '#888888', 'size': 'sm', 'flex': 2},
+                                        {'type': 'text', 'text': time_str, 'size': 'sm', 'flex': 4},
+                                    ]},
+                                    {'type': 'box', 'layout': 'horizontal', 'margin': 'sm', 'contents': [
+                                        {'type': 'text', 'text': 'กลุ่ม', 'color': '#888888', 'size': 'sm', 'flex': 2},
+                                        {'type': 'text', 'text': b.group_name, 'size': 'sm', 'flex': 4, 'wrap': True},
+                                    ]},
+                                    {'type': 'separator', 'margin': 'md'},
+                                    {'type': 'text', 'text': note, 'size': 'sm',
+                                     'color': '#dc2626', 'margin': 'sm', 'wrap': True},
                                 ],
                             },
-                        }
-                    ]
+                            'footer': {
+                                'type': 'box', 'layout': 'vertical',
+                                'contents': [{
+                                    'type': 'button', 'style': 'primary', 'color': '#06C755',
+                                    'action': {'type': 'uri', 'label': '✅ Check-in เลย', 'uri': RESERV_URL},
+                                }],
+                            },
+                        },
+                    }]
                     if _push_messages(user_id, messages):
                         b.notified_15min = True
                         b.save(update_fields=['notified_15min'])

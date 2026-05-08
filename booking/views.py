@@ -515,22 +515,80 @@ def _notify_booking_cancelled(booking, by_user=False):
     _push_text(b.line_user.line_user_id, msg)
 
 
+def _booking_flex(title, title_color, b, date_str, footer_label, footer_url, note=None):
+    """สร้าง LINE Flex Bubble สำหรับการแจ้งเตือนการจอง"""
+    time_str = f'{b.start_time.strftime("%H:%M")} – {b.end_time.strftime("%H:%M")}'
+    rows = [
+        ('ห้อง',  b.room.name),
+        ('วันที่', date_str),
+        ('เวลา',  time_str),
+        ('กลุ่ม',  b.group_name),
+        ('เลขที่', f'#{b.id}'),
+    ]
+    body_contents = [
+        {'type': 'text', 'text': title, 'weight': 'bold', 'size': 'lg', 'color': title_color, 'wrap': True},
+        {'type': 'separator', 'margin': 'md'},
+    ]
+    for label, value in rows:
+        body_contents.append({
+            'type': 'box', 'layout': 'horizontal', 'margin': 'sm',
+            'contents': [
+                {'type': 'text', 'text': label, 'color': '#888888', 'size': 'sm', 'flex': 2},
+                {'type': 'text', 'text': value,  'size': 'sm', 'flex': 4, 'wrap': True},
+            ],
+        })
+    if note:
+        body_contents.append({'type': 'separator', 'margin': 'md'})
+        body_contents.append({
+            'type': 'text', 'text': note, 'size': 'sm',
+            'color': '#dc2626', 'margin': 'sm', 'wrap': True,
+        })
+    return {
+        'type': 'flex',
+        'altText': f'{title} — {b.room.name}',
+        'contents': {
+            'type': 'bubble',
+            'body': {'type': 'box', 'layout': 'vertical', 'contents': body_contents},
+            'footer': {
+                'type': 'box', 'layout': 'vertical',
+                'contents': [{
+                    'type': 'button', 'style': 'primary', 'color': '#06C755',
+                    'action': {'type': 'uri', 'label': footer_label, 'uri': footer_url},
+                }],
+            },
+        },
+    }
+
+
+RESERV_BASE = 'https://lib.npu.ac.th/reserv/'
+TH_MONTHS_V = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+                'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
+
+
 def _notify_booking_confirmed(booking):
-    """Push แจ้งเตือนจองสำเร็จไปหาผู้จอง"""
+    """Push แจ้งเตือนจองสำเร็จพร้อมปุ่มดูการจองของฉัน"""
     b = booking
-    th_months = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
-                 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
-    date_str = f'{b.booking_date.day} {th_months[b.booking_date.month]} {b.booking_date.year + 543}'
-    msg = (
-        f'✅ จองพื้นที่สำเร็จ\n'
-        f'📍 {b.room.name}\n'
-        f'📅 {date_str}\n'
-        f'🕐 {b.start_time.strftime("%H:%M")} – {b.end_time.strftime("%H:%M")}\n'
-        f'👥 {b.group_name}\n'
-        f'เลขที่การจอง: #{b.id}'
+    date_str = f'{b.booking_date.day} {TH_MONTHS_V[b.booking_date.month]} {b.booking_date.year + 543}'
+    msg = _booking_flex(
+        title='✅ จองพื้นที่สำเร็จ', title_color='#06C755',
+        b=b, date_str=date_str,
+        footer_label='📋 ดูการจองของฉัน', footer_url=RESERV_BASE,
     )
-    if _push_text(b.line_user.line_user_id, msg):
+    if _push_line(b.line_user.line_user_id, [msg]):
         Booking.objects.filter(pk=b.pk).update(notified_start=True)
+
+
+def _notify_checkin_success(booking):
+    """Push แจ้งเตือน check-in สำเร็จพร้อมปุ่มควบคุมอุปกรณ์"""
+    b = booking
+    date_str = f'{b.booking_date.day} {TH_MONTHS_V[b.booking_date.month]} {b.booking_date.year + 543}'
+    ctrl_url = f'{RESERV_BASE}room-control/?room={b.room.booking_name}'
+    msg = _booking_flex(
+        title='✅ Check-in สำเร็จ', title_color='#06C755',
+        b=b, date_str=date_str,
+        footer_label='🎛️ ควบคุมอุปกรณ์ในห้อง', footer_url=ctrl_url,
+    )
+    _push_line(b.line_user.line_user_id, [msg])
 
 
 @require_http_methods(['GET'])
@@ -741,6 +799,9 @@ def checkin_booking(request):
     booking.checked_in_at = timezone.now()
     booking.save(update_fields=['checked_in', 'checked_in_at'])
     BookingLog.objects.create(booking=booking, action='checked_in')
+
+    # แจ้ง check-in สำเร็จพร้อมปุ่มควบคุมอุปกรณ์
+    _notify_checkin_success(booking)
 
     return JsonResponse({'success': True, 'already_checked_in': False})
 
