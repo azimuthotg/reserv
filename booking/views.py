@@ -685,6 +685,9 @@ def cancel_booking(request):
     if booking.status != 'confirmed':
         return JsonResponse({'error': 'การจองนี้ถูกยกเลิกไปแล้ว'}, status=400)
 
+    if booking.checked_in:
+        return JsonResponse({'error': 'ไม่สามารถยกเลิกการจองที่ check-in แล้ว'}, status=400)
+
     now          = timezone.localtime(timezone.now())
     today        = now.date()
     current_time = now.time()
