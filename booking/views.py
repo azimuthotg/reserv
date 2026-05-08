@@ -998,6 +998,9 @@ def device_toggle(request):
     if not ok:
         return JsonResponse({'success': False, 'error': 'ไม่สามารถติดต่อ Home Assistant ได้'})
 
+    # รอให้ HA เปลี่ยนสถานะจริงก่อนดึงค่ากลับ
+    import time as _time
+    _time.sleep(0.6)
     new_state, _ = _ha_get_state(entity_id)
     return JsonResponse({'success': True, 'state': new_state or 'unknown'})
 

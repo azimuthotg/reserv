@@ -218,7 +218,8 @@
         isToggling = true;
 
         const wasOn = btn.classList.contains('on');
-        updateDeviceUI(deviceId, wasOn ? 'off' : 'on');
+        const optimisticState = wasOn ? 'off' : 'on';
+        updateDeviceUI(deviceId, optimisticState);
         btn.disabled = true;
 
         try {
@@ -228,16 +229,18 @@
                 body:    JSON.stringify({ userId: currentUserId, room_key: activeRoomKey, entity_id: entityId }),
             });
             const data = await resp.json();
-            if (data.success) {
-                updateDeviceUI(deviceId, data.state);
-            } else {
+            if (!data.success) {
+                // toggle ล้มเหลว — คืนสถานะเดิม
                 updateDeviceUI(deviceId, wasOn ? 'on' : 'off');
             }
+            // สำเร็จ: เชื่อ optimistic state ไว้ก่อน ไม่ override ด้วย data.state
+            // เพื่อหลีกเลี่ยง flicker กรณี HA ยังไม่ทัน settle
         } catch(e) {
             updateDeviceUI(deviceId, wasOn ? 'on' : 'off');
         } finally {
             btn.disabled = false;
-            isToggling = false;
+            // หน่วง poll 3 วิ ให้ HA ตั้งตัวก่อน แล้ว poll จะ sync สถานะจริง
+            setTimeout(() => { isToggling = false; }, 3000);
         }
     }
 
