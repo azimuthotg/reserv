@@ -99,8 +99,8 @@ def manage_dashboard(request):
 @staff_required
 def manage_daily_schedule(request):
     """ตารางการจองรายวัน — แสดงทุกห้องในวันที่เลือก"""
-    TLINE_START = 420   # 07:00 น.
-    TLINE_RANGE = 600   # 07:00–17:00 = 600 นาที
+    TLINE_START = 510   # 08:30 น.
+    TLINE_RANGE = 480   # 08:30–16:30 = 480 นาที
 
     date_str = request.GET.get('date', '')
     try:
@@ -150,10 +150,10 @@ def manage_daily_schedule(request):
             'closures':       closure_by_room.get(room.id, []),
         })
 
-    # hour markers สำหรับ timeline (07:00–17:00)
+    # hour markers สำหรับ timeline (08:30–16:30)
     hour_markers = [
         {'h': h, 'pct': round((h * 60 - TLINE_START) / TLINE_RANGE * 100, 2)}
-        for h in range(7, 18)
+        for h in range(9, 17)
     ]
 
     # JSON สำหรับ JS real-time status
