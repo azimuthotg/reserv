@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>โปสเตอร์ขั้นตอนการจองห้อง — Library@NPU</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;800&family=Prompt:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #1a1a2e;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 40px 20px;
+    font-family: 'Sarabun', sans-serif;
+  }
+
+  .poster {
+    width: 794px; /* A4 @ 96dpi */
+    min-height: 1123px;
+    background: #0d1117;
+    position: relative;
+    overflow: hidden;
+    border-radius: 4px;
+    box-shadow: 0 40px 120px rgba(0,0,0,.7);
+  }
+
+  /* ── Background decoration ── */
+  .poster::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 600px 400px at 80% -10%, rgba(6,199,85,.12) 0%, transparent 60%),
+      radial-gradient(ellipse 400px 400px at -10% 70%, rgba(6,199,85,.07) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .dot-grid {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle, rgba(6,199,85,.15) 1px, transparent 1px);
+    background-size: 28px 28px;
+    pointer-events: none;
+  }
+
+  /* ── Header ── */
+  .header {
+    position: relative;
+    padding: 48px 52px 36px;
+    border-bottom: 1px solid rgba(6,199,85,.2);
+  }
+
+  .channel-pills {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+
+  .line-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(6,199,85,.15);
+    border: 1px solid rgba(6,199,85,.4);
+    border-radius: 30px;
+    padding: 5px 14px 5px 9px;
+  }
+  .web-pill {
+    background: rgba(96,165,250,.15);
+    border-color: rgba(96,165,250,.4);
+  }
+  .line-pill .dot {
+    width: 8px; height: 8px;
+    background: #06C755;
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  .line-pill .web-dot {
+    background: #60a5fa;
+  }
+  @keyframes pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50%      { opacity:.5; transform:scale(.7); }
+  }
+  .line-pill span {
+    font-size: 12px;
+    color: #06C755;
+    font-weight: 600;
+    letter-spacing: .5px;
+  }
+  .web-pill span:not(.web-dot) {
+    color: #60a5fa;
+  }
+
+  .header h1 {
+    font-family: 'Prompt', sans-serif;
+    font-size: 42px;
+    font-weight: 900;
+    color: #ffffff;
+    line-height: 1.1;
+    margin-bottom: 6px;
+  }
+  .header h1 .accent { color: #06C755; }
+
+  .header .subtitle {
+    font-size: 16px;
+    color: rgba(255,255,255,.5);
+    font-weight: 400;
+    letter-spacing: .3px;
+  }
+
+  .header-right {
+    position: absolute;
+    right: 52px;
+    top: 48px;
+    text-align: right;
+  }
+  .library-badge {
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 12px;
+    padding: 10px 16px;
+    display: inline-block;
+  }
+  .library-badge .org {
+    font-size: 13px;
+    color: rgba(255,255,255,.8);
+    font-weight: 600;
+  }
+  .library-badge .org-sub {
+    font-size: 11px;
+    color: rgba(255,255,255,.4);
+    margin-top: 2px;
+  }
+
+  /* ── Hour badge ── */
+  .hour-row {
+    padding: 16px 52px;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .hour-tag {
+    background: rgba(6,199,85,.1);
+    border: 1px solid rgba(6,199,85,.3);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 13px;
+    color: #06C755;
+    font-weight: 700;
+  }
+  .hour-note {
+    font-size: 12px;
+    color: rgba(255,255,255,.35);
+  }
+
+  /* ── Channel Strip ── */
+  .channel-strip {
+    margin: 16px 52px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .channel-card {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 12px;
+  }
+  .line-channel {
+    background: rgba(6,199,85,.1);
+    border: 1px solid rgba(6,199,85,.3);
+  }
+  .web-channel {
+    background: rgba(96,165,250,.1);
+    border: 1px solid rgba(96,165,250,.3);
+  }
+  .channel-icon { font-size: 22px; flex-shrink: 0; }
+  .channel-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 2px;
+  }
+  .line-channel .channel-name { color: #06C755; }
+  .web-channel .channel-name { color: #60a5fa; }
+  .channel-how {
+    font-size: 11px;
+    color: rgba(255,255,255,.45);
+    font-family: monospace;
+    letter-spacing: .3px;
+  }
+  .channel-divider {
+    font-size: 12px;
+    color: rgba(255,255,255,.25);
+    font-weight: 600;
+    flex-shrink: 0;
+    padding: 0 4px;
+  }
+
+  /* ── Steps ── */
+  .steps {
+    padding: 32px 52px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .step {
+    display: flex;
+    gap: 20px;
+    position: relative;
+    padding-bottom: 28px;
+  }
+  .step:last-child { padding-bottom: 0; }
+
+  /* Connector line */
+  .step:not(:last-child) .step-left::after {
+    content: '';
+    position: absolute;
+    top: 46px;
+    left: 21px;
+    width: 2px;
+    height: calc(100% - 18px);
+    background: linear-gradient(to bottom, rgba(6,199,85,.4), rgba(6,199,85,.05));
+  }
+
+  .step-left {
+    position: relative;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .step-num {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(6,199,85,.12);
+    border: 2px solid rgba(6,199,85,.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Prompt', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    color: #06C755;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+  }
+  .step-num.highlight {
+    background: #06C755;
+    border-color: #06C755;
+    color: #0d1117;
+    box-shadow: 0 0 20px rgba(6,199,85,.4);
+  }
+
+  .step-body {
+    flex: 1;
+    padding-top: 10px;
+  }
+
+  .step-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(6,199,85,.7);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .step-title {
+    font-family: 'Prompt', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 6px;
+    line-height: 1.2;
+  }
+
+  .step-desc {
+    font-size: 14px;
+    color: rgba(255,255,255,.55);
+    line-height: 1.7;
+  }
+  .step-desc strong { color: rgba(255,255,255,.85); }
+
+  .step-tag {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .step-tag.green {
+    background: rgba(6,199,85,.15);
+    color: #06C755;
+    border: 1px solid rgba(6,199,85,.3);
+  }
+  .step-tag.amber {
+    background: rgba(245,158,11,.12);
+    color: #f59e0b;
+    border: 1px solid rgba(245,158,11,.3);
+  }
+  .step-tag.blue {
+    background: rgba(59,130,246,.12);
+    color: #60a5fa;
+    border: 1px solid rgba(59,130,246,.3);
+  }
+
+  /* ── Rooms strip ── */
+  .rooms-section {
+    margin: 8px 52px 0;
+    padding: 20px 24px;
+    background: rgba(255,255,255,.03);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 14px;
+  }
+  .rooms-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255,255,255,.3);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .rooms-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+  }
+  .room-chip {
+    background: rgba(6,199,85,.08);
+    border: 1px solid rgba(6,199,85,.2);
+    border-radius: 8px;
+    padding: 8px 10px;
+    text-align: center;
+  }
+  .room-chip .room-icon { font-size: 18px; display: block; margin-bottom: 4px; }
+  .room-chip .room-name { font-size: 11px; color: rgba(255,255,255,.7); font-weight: 600; line-height: 1.3; }
+
+  /* ── Warning notes ── */
+  .notes {
+    margin: 20px 52px 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .note-card {
+    background: rgba(255,255,255,.03);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    border: 1px solid rgba(255,255,255,.06);
+  }
+  .note-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .note-text { font-size: 12px; color: rgba(255,255,255,.5); line-height: 1.6; }
+  .note-text strong { color: rgba(255,255,255,.8); display: block; margin-bottom: 2px; }
+
+  /* ── Footer ── */
+  .footer {
+    margin: 24px 52px 0;
+    padding: 20px 0 40px;
+    border-top: 1px solid rgba(255,255,255,.06);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .footer-left .line-id {
+    font-size: 22px;
+    font-weight: 800;
+    color: #06C755;
+    font-family: 'Prompt', sans-serif;
+  }
+  .footer-left .line-id-label {
+    font-size: 12px;
+    color: rgba(255,255,255,.35);
+    margin-top: 2px;
+  }
+
+  .qr-box {
+    width: 90px;
+    height: 90px;
+    border: 2px dashed rgba(6,199,85,.4);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+  .qr-box .qr-icon { font-size: 32px; }
+  .qr-box .qr-label { font-size: 10px; color: rgba(255,255,255,.3); font-weight: 600; }
+
+  .footer-center {
+    text-align: center;
+  }
+  .footer-center .site-url {
+    font-size: 13px;
+    color: rgba(255,255,255,.4);
+    margin-top: 4px;
+    font-family: monospace;
+    letter-spacing: .5px;
+  }
+  .footer-center .help-text {
+    font-size: 12px;
+    color: rgba(255,255,255,.25);
+    margin-top: 8px;
+  }
+
+  /* ── Print ── */
+  @media print {
+    body { background: #0d1117; padding: 0; }
+    .poster { box-shadow: none; border-radius: 0; width: 100%; min-height: 100vh; }
+  }
+</style>
+</head>
+<body>
+<div class="poster">
+  <div class="dot-grid"></div>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-right">
+      <div class="library-badge">
+        <div class="org">สำนักวิทยบริการ</div>
+        <div class="org-sub">มหาวิทยาลัยนครพนม</div>
+      </div>
+    </div>
+
+    <div class="channel-pills">
+      <div class="line-pill">
+        <span class="dot"></span>
+        <span>LINE OA</span>
+      </div>
+      <div class="line-pill web-pill">
+        <span class="dot web-dot"></span>
+        <span>เว็บไซต์</span>
+      </div>
+    </div>
+    <h1>จอง<span class="accent">ห้องบริการ</span><br>ง่ายๆ ใน 5 ขั้นตอน</h1>
+    <div class="subtitle">Smart Creative Learning Space — จองได้ทั้งผ่าน LINE OA และเว็บไซต์</div>
+  </div>
+
+  <!-- Hours -->
+  <div class="hour-row">
+    <span class="hour-tag">เปิดให้บริการ จ–อา  08:30 – 16:30 น.</span>
+    <span class="hour-note">จองล่วงหน้าได้สูงสุด 5 วัน · ปิดให้บริการเฉพาะวันหยุดนักขัตฤกษ์</span>
+  </div>
+
+  <!-- Channel selector -->
+  <div class="channel-strip">
+    <div class="channel-card line-channel">
+      <div class="channel-icon">💬</div>
+      <div class="channel-info">
+        <div class="channel-name">LINE OA</div>
+        <div class="channel-how">เพิ่มเพื่อน @LibraryNPU → กด "จองห้อง"</div>
+      </div>
+    </div>
+    <div class="channel-divider">หรือ</div>
+    <div class="channel-card web-channel">
+      <div class="channel-icon">🌐</div>
+      <div class="channel-info">
+        <div class="channel-name">เว็บไซต์</div>
+        <div class="channel-how">lib.npu.ac.th/reserv</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Steps -->
+  <div class="steps">
+
+    <div class="step">
+      <div class="step-left">
+        <div class="step-num">1</div>
+      </div>
+      <div class="step-body">
+        <div class="step-label">เริ่มต้น</div>
+        <div class="step-title">เลือกช่องทางการจอง</div>
+        <div class="step-desc">
+          <strong>LINE OA:</strong> เพิ่ม <strong>@LibraryNPU</strong> เป็นเพื่อน → กด "จองห้อง" ใน Rich Menu<br>
+          <strong>เว็บไซต์:</strong> เปิด <strong>lib.npu.ac.th/reserv</strong> ในเบราว์เซอร์
+        </div>
+        <span class="step-tag green">เลือกช่องทางที่สะดวก</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-left">
+        <div class="step-num">2</div>
+      </div>
+      <div class="step-body">
+        <div class="step-label">ครั้งแรก</div>
+        <div class="step-title">ผูกบัญชีมหาวิทยาลัย</div>
+        <div class="step-desc">กรอก <strong>รหัสนักศึกษา / รหัสพนักงาน</strong> และรหัสผ่าน (AD/LDAP) เพื่อยืนยันตัวตน</div>
+        <span class="step-tag blue">ทำครั้งแรกครั้งเดียว</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-left">
+        <div class="step-num highlight">3</div>
+      </div>
+      <div class="step-body">
+        <div class="step-label">จองห้อง</div>
+        <div class="step-title">เลือกห้อง วัน และเวลา</div>
+        <div class="step-desc">เลือกห้อง → เลือกวันที่และเวลา → กรอกชื่อกลุ่มและรายชื่อผู้เข้าใช้ → กดยืนยัน<br><span style="opacity:.6;font-size:12px;">ทำได้ทั้งผ่าน LINE OA และเว็บไซต์</span></div>
+        <span class="step-tag amber">จองล่วงหน้าอย่างน้อย 15 นาที</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-left">
+        <div class="step-num">4</div>
+      </div>
+      <div class="step-body">
+        <div class="step-label">ยืนยัน</div>
+        <div class="step-title">รับการยืนยันการจอง</div>
+        <div class="step-desc">ระบบส่งยืนยันพร้อมรายละเอียดทันที ทั้งทาง <strong>LINE</strong> และแสดงผลบน<strong>หน้าเว็บไซต์</strong><br><span style="opacity:.6;font-size:12px;">แจ้งเตือนก่อนเริ่มใช้งาน 15 นาที ทาง LINE</span></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-left">
+        <div class="step-num highlight">5</div>
+      </div>
+      <div class="step-body">
+        <div class="step-label">วันจริง</div>
+        <div class="step-title">Check-in และเข้าใช้งาน</div>
+        <div class="step-desc">กดปุ่ม <strong>"Check-in"</strong> ใน LINE หรือที่หน้าเว็บไซต์ ก่อนหรือหลังเวลาเริ่มไม่เกิน 15 นาที<br><span style="opacity:.6;font-size:12px;">หากไม่ check-in ระบบจะยกเลิกการจองอัตโนมัติ</span></div>
+        <span class="step-tag amber">ไม่ check-in ภายใน 15 นาทีหลังเริ่ม → ยกเลิกอัตโนมัติ</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Rooms -->
+  <div class="rooms-section">
+    <div class="rooms-title">ห้องบริการที่เปิดให้จอง</div>
+    <div class="rooms-grid">
+      <div class="room-chip">
+        <span class="room-icon">🎬</span>
+        <div class="room-name">Mini Theater</div>
+      </div>
+      <div class="room-chip">
+        <span class="room-icon">🎮</span>
+        <div class="room-name">Edutainment Zone</div>
+      </div>
+      <div class="room-chip">
+        <span class="room-icon">🎨</span>
+        <div class="room-name">Canva Pro Studio</div>
+      </div>
+      <div class="room-chip">
+        <span class="room-icon">🤖</span>
+        <div class="room-name">ChatGPT Station</div>
+      </div>
+      <div class="room-chip">
+        <span class="room-icon">🏛️</span>
+        <div class="room-name">ห้องประชุมชั้น 1</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notes -->
+  <div class="notes">
+    <div class="note-card">
+      <span class="note-icon">⏱️</span>
+      <div class="note-text">
+        <strong>ระยะเวลาการจอง</strong>
+        จองได้สูงสุด 3.5 ชั่วโมงต่อครั้ง ต่อ 1 กลุ่ม
+      </div>
+    </div>
+    <div class="note-card">
+      <span class="note-icon">📅</span>
+      <div class="note-text">
+        <strong>จองล่วงหน้า</strong>
+        จองได้ล่วงหน้าสูงสุด 5 วัน นับจากวันที่จอง
+      </div>
+    </div>
+    <div class="note-card">
+      <span class="note-icon">🎛️</span>
+      <div class="note-text">
+        <strong>ควบคุมอุปกรณ์ IoT</strong>
+        หลัง check-in สามารถควบคุมอุปกรณ์ในห้องได้ผ่าน LINE หรือเว็บไซต์
+      </div>
+    </div>
+    <div class="note-card">
+      <span class="note-icon">❓</span>
+      <div class="note-text">
+        <strong>ต้องการความช่วยเหลือ</strong>
+        ติดต่อเจ้าหน้าที่หน้าเคาน์เตอร์บริการ ชั้น 1
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-left">
+      <div class="line-id">@LibraryNPU</div>
+      <div class="line-id-label">LINE Official Account</div>
+    </div>
+    <div class="footer-center">
+      <div class="site-url">lib.npu.ac.th/reserv</div>
+      <div class="help-text">ระบบจองห้องบริการ Smart Creative Learning Space</div>
+    </div>
+    <div class="qr-box">
+      <span class="qr-icon">📱</span>
+      <span class="qr-label">QR LINE OA</span>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
