@@ -9,7 +9,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ระบบจองพื้นที่บริการ Smart Creative Learning Space — สำนักวิทยบริการ มหาวิทยาลัยนครพนม
 Migration จาก Google Apps Script + Google Sheets → Django + MySQL
 
-ผู้ใช้กด "จองเลย" ใน LINE OA → LIFF เปิด `/booking/?room=X` → Django ตรวจสิทธิ์ผ่าน LINE userId + api.npu.ac.th → กรอกฟอร์มจอง
+ผู้ใช้จองได้ **2 ช่องทาง:**
+- **LINE OA:** กด "จองห้อง" ใน Rich Menu → LIFF เปิด `/booking/?room=X` → กรอกฟอร์มจอง
+- **เว็บไซต์:** เปิด `https://lib.npu.ac.th/reserv/` → login → กรอกฟอร์มจอง
+
+Django ตรวจสิทธิ์ผ่าน LINE userId + api.npu.ac.th (LINE OA) หรือ session login (เว็บ)
 
 ---
 
@@ -145,11 +149,11 @@ TIME_ZONE = 'Asia/Bangkok'
 
 | Phase | สถานะ | เนื้อหา |
 |---|---|---|
-| **Phase 1** | ✅ Code พร้อม, DB migrate แล้ว | Register, Booking, Calendar, Admin |
-| **Phase 2** | ⏳ หลัง go-live | IoT Sonoff via `api.npu.ac.th/sonoff/` |
+| **Phase 1** | ✅ Go-live แล้ว | Register, Booking, Calendar, Admin — deploy ที่ `https://lib.npu.ac.th/reserv/` |
+| **Phase 2** | ✅ Go-live แล้ว | IoT Sonoff via `api.npu.ac.th/sonoff/` — ทำงานได้ดี |
 | **Phase 3** | ⏳ ทีหลังสุด | Virtual Card + Walai + JsBarcode |
 
-**Phase 2:** ใช้ `/api/check-access/` (protected ด้วย `HA_ACCESS_SECRET` header `X-HA-Token`) + `ha_entity_id` field ใน Room model รองรับแล้ว
+**Phase 2:** ใช้ `/api/check-access/` (protected ด้วย `HA_ACCESS_SECRET` header `X-HA-Token`) + `ha_entity_id` field ใน Room model — **ใช้งานจริงแล้ว**
 
 ---
 
