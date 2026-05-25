@@ -83,7 +83,7 @@ def _verify_ldap(username, password):
     try:
         resp = requests.post(
             f'{NPU_API_BASE}/auth-ldap/auth_ldap/',
-            json={'username': username, 'password': password},
+            json={'userLdap': username, 'passLdap': password},
             timeout=10,
         )
         if resp.status_code == 200:
