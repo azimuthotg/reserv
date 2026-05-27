@@ -83,7 +83,7 @@
                         {% for b in recent_bookings %}
                         <tr>
                             <td>{{ b.room.name }}</td>
-                            <td>{{ b.booking_date|th_date }}</td>
+                            <td>{{ b.booking_date|th_date_long }}</td>
                             <td style="white-space:nowrap;">{{ b.start_time|time:"H:i" }}–{{ b.end_time|time:"H:i" }} น.</td>
                             <td>{{ b.group_name }}</td>
                             <td>{{ b.line_user.full_name|default:b.line_user.display_name }}</td>

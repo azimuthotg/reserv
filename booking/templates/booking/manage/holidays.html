@@ -30,7 +30,7 @@
             <tbody>
                 {% for h in holidays %}
                 <tr>
-                    <td style="white-space:nowrap;font-weight:600;">{{ h.date|th_date }}</td>
+                    <td style="white-space:nowrap;font-weight:600;">{{ h.date|th_date_long }}</td>
                     <td style="color:#888;">{{ h.date|th_weekday }}</td>
                     <td>{{ h.description }}</td>
                     <td>

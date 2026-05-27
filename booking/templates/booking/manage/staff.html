@@ -37,7 +37,7 @@
                         {% endif %}
                     </td>
                     <td style="font-size:12px;color:#888;">
-                        {% if u.last_login %}{{ u.last_login|th_datetime }}{% else %}—{% endif %}
+                        {% if u.last_login %}{{ u.last_login|th_datetime_long }}{% else %}—{% endif %}
                     </td>
                     <td>
                         {% if u.is_active %}

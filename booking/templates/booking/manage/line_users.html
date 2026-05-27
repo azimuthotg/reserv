@@ -59,7 +59,7 @@
                     <td><span class="badge bg-light text-dark" style="font-size:11px;">{{ u.user_type }}</span></td>
                     <td style="font-size:12px;">{{ u.faculty }}</td>
                     <td style="font-size:12px;color:#888;">{{ u.department }}</td>
-                    <td style="font-size:12px;color:#888;white-space:nowrap;">{{ u.created_at|th_date }}</td>
+                    <td style="font-size:12px;color:#888;white-space:nowrap;">{{ u.created_at|th_date_long }}</td>
                     <td>
                         {% if u.is_active %}
                         <span class="badge badge-confirmed">ใช้งาน</span>

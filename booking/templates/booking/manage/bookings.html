@@ -63,7 +63,7 @@
                 <tr>
                     <td class="text-muted">{{ b.id }}</td>
                     <td>{{ b.room.name }}</td>
-                    <td style="white-space:nowrap;">{{ b.booking_date|th_date }}</td>
+                    <td style="white-space:nowrap;">{{ b.booking_date|th_date_long }}</td>
                     <td style="white-space:nowrap;">{{ b.start_time|time:"H:i" }}–{{ b.end_time|time:"H:i" }} น.</td>
                     <td>
                         {{ b.group_name }}

@@ -39,7 +39,7 @@
             <tbody>
                 {% for c in closures %}
                 <tr {% if not c.is_active %}style="opacity:.5;"{% endif %}>
-                    <td style="white-space:nowrap;font-weight:600;">{{ c.date|th_date }}</td>
+                    <td style="white-space:nowrap;font-weight:600;">{{ c.date|th_date_long }}</td>
                     <td>{{ c.room.name }}</td>
                     <td>
                         {% if c.period == 'am' %}
