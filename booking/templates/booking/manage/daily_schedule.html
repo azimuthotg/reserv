@@ -238,7 +238,7 @@
 const IS_TODAY    = {{ is_today|yesno:"true,false" }};
 const TLINE_START = {{ tline_start }};  // นาทีจากเที่ยงคืน (08:30 = 510)
 const TLINE_RANGE = {{ tline_range }};  // ช่วงเวลาทั้งหมด (นาที)
-const BOOKINGS    = {{ bookings_json }};
+const BOOKINGS    = {{ bookings_json|safe }};
 
 function nowMinutes() {
     const n = new Date();

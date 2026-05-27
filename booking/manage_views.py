@@ -605,7 +605,7 @@ def manage_iot_notify_group(request):
         room_lines.extend(device_lines)
 
     now      = timezone.localtime(timezone.now())
-    date_str = now.strftime('%d/%m/%Y %H:%M')
+    date_str = f'{now.day:02d}/{now.month:02d}/{now.year + 543} {now.hour:02d}:{now.minute:02d}'
     header   = f'✅ IoT ปกติทุกอุปกรณ์ — {date_str}' if all_ok else f'⚠️ พบอุปกรณ์ผิดปกติ — {date_str}'
     summary  = f'Online: {total_online}  Offline: {total_offline}  ไม่ทราบ: {total_unknown}'
     lines    = [header, '', summary, ''] + room_lines

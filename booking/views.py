@@ -1,6 +1,9 @@
 import json
 import time
 import requests
+
+_MONTHS_TH = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+              'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
 from datetime import date, datetime, timedelta
 
 from django.conf import settings
@@ -424,7 +427,8 @@ def create_booking(request):
     # ตรวจว่าวันที่จองเป็นวันหยุดหรือไม่
     if b_date in holidays:
         holiday = HolidayDate.objects.get(date=b_date)
-        return JsonResponse({'error': f'ไม่สามารถจองวัน {b_date.strftime("%d/%m/%Y")} ได้ เนื่องจาก: {holiday.description}'}, status=400)
+        date_th = f'{b_date.day} {_MONTHS_TH[b_date.month]} {b_date.year + 543}'
+        return JsonResponse({'error': f'ไม่สามารถจองวัน {date_th} ได้ เนื่องจาก: {holiday.description}'}, status=400)
 
     # ตรวจล่วงหน้าไม่เกิน 5 วัน (นับทุกวัน)
     today = date.today()

@@ -86,7 +86,7 @@
                         <span class="badge badge-cancelled">ยกเลิก</span>
                         {% if b.cancelled_at %}
                         <div style="font-size:11px;color:#888;margin-top:3px;white-space:nowrap;">
-                            {{ b.cancelled_at|date:"d/m/Y H:i" }}
+                            {{ b.cancelled_at|th_datetime }}
                         </div>
                         {% endif %}
                         {% if b.cancel_reason %}
