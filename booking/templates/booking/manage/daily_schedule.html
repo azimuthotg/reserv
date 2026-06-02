@@ -153,7 +153,7 @@
     <div class="tl-row">
         <div class="tl-room-name">
             {{ rd.room.name }}
-            <div class="tl-room-sub">{{ rd.room.open_time|time:"H:i" }}–{{ rd.room.close_time|time:"H:i" }} น.</div>
+            <div class="tl-room-sub">{{ rd.open_time|time:"H:i" }}–{{ rd.close_time|time:"H:i" }} น.</div>
             {% for c in rd.closures %}
             <span class="badge bg-danger" style="font-size:10px;font-weight:600;">
                 ปิด {{ c.get_period_display }}
@@ -236,7 +236,7 @@
 {% block extra_js %}
 <script>
 const IS_TODAY    = {{ is_today|yesno:"true,false" }};
-const TLINE_START = {{ tline_start }};  // นาทีจากเที่ยงคืน (08:30 = 510)
+const TLINE_START = {{ tline_start }};  // นาทีจากเที่ยงคืนตามวันที่เลือก
 const TLINE_RANGE = {{ tline_range }};  // ช่วงเวลาทั้งหมด (นาที)
 const BOOKINGS    = {{ bookings_json|safe }};
 

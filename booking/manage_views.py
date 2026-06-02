@@ -14,6 +14,7 @@ from django.views.decorators.http import require_POST
 
 from .forms import HolidayDateForm, RoomClosureForm, RoomForm, StaffAddForm, StaffEditForm
 from .models import Booking, BookingLog, HolidayDate, LineUser, Room, RoomClosure, RoomDevice
+from .service_hours import room_service_hours
 from .views import _notify_booking_cancelled, _push_text
 
 
@@ -99,9 +100,6 @@ def manage_dashboard(request):
 @staff_required
 def manage_daily_schedule(request):
     """ตารางการจองรายวัน — แสดงทุกห้องในวันที่เลือก"""
-    TLINE_START = 510   # 08:30 น.
-    TLINE_RANGE = 480   # 08:30–16:30 = 480 นาที
-
     date_str = request.GET.get('date', '')
     try:
         view_date = date.fromisoformat(date_str) if date_str else date.today()
@@ -109,7 +107,18 @@ def manage_daily_schedule(request):
         view_date = date.today()
 
     today = date.today()
-    rooms = Room.objects.filter(is_active=True).order_by('name')
+    rooms = list(Room.objects.filter(is_active=True).order_by('name'))
+    service_hours_by_room = {
+        room.id: room_service_hours(room, view_date)
+        for room in rooms
+    }
+    if service_hours_by_room:
+        TLINE_START = min(t.hour * 60 + t.minute for t, _ in service_hours_by_room.values())
+        tline_end   = max(t.hour * 60 + t.minute for _, t in service_hours_by_room.values())
+    else:
+        TLINE_START = 510
+        tline_end   = 990
+    TLINE_RANGE = max(1, tline_end - TLINE_START)
     bookings_qs = (
         Booking.objects
         .filter(booking_date=view_date, status='confirmed')
@@ -140,20 +149,23 @@ def manage_daily_schedule(request):
 
     room_data = []
     for room in rooms:
-        om = room.open_time.hour * 60 + room.open_time.minute
-        cm = room.close_time.hour * 60 + room.close_time.minute
+        open_time, close_time = service_hours_by_room[room.id]
+        om = open_time.hour * 60 + open_time.minute
+        cm = close_time.hour * 60 + close_time.minute
         room_data.append({
             'room':           room,
+            'open_time':      open_time,
+            'close_time':     close_time,
             'bookings':       by_room.get(room.id, []),
             'open_left_pct':  round(max(0, (om - TLINE_START) / TLINE_RANGE * 100), 2),
             'open_width_pct': round(min(100, (cm - om) / TLINE_RANGE * 100), 2),
             'closures':       closure_by_room.get(room.id, []),
         })
 
-    # hour markers สำหรับ timeline (08:30–16:30)
+    # hour markers สำหรับ timeline ตามช่วงเปิดบริการของวันที่เลือก
     hour_markers = [
         {'h': h, 'pct': round((h * 60 - TLINE_START) / TLINE_RANGE * 100, 2)}
-        for h in range(9, 17)
+        for h in range((TLINE_START + 59) // 60, tline_end // 60 + 1)
     ]
 
     # JSON สำหรับ JS real-time status

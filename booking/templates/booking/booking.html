@@ -212,13 +212,22 @@
     function minToTime(m) {
         return String(Math.floor(m / 60)).padStart(2,'0') + ':' + String(m % 60).padStart(2,'0');
     }
+    function getServiceHours(dateStr) {
+        const date = new Date(`${dateStr}T00:00:00`);
+        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+        return {
+            open:  isWeekend ? ROOM_DATA.weekend_open_time  : ROOM_DATA.open_time,
+            close: isWeekend ? ROOM_DATA.weekend_close_time : ROOM_DATA.close_time,
+        };
+    }
 
     let MORNING_START, MORNING_END, AFTERNOON_START, AFTERNOON_END;
 
     function initQuickSlots(dateStr) {
         if (!ROOM_DATA) return;
-        const open  = timeToMin(ROOM_DATA.open_time);
-        const close = timeToMin(ROOM_DATA.close_time);
+        const hours = getServiceHours(dateStr);
+        const open  = timeToMin(hours.open);
+        const close = timeToMin(hours.close);
         MORNING_START   = open;
         MORNING_END     = open + MAX_DURATION;
         AFTERNOON_START = close - MAX_DURATION;
@@ -273,7 +282,8 @@
         document.getElementById('room-name').textContent     = ROOM_DATA.name;
         document.getElementById('room-location').textContent = '📍 ' + ROOM_DATA.location;
         document.getElementById('room-hours').textContent    =
-            '🕐 ' + ROOM_DATA.open_time + '–' + ROOM_DATA.close_time +
+            '🕐 จ.-ศ. ' + ROOM_DATA.open_time + '–' + ROOM_DATA.close_time +
+            '  |  ส.-อา. ' + ROOM_DATA.weekend_open_time + '–' + ROOM_DATA.weekend_close_time +
             '  |  👥 สูงสุด ' + ROOM_DATA.capacity + ' คน';
         return true;
     }
@@ -288,8 +298,9 @@
 
     function buildStartOptions(dateStr) {
         const sel      = document.getElementById('start_time');
-        const open     = timeToMin(ROOM_DATA.open_time);
-        const close    = timeToMin(ROOM_DATA.close_time);
+        const hours    = getServiceHours(dateStr);
+        const open     = timeToMin(hours.open);
+        const close    = timeToMin(hours.close);
         const todayStr = toYMD(new Date());
         // ถ้าเป็นวันนี้ ต้องจองล่วงหน้า > 15 นาที
         const minStart = (dateStr === todayStr)
@@ -319,7 +330,8 @@
 
     function buildEndOptions(startMin) {
         const sel      = document.getElementById('end_time');
-        const closeMin = timeToMin(ROOM_DATA.close_time);
+        const dateStr  = document.getElementById('booking_date').value || toYMD(new Date());
+        const closeMin = timeToMin(getServiceHours(dateStr).close);
         const maxEnd   = Math.min(startMin + MAX_DURATION, closeMin);
         sel.innerHTML  = '<option value="">-- เลือกเวลาสิ้นสุด --</option>';
         for (let min = startMin + 10; min <= maxEnd; min += 10) {

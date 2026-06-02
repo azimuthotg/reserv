@@ -16,6 +16,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .models import Booking, BookingLog, HolidayDate, LineUser, Room, RoomClosure, RoomDevice
+from .service_hours import WEEKEND_CLOSE_TIME, WEEKEND_OPEN_TIME, room_service_hours
 
 NPU_API_BASE       = 'https://api.npu.ac.th'
 PROFILE_CACHE_DAYS = 30
@@ -238,6 +239,8 @@ def landing_page(request):
             'location':     r.location or '',
             'open_time':    r.open_time.strftime('%H:%M'),
             'close_time':   r.close_time.strftime('%H:%M'),
+            'weekend_open_time':  WEEKEND_OPEN_TIME.strftime('%H:%M'),
+            'weekend_close_time': WEEKEND_CLOSE_TIME.strftime('%H:%M'),
         }
         for r in rooms
     ])
@@ -305,6 +308,8 @@ def booking_page(request):
             'location':   room.location,
             'open_time':  room.open_time.strftime('%H:%M'),
             'close_time': room.close_time.strftime('%H:%M'),
+            'weekend_open_time':  WEEKEND_OPEN_TIME.strftime('%H:%M'),
+            'weekend_close_time': WEEKEND_CLOSE_TIME.strftime('%H:%M'),
         }
 
     # วันหยุดในอีก 60 วันข้างหน้า สำหรับ disable ใน date picker
@@ -489,6 +494,15 @@ def create_booking(request):
         room = Room.objects.get(booking_name=room_key, is_active=True)
     except Room.DoesNotExist:
         return JsonResponse({'error': 'ไม่พบข้อมูลห้อง'}, status=404)
+
+    service_open, service_close = room_service_hours(room, b_date)
+    if s_time < service_open or e_time > service_close:
+        return JsonResponse({
+            'error': (
+                'เวลาจองต้องอยู่ในช่วงเปิดบริการ '
+                f'{service_open.strftime("%H:%M")}–{service_close.strftime("%H:%M")} น.'
+            ),
+        }, status=400)
 
     # ตรวจว่าห้องนี้ปิดชั่วคราวในวัน/ช่วงเวลานั้นไหม
     blocked, closure_reason = _check_room_closure(room, b_date, s_time, e_time)
@@ -1096,6 +1110,8 @@ def room_detail(request, booking_name):
     return render(request, 'booking/room_detail.html', {
         'room':       room,
         'room_color': room_color,
+        'weekend_open_time':  WEEKEND_OPEN_TIME,
+        'weekend_close_time': WEEKEND_CLOSE_TIME,
         'facilities': facilities,
         'rules':      rules,
         'how_to_use': how_to_use,

@@ -389,7 +389,7 @@
                     </div>
                     ${r.location ? `<div class="room-location">📍 ${r.location}</div>` : ''}
                     <div class="room-footer">
-                        <div class="room-hours">🕐 ${r.open_time} – ${r.close_time} น.</div>
+                        <div class="room-hours">🕐 จ.-ศ. ${r.open_time}–${r.close_time} | ส.-อา. ${r.weekend_open_time}–${r.weekend_close_time} น.</div>
                         <div style="display:flex;gap:6px;">
                             <a class="btn-detail" href="${ROOM_DETAIL_BASE}${r.booking_name}/"
                                style="color:${color};">
