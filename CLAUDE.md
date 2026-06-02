@@ -222,6 +222,9 @@ nssm set reserv-booking AppDirectory "C:\path\to\reserv"
 nssm start reserv-booking
 ```
 
+**เมื่อ pull code ใหม่ขึ้น production:** หากมีการแก้ Python code ต้องรัน
+`nssm restart reserv-booking` ก่อนทดสอบ เพื่อให้ Waitress โหลด code ชุดใหม่
+
 **Nginx config สำคัญ:**
 ```nginx
 location /reserv/ {
@@ -254,5 +257,6 @@ location /reserv/ {
 4. สร้างหรืออัปเดต `doc/progress-YYYY-MM-DD.md` เพื่อบันทึกสิ่งที่แก้ ไฟล์ที่เกี่ยวข้อง วิธีตรวจสอบ และงานค้าง
 5. ใส่หมายเหตุใน progress log ว่าแก้โดยเครื่องมือใด เช่น `Codex edit` หรือ `Claude Code edit`
 6. ก่อนส่งต่องาน ให้ตรวจ diff และระบุว่าได้รัน check/test อะไรแล้ว
+7. เมื่อ deploy Python code ขึ้น production ให้ restart service ก่อนทดสอบ และบันทึกผล production test ใน progress log
 
 Progress log สำหรับการ sync ครั้งนี้: `doc/progress-2026-06-02.md`
