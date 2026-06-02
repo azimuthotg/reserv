@@ -198,7 +198,7 @@
     const BY_DATE_URL      = "{% url 'bookings_by_date' %}";
     const CLOSURE_URL      = "{{ closure_url }}";
     const HOLIDAYS         = {{ holidays_json|safe }};  // { 'YYYY-MM-DD': 'description' }
-    const MAX_ADVANCE_DAYS = {{ max_advance_days }};
+    const MAX_BOOKING_DATE = "{{ max_booking_date }}";
     const MAX_DURATION  = 210; // นาที = 3.5 ชม.
 
     let currentUserId = '';
@@ -447,16 +447,9 @@
         const day = String(d.getDate()).padStart(2, '0');
         return `${y}-${m}-${day}`;
     }
-    function calcMaxDate() {
-        const d = new Date();
-        d.setDate(d.getDate() + MAX_ADVANCE_DAYS);
-        return d;
-    }
-
     let _picker = null;
     function setMinDate() {
         const todayStr  = toYMD(new Date());
-        const maxStr    = toYMD(calcMaxDate());
         const disabledDates = Object.keys(HOLIDAYS);
 
         if (_picker) { _picker.destroy(); }
@@ -464,7 +457,7 @@
             locale: 'th',
             dateFormat: 'Y-m-d',
             minDate: todayStr,
-            maxDate: maxStr,
+            maxDate: MAX_BOOKING_DATE,
             defaultDate: todayStr,
             disableMobile: true,
             disable: [

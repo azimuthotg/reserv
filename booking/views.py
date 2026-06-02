@@ -16,11 +16,16 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .models import Booking, BookingLog, HolidayDate, LineUser, Room, RoomClosure, RoomDevice
-from .service_hours import WEEKEND_CLOSE_TIME, WEEKEND_OPEN_TIME, room_service_hours
+from .service_hours import (
+    WEEKEND_CLOSE_TIME,
+    WEEKEND_OPEN_TIME,
+    max_advance_service_date,
+    room_service_hours,
+)
 
 NPU_API_BASE       = 'https://api.npu.ac.th'
 PROFILE_CACHE_DAYS = 30
-MAX_ADVANCE_DAYS = 7   # จองล่วงหน้าได้สูงสุดกี่วัน (นับทุกวัน)
+MAX_ADVANCE_DAYS = 7   # จองล่วงหน้าได้สูงสุดกี่วันเปิดบริการ
 INACTIVE_USER_ERROR = 'บัญชีของคุณถูกระงับการใช้งาน กรุณาติดต่อเจ้าหน้าที่'
 
 
@@ -312,12 +317,14 @@ def booking_page(request):
             'weekend_close_time': WEEKEND_CLOSE_TIME.strftime('%H:%M'),
         }
 
-    # วันหยุดในอีก 60 วันข้างหน้า สำหรับ disable ใน date picker
+    # ส่งวันหยุดที่เกี่ยวข้องและวันสุดท้ายที่จองได้จาก policy เดียวกับ backend
     today = date.today()
+    holidays = _holiday_dates_set()
+    max_booking_date = max_advance_service_date(today, holidays, MAX_ADVANCE_DAYS)
     holiday_qs = HolidayDate.objects.filter(
         is_active=True,
         date__gte=today,
-        date__lte=today + timedelta(days=60),
+        date__lte=max_booking_date,
     )
     # คืน dict date → description เพื่อแสดงชื่อวันหยุดทันที
     holidays_map = {h.date.strftime('%Y-%m-%d'): h.description for h in holiday_qs}
@@ -329,7 +336,7 @@ def booking_page(request):
         'register_url':    request.build_absolute_uri(reverse('register')),
         'holidays_json':   json.dumps(holidays_map),
         'closure_url':     request.build_absolute_uri(reverse('room_closure_info')),
-        'max_advance_days': MAX_ADVANCE_DAYS,
+        'max_booking_date': max_booking_date.isoformat(),
     }
     return render(request, 'booking/booking.html', context)
 
@@ -485,10 +492,11 @@ def create_booking(request):
         date_th = f'{b_date.day} {_MONTHS_TH[b_date.month]} {b_date.year + 543}'
         return JsonResponse({'error': f'ไม่สามารถจองวัน {date_th} ได้ เนื่องจาก: {holiday.description}'}, status=400)
 
-    # ตรวจล่วงหน้าไม่เกิน MAX_ADVANCE_DAYS (นับทุกวัน)
+    # ตรวจล่วงหน้าไม่เกิน MAX_ADVANCE_DAYS วันเปิดบริการ โดยข้ามวันปิดทั้งสำนัก
     today = date.today()
-    if b_date > today + timedelta(days=MAX_ADVANCE_DAYS):
-        return JsonResponse({'error': f'จองล่วงหน้าได้ไม่เกิน {MAX_ADVANCE_DAYS} วัน'}, status=400)
+    max_booking_date = max_advance_service_date(today, holidays, MAX_ADVANCE_DAYS)
+    if b_date > max_booking_date:
+        return JsonResponse({'error': f'จองล่วงหน้าได้ไม่เกิน {MAX_ADVANCE_DAYS} วันเปิดบริการ'}, status=400)
 
     try:
         room = Room.objects.get(booking_name=room_key, is_active=True)
