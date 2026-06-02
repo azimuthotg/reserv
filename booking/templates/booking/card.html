@@ -344,14 +344,35 @@
 
 <script>
   const LIFF_ID     = '{{ liff_id }}';
+  const ACCESS_STATUS_URL = '{{ access_status_url }}';
   const CHECK_URL   = '{{ check_url }}';
   const WALAI_URL   = '{{ walai_url }}';
   const REGISTER_URL = '{{ register_url }}';
   const CACHE_KEY_PREFIX = 'npu_user_v2';
   const LEGACY_CACHE_KEY = 'npu_user_v1';
+  const ACCESS_DENIED_MSG = 'บัญชีของคุณถูกระงับการใช้งาน กรุณาติดต่อเจ้าหน้าที่';
 
   function cacheKey(userId) {
     return `${CACHE_KEY_PREFIX}:${userId}`;
+  }
+
+  function throwIfBlocked(data) {
+    if (data.blocked) {
+      const error = new Error(ACCESS_DENIED_MSG);
+      error.isAccessDenied = true;
+      throw error;
+    }
+  }
+
+  async function checkAccess(userId) {
+    const resp = await fetch(ACCESS_STATUS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    });
+    const data = await resp.json();
+    throwIfBlocked(data);
+    return data.registered === true;
   }
 
   function showError(msg) {
@@ -367,15 +388,17 @@
 
   async function checkUser(profile) {
     sessionStorage.removeItem(LEGACY_CACHE_KEY);
+    const locallyRegistered = await checkAccess(profile.userId);
     const key = cacheKey(profile.userId);
     const cached = sessionStorage.getItem(key);
-    if (cached) return JSON.parse(cached);
+    if (locallyRegistered && cached) return JSON.parse(cached);
     const resp = await fetch(CHECK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: profile.userId, displayName: profile.displayName }),
     });
     const data = await resp.json();
+    throwIfBlocked(data);
     if (data.registered) sessionStorage.setItem(key, JSON.stringify(data));
     return data;
   }
@@ -479,7 +502,9 @@
       }
 
     } catch (err) {
-      showError('ไม่สามารถเชื่อมต่อ LINE ได้\nกรุณาเปิดจาก LINE OA อีกครั้ง');
+      showError(err.isAccessDenied
+        ? err.message
+        : 'ไม่สามารถเชื่อมต่อ LINE ได้\nกรุณาเปิดจาก LINE OA อีกครั้ง');
     }
   }
 

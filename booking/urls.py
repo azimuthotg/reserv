@@ -21,6 +21,7 @@ urlpatterns = [
     path('room/<str:booking_name>/', views.room_detail, name='room_detail'),
 
     # ── APIs ──────────────────────────────────────────────────────────────────
+    path('api/access-status/',     views.access_status,    name='access_status'),
     path('api/check-user/',        views.check_user,       name='check_user'),
     path('api/booking/',           views.create_booking,   name='create_booking'),
     path('api/bookings-by-date/',  views.bookings_by_date, name='bookings_by_date'),

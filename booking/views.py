@@ -20,6 +20,7 @@ from .models import Booking, BookingLog, HolidayDate, LineUser, Room, RoomClosur
 NPU_API_BASE       = 'https://api.npu.ac.th'
 PROFILE_CACHE_DAYS = 30
 MAX_ADVANCE_DAYS = 5   # จองล่วงหน้าได้สูงสุดกี่วัน (นับทุกวัน)
+INACTIVE_USER_ERROR = 'บัญชีของคุณถูกระงับการใช้งาน กรุณาติดต่อเจ้าหน้าที่'
 
 
 # ── LINE Messaging API ────────────────────────────────────────────────────────
@@ -206,7 +207,10 @@ def _get_or_refresh_line_user(line_user_id, display_name, user_ldap, user_type):
         lu.faculty           = faculty
         lu.department        = dept
         lu.profile_updated_at = now
-        lu.save()
+        lu.save(update_fields=[
+            'display_name', 'user_ldap', 'user_type', 'full_name',
+            'faculty', 'department', 'profile_updated_at', 'updated_at',
+        ])
     else:
         lu = LineUser.objects.create(
             line_user_id     = line_user_id,
@@ -240,6 +244,7 @@ def landing_page(request):
     return render(request, 'booking/landing.html', {
         'liff_id':         settings.LINE_LIFF_ID,
         'rooms_json':      rooms_json,
+        'access_status_url': request.build_absolute_uri(reverse('access_status')),
         'check_url':       request.build_absolute_uri(reverse('check_user')),
         'register_url':    request.build_absolute_uri(reverse('register')),
         'my_bookings_url':    request.build_absolute_uri(reverse('my_bookings')),
@@ -315,6 +320,7 @@ def booking_page(request):
     context = {
         'liff_id':         settings.LINE_LIFF_ID,
         'room_json':       json.dumps(room_data),
+        'access_status_url': request.build_absolute_uri(reverse('access_status')),
         'register_url':    request.build_absolute_uri(reverse('register')),
         'holidays_json':   json.dumps(holidays_map),
         'closure_url':     request.build_absolute_uri(reverse('room_closure_info')),
@@ -340,6 +346,42 @@ def booking_success(request):
 
 # ── APIs ──────────────────────────────────────────────────────────────────────
 
+def _inactive_user_response():
+    return JsonResponse({'error': INACTIVE_USER_ERROR, 'blocked': True}, status=403)
+
+
+def _get_active_line_user(user_id):
+    """คืน (LineUser, error response) สำหรับ API ที่ต้องใช้สิทธิ์ผู้ใช้"""
+    try:
+        lu = LineUser.objects.get(line_user_id=user_id)
+    except LineUser.DoesNotExist:
+        return None, JsonResponse({'error': 'ไม่พบข้อมูลผู้ใช้ กรุณาลองใหม่'}, status=404)
+    if not lu.is_active:
+        return None, _inactive_user_response()
+    return lu, None
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def access_status(request):
+    """POST { userId } → ตรวจสถานะ local user ก่อนใช้ frontend profile cache"""
+    try:
+        body    = json.loads(request.body)
+        user_id = body.get('userId', '').strip()
+    except (json.JSONDecodeError, AttributeError):
+        return JsonResponse({'error': 'invalid request'}, status=400)
+
+    if not user_id:
+        return JsonResponse({'error': 'userId required'}, status=400)
+
+    lu = LineUser.objects.filter(line_user_id=user_id).only('is_active').first()
+    if not lu:
+        return JsonResponse({'registered': False, 'active': False})
+    if not lu.is_active:
+        return _inactive_user_response()
+    return JsonResponse({'registered': True, 'active': True})
+
+
 @csrf_exempt
 @require_http_methods(['POST'])
 def check_user(request):
@@ -358,6 +400,10 @@ def check_user(request):
     if not user_id:
         return JsonResponse({'error': 'userId required'}, status=400)
 
+    existing_lu = LineUser.objects.filter(line_user_id=user_id).first()
+    if existing_lu and not existing_lu.is_active:
+        return _inactive_user_response()
+
     npu_data = _fetch_npu_user(user_id)
     if not npu_data:
         return JsonResponse({'registered': False})
@@ -366,6 +412,9 @@ def check_user(request):
     user_type = npu_data.get('user_type', '')
 
     lu = _get_or_refresh_line_user(user_id, display_name, user_ldap, user_type)
+    lu.refresh_from_db(fields=['is_active'])
+    if not lu.is_active:
+        return _inactive_user_response()
 
     return JsonResponse({
         'registered':  True,
@@ -446,12 +495,9 @@ def create_booking(request):
     if blocked:
         return JsonResponse({'error': f'ห้อง {room.name} ปิดบริการชั่วคราว — {closure_reason}'}, status=400)
 
-    try:
-        lu = LineUser.objects.get(line_user_id=user_id)
-    except LineUser.DoesNotExist:
-        return JsonResponse({'error': 'ไม่พบข้อมูลผู้ใช้ กรุณาลองใหม่'}, status=404)
-    if not lu.is_active:
-        return JsonResponse({'error': 'บัญชีของคุณถูกระงับการใช้งาน กรุณาติดต่อเจ้าหน้าที่'}, status=403)
+    lu, error_response = _get_active_line_user(user_id)
+    if error_response is not None:
+        return error_response
 
     with transaction.atomic():
         conflict = Booking.objects.select_for_update().filter(
@@ -667,6 +713,10 @@ def cancel_booking(request):
     if not user_id or not booking_id:
         return JsonResponse({'error': 'ข้อมูลไม่ครบ'}, status=400)
 
+    _, error_response = _get_active_line_user(user_id)
+    if error_response is not None:
+        return error_response
+
     try:
         booking = Booking.objects.select_related('line_user', 'room').get(pk=booking_id)
     except Booking.DoesNotExist:
@@ -710,6 +760,10 @@ def my_bookings(request):
     user_id = request.GET.get('userId', '').strip()
     if not user_id:
         return JsonResponse({'error': 'userId required'}, status=400)
+
+    _, error_response = _get_active_line_user(user_id)
+    if error_response is not None:
+        return error_response
 
     today = date.today()
     bookings = (
@@ -763,6 +817,10 @@ def checkin_booking(request):
 
     if not user_id or not booking_id:
         return JsonResponse({'error': 'userId และ bookingId จำเป็น'}, status=400)
+
+    _, error_response = _get_active_line_user(user_id)
+    if error_response is not None:
+        return error_response
 
     try:
         booking = Booking.objects.select_related('line_user').get(pk=booking_id)
@@ -824,6 +882,7 @@ def card_page(request):
     """หน้า Virtual Card — แสดงบัตรสมาชิกดิจิทัล"""
     return render(request, 'booking/card.html', {
         'liff_id':    settings.LINE_LIFF_ID,
+        'access_status_url': request.build_absolute_uri(reverse('access_status')),
         'check_url':  request.build_absolute_uri(reverse('check_user')),
         'walai_url':  request.build_absolute_uri(reverse('walai_card')),
         'register_url': request.build_absolute_uri(reverse('register')),
@@ -844,8 +903,12 @@ def walai_card(request):
     except (json.JSONDecodeError, AttributeError):
         return JsonResponse({'error': 'invalid request'}, status=400)
 
-    if not user_ldap:
-        return JsonResponse({'error': 'userLdap required'}, status=400)
+    if not user_id or not user_ldap:
+        return JsonResponse({'error': 'userId and userLdap required'}, status=400)
+
+    _, error_response = _get_active_line_user(user_id)
+    if error_response is not None:
+        return error_response
 
     try:
         resp = requests.get(
@@ -911,6 +974,7 @@ def _get_active_booking(user_id, room_key):
         .select_related('room')
         .filter(
             line_user__line_user_id=user_id,
+            line_user__is_active=True,
             room__booking_name=room_key,
             booking_date=today,
             status='confirmed',
@@ -932,6 +996,10 @@ def room_status(request):
     room_key = request.GET.get('room_key', '').strip()
     if not user_id or not room_key:
         return JsonResponse({'error': 'userId and room_key required'}, status=400)
+
+    _, error_response = _get_active_line_user(user_id)
+    if error_response is not None:
+        return error_response
 
     booking = _get_active_booking(user_id, room_key)
     if not booking:
@@ -978,6 +1046,10 @@ def device_toggle(request):
 
     if not all([user_id, room_key, entity_id]):
         return JsonResponse({'error': 'userId, room_key, entity_id required'}, status=400)
+
+    _, error_response = _get_active_line_user(user_id)
+    if error_response is not None:
+        return error_response
 
     booking = _get_active_booking(user_id, room_key)
     if not booking:

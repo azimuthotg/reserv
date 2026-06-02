@@ -191,6 +191,7 @@
     const LIFF_ID          = "{{ liff_id }}";
     const ROOM_DATA        = {{ room_json|safe }};
     const REGISTER_URL     = "{{ register_url }}";
+    const ACCESS_STATUS_URL = "{{ access_status_url }}";
     const CHECK_URL        = "{% url 'check_user' %}";
     const BOOKING_URL      = "{% url 'create_booking' %}";
     const SUCCESS_URL      = "{% url 'booking_success' %}";
@@ -559,16 +560,37 @@
 <script>
     const CACHE_KEY_PREFIX = 'npu_user_v2';
     const LEGACY_CACHE_KEY = 'npu_user_v1';
+    const ACCESS_DENIED_MSG = 'บัญชีของคุณถูกระงับการใช้งาน กรุณาติดต่อเจ้าหน้าที่';
 
     function cacheKey(userId) {
         return `${CACHE_KEY_PREFIX}:${userId}`;
     }
 
+    function throwIfBlocked(data) {
+        if (data.blocked) {
+            const error = new Error(ACCESS_DENIED_MSG);
+            error.isAccessDenied = true;
+            throw error;
+        }
+    }
+
+    async function checkAccess(userId) {
+        const resp = await fetch(ACCESS_STATUS_URL, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ userId }),
+        });
+        const data = await resp.json();
+        throwIfBlocked(data);
+        return data.registered === true;
+    }
+
     async function checkUser(profile) {
         sessionStorage.removeItem(LEGACY_CACHE_KEY);
+        const locallyRegistered = await checkAccess(profile.userId);
         const key = cacheKey(profile.userId);
         const cached = sessionStorage.getItem(key);
-        if (cached) {
+        if (locallyRegistered && cached) {
             return JSON.parse(cached);
         }
         const resp = await fetch(CHECK_URL, {
@@ -577,6 +599,7 @@
             body:    JSON.stringify({ userId: profile.userId, displayName: profile.displayName }),
         });
         const data = await resp.json();
+        throwIfBlocked(data);
         if (data.registered) {
             sessionStorage.setItem(key, JSON.stringify(data));
         }
@@ -605,7 +628,9 @@
             showForm({ ...data, displayName: profile.displayName });
         })
         .catch(err => {
-            const msg = err.message && err.message.includes('network')
+            const msg = err.isAccessDenied
+                ? err.message
+                : err.message && err.message.includes('network')
                 ? 'ไม่สามารถเชื่อมต่อได้<br>กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่'
                 : 'ไม่สามารถเชื่อมต่อ LINE ได้<br>กรุณาลองใหม่อีกครั้ง';
             document.getElementById('loader').innerHTML =

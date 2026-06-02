@@ -93,6 +93,7 @@ api.npu.ac.th         MySQL reserv_db
 | `/room/<booking_name>/` | `/reserv/room/<booking_name>/` | รายละเอียดห้องแบบ public |
 | `/card/` | `/reserv/card/` | Virtual Card + Walai status (LIFF) |
 | `/room-control/` | `/reserv/room-control/` | ควบคุมอุปกรณ์ IoT ระหว่างเวลาจอง (LIFF) |
+| `/api/access-status/` | `/reserv/api/access-status/` | ตรวจสถานะ local user ก่อนใช้ frontend cache |
 | `/api/check-user/` | `/reserv/api/check-user/` | ตรวจการผูก LINE userId |
 | `/api/my-bookings/` | `/reserv/api/my-bookings/` | รายการจองของผู้ใช้ |
 | `/api/checkin/` | `/reserv/api/checkin/` | Check-in ก่อน/หลังเวลาเริ่มไม่เกิน 15 นาที |
@@ -115,6 +116,13 @@ liff.isLoggedIn() ?
     ├── ไม่ → liff.login({ redirectUri: window.location.href })
     └── ใช่ → liff.getProfile() เพื่อรับ LINE userId
                  ↓
+          POST /api/access-status/
+                 ↓
+          local LineUser ถูกปิดใช้หรือไม่?
+              ├── ใช่ → แจ้งให้ติดต่อเจ้าหน้าที่
+              └── ไม่ → อ่าน profile cache ของ LINE userId ปัจจุบัน
+                         หากไม่มี cache จึง POST /api/check-user/
+                                 ↓
           POST /api/check-user/
                  ↓
           api.npu.ac.th/api/{userId}/ พบการผูกบัญชีหรือไม่?
@@ -137,6 +145,11 @@ liff.isLoggedIn() ?
 
 **Booking guard:** `create_booking()` ต้องปฏิเสธการสร้าง booking เมื่อ `LineUser.is_active=False`
 และแจ้งให้ผู้ใช้ติดต่อเจ้าหน้าที่
+
+**Inactive user guard:** API ที่ต้องใช้สิทธิ์ผู้ใช้ต้องเรียก `_get_active_line_user()`
+เพื่อปฏิเสธ `LineUser.is_active=False` ครอบคลุม booking, my-bookings, cancel, check-in,
+Walai card และ IoT room control ส่วน `check_user()` ตรวจสถานะก่อน refresh profile
+หน้า LIFF ต้องเรียก `/api/access-status/` ก่อนอ่าน frontend cache เพื่อให้การระงับมีผลทันที
 
 **Frontend profile cache:** หน้า landing, booking และ card ใช้ `sessionStorage`
 key รูปแบบ `npu_user_v2:<LINE userId>` เพื่อไม่ให้ profile ค้างข้ามบัญชีเมื่อสลับ LINE user
