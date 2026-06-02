@@ -132,6 +132,9 @@ liff.isLoggedIn() ?
 
 **หมายเหตุ:** ไม่มี endpoint `/api/set-session/` ใน implementation ปัจจุบัน
 
+**Registration guard:** หลัง LDAP ผ่าน ต้องตรวจผล `_register_npu_user()` ก่อนสร้าง `LineUser` ใน local DB
+หาก NPU API ผูกบัญชีไม่สำเร็จ ให้คงอยู่หน้าลงทะเบียนและแจ้งผู้ใช้ลองใหม่ ห้ามสร้าง local user ต่อ
+
 ---
 
 ## NPU API (https://api.npu.ac.th)

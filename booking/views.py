@@ -270,8 +270,9 @@ def register_page(request):
             error = 'กรุณากรอกข้อมูลให้ครบทุกช่อง'
         elif not _verify_ldap(user_ldap, password):
             error = 'รหัสผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'
+        elif not _register_npu_user(user_id, user_ldap, user_type):
+            error = 'ไม่สามารถผูกบัญชีกับระบบมหาวิทยาลัยได้ กรุณาลองใหม่อีกครั้ง'
         else:
-            _register_npu_user(user_id, user_ldap, user_type)
             _get_or_refresh_line_user(user_id, display_name, user_ldap, user_type)
             return redirect(next_url)
 
