@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
 
 <!-- Codex edit: synchronized with the current implementation on 2026-06-02.
 Reference: doc/progress-2026-06-02.md -->
