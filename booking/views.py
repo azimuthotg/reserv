@@ -450,6 +450,8 @@ def create_booking(request):
         lu = LineUser.objects.get(line_user_id=user_id)
     except LineUser.DoesNotExist:
         return JsonResponse({'error': 'ไม่พบข้อมูลผู้ใช้ กรุณาลองใหม่'}, status=404)
+    if not lu.is_active:
+        return JsonResponse({'error': 'บัญชีของคุณถูกระงับการใช้งาน กรุณาติดต่อเจ้าหน้าที่'}, status=403)
 
     with transaction.atomic():
         conflict = Booking.objects.select_for_update().filter(

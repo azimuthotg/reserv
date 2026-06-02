@@ -135,6 +135,9 @@ liff.isLoggedIn() ?
 **Registration guard:** หลัง LDAP ผ่าน ต้องตรวจผล `_register_npu_user()` ก่อนสร้าง `LineUser` ใน local DB
 หาก NPU API ผูกบัญชีไม่สำเร็จ ให้คงอยู่หน้าลงทะเบียนและแจ้งผู้ใช้ลองใหม่ ห้ามสร้าง local user ต่อ
 
+**Booking guard:** `create_booking()` ต้องปฏิเสธการสร้าง booking เมื่อ `LineUser.is_active=False`
+และแจ้งให้ผู้ใช้ติดต่อเจ้าหน้าที่
+
 ---
 
 ## NPU API (https://api.npu.ac.th)
