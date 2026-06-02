@@ -138,6 +138,9 @@ liff.isLoggedIn() ?
 **Booking guard:** `create_booking()` ต้องปฏิเสธการสร้าง booking เมื่อ `LineUser.is_active=False`
 และแจ้งให้ผู้ใช้ติดต่อเจ้าหน้าที่
 
+**Frontend profile cache:** หน้า landing, booking และ card ใช้ `sessionStorage`
+key รูปแบบ `npu_user_v2:<LINE userId>` เพื่อไม่ให้ profile ค้างข้ามบัญชีเมื่อสลับ LINE user
+
 ---
 
 ## NPU API (https://api.npu.ac.th)

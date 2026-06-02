@@ -557,10 +557,17 @@
 
 <script src="https://static.line-scdn.net/liff/edge/versions/2.15.0/sdk.js"></script>
 <script>
-    const CACHE_KEY = 'npu_user_v1';
+    const CACHE_KEY_PREFIX = 'npu_user_v2';
+    const LEGACY_CACHE_KEY = 'npu_user_v1';
+
+    function cacheKey(userId) {
+        return `${CACHE_KEY_PREFIX}:${userId}`;
+    }
 
     async function checkUser(profile) {
-        const cached = sessionStorage.getItem(CACHE_KEY);
+        sessionStorage.removeItem(LEGACY_CACHE_KEY);
+        const key = cacheKey(profile.userId);
+        const cached = sessionStorage.getItem(key);
         if (cached) {
             return JSON.parse(cached);
         }
@@ -571,7 +578,7 @@
         });
         const data = await resp.json();
         if (data.registered) {
-            sessionStorage.setItem(CACHE_KEY, JSON.stringify(data));
+            sessionStorage.setItem(key, JSON.stringify(data));
         }
         return data;
     }
@@ -587,7 +594,7 @@
             const data = await checkUser(profile);
 
             if (!data.registered) {
-                sessionStorage.removeItem(CACHE_KEY);
+                sessionStorage.removeItem(cacheKey(profile.userId));
                 window.location.href = REGISTER_URL
                     + '?userId='      + encodeURIComponent(profile.userId)
                     + '&displayName=' + encodeURIComponent(profile.displayName)

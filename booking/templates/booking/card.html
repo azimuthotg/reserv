@@ -347,7 +347,12 @@
   const CHECK_URL   = '{{ check_url }}';
   const WALAI_URL   = '{{ walai_url }}';
   const REGISTER_URL = '{{ register_url }}';
-  const CACHE_KEY   = 'npu_user_v1';
+  const CACHE_KEY_PREFIX = 'npu_user_v2';
+  const LEGACY_CACHE_KEY = 'npu_user_v1';
+
+  function cacheKey(userId) {
+    return `${CACHE_KEY_PREFIX}:${userId}`;
+  }
 
   function showError(msg) {
     document.getElementById('loading-screen').style.display = 'none';
@@ -361,7 +366,9 @@
   }
 
   async function checkUser(profile) {
-    const cached = sessionStorage.getItem(CACHE_KEY);
+    sessionStorage.removeItem(LEGACY_CACHE_KEY);
+    const key = cacheKey(profile.userId);
+    const cached = sessionStorage.getItem(key);
     if (cached) return JSON.parse(cached);
     const resp = await fetch(CHECK_URL, {
       method: 'POST',
@@ -369,7 +376,7 @@
       body: JSON.stringify({ userId: profile.userId, displayName: profile.displayName }),
     });
     const data = await resp.json();
-    if (data.registered) sessionStorage.setItem(CACHE_KEY, JSON.stringify(data));
+    if (data.registered) sessionStorage.setItem(key, JSON.stringify(data));
     return data;
   }
 
@@ -427,6 +434,7 @@
       const userData = await checkUser(profile);
 
       if (!userData.registered) {
+        sessionStorage.removeItem(cacheKey(profile.userId));
         // redirect to register, come back here after
         const cardUrl = location.href.split('?')[0];
         location.href = REGISTER_URL + '?userId=' + encodeURIComponent(profile.userId)
