@@ -126,18 +126,35 @@ def build_docx():
         doc,
         [
             "ห้ามข้ามจาก brief ไป final render หากยังไม่ได้ตรวจ DRAFT LOW หรือ LAYOUT DRAFT",
-            "QR Code และโลโก้ต้องใช้ไฟล์จริง ห้ามให้ AI สร้างเอง",
-            "ข้อความสำคัญต้องวางด้วย layout tool ไม่ฝังในภาพ AI",
+            "ห้ามให้ AI สร้าง QR Code หรือโลโก้เอง แต่ต้องนำไฟล์จริงที่เตรียมไว้ไปประกอบใน layout",
+            "ข้อความสำคัญต้องวางด้วย layout tool หรือ HTML/CSS ไม่ฝังในภาพ AI",
+            "Codex ต้องช่วยวางข้อความจริง โลโก้จริง และ QR จริงให้จบเป็นไฟล์พร้อมตรวจ",
             "ภาพ AI ใช้เป็นภาพประกอบ ไม่ใช่แหล่งความจริงของข้อความหรือ QR",
             "ทุกไฟล์ที่ใช้งานจริงต้องเก็บ path ชัดเจนใน workspace",
+        ],
+    )
+
+    add_paragraph(doc, "ไฟล์จริงที่ต้องนำมาประกอบ", size=22, bold=True)
+    add_bullets(
+        doc,
+        [
+            "โลโก้มหาวิทยาลัยนครพนม: doc/illustrations/logo_NPU.png",
+            "โลโก้สำนักวิทยบริการ: doc/illustrations/logo_ARC.png",
+            "QR Code LINE OA: doc/illustrations/QR_LINEOA_ARC.jpg",
+            "QR Code ระบบจอง: doc/illustrations/QR_WebApp_ARC.png",
         ],
     )
 
     add_paragraph(doc, "คัมภีร์การเจนภาพ", size=22, bold=True)
     add_paragraph(doc, "ให้ AI ทำ", size=18, bold=True)
     add_bullets(doc, ["ฉากห้องสมุด", "ตัวละครการ์ตูน", "mood/tone", "ภาพฐานสำหรับประกอบป้าย"])
-    add_paragraph(doc, "ไม่ให้ AI ทำ", size=18, bold=True)
-    add_bullets(doc, ["QR Code", "โลโก้", "ข้อความไทยยาว ๆ", "ตัดสินข้อมูลนโยบายเอง"])
+    add_paragraph(doc, "ไม่ให้ AI สร้างเอง", size=18, bold=True)
+    add_bullets(doc, ["QR Code ปลอม", "โลโก้ปลอม", "ข้อความไทยยาว ๆ ในภาพ AI", "ตัดสินข้อมูลนโยบายเอง"])
+    add_paragraph(
+        doc,
+        "แต่ในขั้น LAYOUT DRAFT และ EXPORT ต้องนำ QR Code จริง โลโก้จริง และข้อความจริงมาประกอบให้เสร็จ",
+        size=16,
+    )
 
     add_paragraph(doc, "Theme กลางของสำนักวิทยบริการ", size=22, bold=True)
     add_bullets(
@@ -232,8 +249,8 @@ def build_infographic():
     rules = [
         "ไม่ข้าม brief → final render",
         "ต้องมี DRAFT LOW หรือ LAYOUT DRAFT ก่อน",
-        "QR/โลโก้ใช้ไฟล์จริงเท่านั้น",
-        "ข้อความสำคัญห้ามฝังในภาพ AI",
+        "AI ห้ามสร้าง QR/โลโก้เอง",
+        "Layout ต้องใส่ไฟล์จริงและข้อความจริงให้ครบ",
     ]
     yy = lower_y + 94
     for item in rules:
@@ -248,8 +265,8 @@ def build_infographic():
         draw.text((130, y2 + 100 + i * 48), f"✓ {item}", font=body_font, fill=dark)
 
     rounded(draw, (865, y2, 1520, y2 + 310), 34, white, outline="#d9534f", width=5)
-    draw.text((905, y2 + 34), "AI ไม่ทำอะไร", font=h_font, fill="#8a1f17")
-    for i, item in enumerate(["QR Code", "โลโก้", "ข้อความไทยยาว", "ข้อมูลนโยบายเอง"]):
+    draw.text((905, y2 + 34), "AI ห้ามสร้างเอง", font=h_font, fill="#8a1f17")
+    for i, item in enumerate(["QR/โลโก้ปลอม", "ข้อความไทยยาวในภาพ", "ข้อมูลนโยบายเอง", "เปลี่ยน layout เอง"]):
         draw.text((915, y2 + 100 + i * 48), f"✕ {item}", font=body_font, fill=dark)
 
     theme_y = 1805
@@ -257,7 +274,7 @@ def build_infographic():
     draw.text((120, theme_y + 36), "Theme ARC/NPU", font=h_font, fill=white)
     draw.text((120, theme_y + 102), "น้ำเงินเข้ม • ทอง/เหลือง • ขาว/ครีม • ฟ้าอ่อน", font=body_font, fill=white)
     draw.text((120, theme_y + 154), "สดใส เป็นมิตร น่ารัก สุภาพ ใช้ example1.jpg เป็น mood/tone เท่านั้น ไม่ลอก layout", font=small_font, fill=white)
-    draw.text((120, theme_y + 198), "personal_akeky.png = มุม support เล็ก ๆ ไม่แย่งความเด่นจาก QR และข้อความหลัก", font=small_font, fill=white)
+    draw.text((120, theme_y + 198), "Layout final ต้องใส่ logo_NPU, logo_ARC, QR_LINEOA, QR_WebApp และข้อความจริงให้ครบ", font=small_font, fill=white)
 
     draw.rectangle((0, H - 90, W, H), fill=navy2)
     draw.text((80, H - 62), "ระบบจองพื้นที่บริการ Smart Creative Learning Space • สำนักวิทยบริการ มหาวิทยาลัยนครพนม", font=small_font, fill=white)
