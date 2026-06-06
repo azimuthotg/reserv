@@ -39,17 +39,33 @@
 **สถาปัตยกรรมระบบเดิม:**
 ```
 ผู้ใช้ใน LINE OA
-    ↓ กด Flex Message Card
-    ↓ เปิด LIFF
-HTML Form (netflix.html บน arc.npu.ac.th)
-    ↓ ผู้ใช้กรอกข้อมูล
+    ↓ กด Flex Message Card → เปิด LIFF
+    ↓ โหลด netflix.html (arc.npu.ac.th)
+
+testdb.php (external server)
+    ↓ ตรวจว่าผูกบัญชี LINE ไว้ไหม
+    ├── ยังไม่ผูก → redirect หน้าผูกบัญชี
+    │       ↓ กรอก User/Pass อินเทอร์เน็ต
+    │       ↓ ตรวจสอบ LDAP / AD มหาวิทยาลัย
+    │       ↓ บันทึกผูก LINE userId ↔ account
+    │       ↓ กลับมาที่ฟอร์มจอง
+    └── ผูกแล้ว → ดึงข้อมูลผู้ใช้จาก LDAP / AD
+
+HTML Form (netflix.html — arc.npu.ac.th)
+    ↓ ผู้ใช้กรอกข้อมูลการจอง
+
 Google Apps Script (Web App)
-    ↓ บันทึกข้อมูล
-Google Sheets (ฐานข้อมูล)
-    ↓ ตรวจสิทธิ์
-testdb.php บน external server
-    ↓ ดึงข้อมูลผู้ใช้
-ฐานข้อมูล LDAP / AD ของมหาวิทยาลัย
+    ↓ ตรวจ conflict check (query Google Sheets)
+    ├── มี conflict → แจ้งผู้ใช้ (จองไม่ได้)
+    └── ไม่มี conflict
+            ↓ บันทึกลง Google Sheets
+            ↓ เพิ่ม event ใน Google Calendar
+            ↓ ส่ง LINE Notify แจ้งผู้จอง
+               ⚠ ติด limit 300 msg/เดือน → ย้ายมาใช้ LINE Messaging API
+
+Google Sheets   — เก็บข้อมูลการจองทั้งหมด
+Google Calendar — แสดงการจองที่สำเร็จ
+LINE Notify     — แจ้งเตือนผู้จอง (ติด limit / ปิดบริการ เม.ย. 2568)
 ```
 
 **ข้อจำกัดที่พบ:**

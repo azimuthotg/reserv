@@ -62,6 +62,16 @@ def add_bullets(doc, items):
         set_run_font(run, size=16)
 
 
+def add_command_block(doc, text):
+    paragraph = doc.add_paragraph()
+    paragraph.paragraph_format.left_indent = Cm(0.6)
+    run = paragraph.add_run(text)
+    set_run_font(run, size=15, bold=True)
+    font_color = run.font.color
+    font_color.rgb = None
+    return paragraph
+
+
 def build_docx():
     doc = Document()
     section = doc.sections[0]
@@ -166,6 +176,118 @@ def build_docx():
             "personal_akeky.png ใช้เป็นมุม support ขนาดเล็ก ไม่แย่งความเด่นจาก QR และข้อความหลัก",
         ],
     )
+
+    add_paragraph(doc, "บทสวดใช้งานจริงในช่องแชท", size=22, bold=True)
+    add_paragraph(
+        doc,
+        "ใช้หัวข้อนี้เป็นตัวอย่างคำสั่งแบบ copy/paste สำหรับทีมงาน สั่งทีละรอบ ตรวจทีละรอบ และยังไม่ข้ามไป final render จนกว่า draft/layout จะผ่าน",
+        size=16,
+    )
+
+    chat_rounds = [
+        (
+            "รอบที่ 1 — เปิดงาน",
+            "START JOB: ป้ายที่ 1 ป้ายเปิดตัวระบบจอง",
+            [
+                "รอ Codex สรุปป้าย อ่าน poster-plan/progress เช็ก asset และเช็ก git",
+                "ทีมตรวจว่า Codex เข้าใจป้ายถูกใบและยังไม่ข้ามไป final render",
+            ],
+        ),
+        (
+            "รอบที่ 2 — ตรวจองค์ประกอบ",
+            "CHECK ASSETS: ป้ายที่ 1 ใช้ไฟล์ใน doc/illustrations",
+            [
+                "รอ Codex แยกไฟล์ฉาก ตัวละคร โลโก้จริง QR จริง และ mood/tone reference",
+                "ทีมตรวจว่า QR/โลโก้เป็นไฟล์ล่าสุด และภาพบุคลากรได้รับอนุญาตให้ใช้",
+            ],
+        ),
+        (
+            "รอบที่ 3 — ทำ brief",
+            "MAKE BRIEF: ป้ายที่ 1 ใช้โทน ARC/NPU ใส่ QR จริง 2 ช่องทาง และให้ personal_akeky เป็นมุม support",
+            [
+                "รอ Codex สรุปเป้าหมาย กลุ่มเป้าหมาย ข้อความหลัก mood/tone layout คร่าว ๆ และข้อห้าม",
+                "ทีมตรวจว่าข้อความถูก, LINE OA เป็นช่องทางหลัก, QR เว็บไซต์เป็นช่องทางรอง และ personal_akeky ไม่เด่นเกินไป",
+                "ถ้าผ่าน ให้ตอบว่า: อนุมัติ brief",
+            ],
+        ),
+        (
+            "รอบที่ 4 — ทำร่างเร็ว",
+            "DRAFT LOW: ป้ายที่ 1 A3 แนวตั้ง เห็นตำแหน่งหัวข้อ โลโก้ QR และตัวละคร",
+            [
+                "รอภาพร่างหรือ wireframe คุณภาพต่ำที่เห็นตำแหน่งหัวข้อ โลโก้ QR ตัวละคร และลำดับสายตา",
+                "ทีมตรวจว่ามองแวบแรกเข้าใจไหม, QR เด่นไหม, พื้นที่โล่งพอไหม และ layout แน่นไปไหม",
+            ],
+        ),
+        (
+            "รอบที่ 5 — ทำ layout draft",
+            "LAYOUT DRAFT: ป้ายที่ 1 ใส่ข้อความจริง โลโก้จริง QR จริง และ export PNG สำหรับตรวจ",
+            [
+                "รอไฟล์ mockup ที่มีข้อความจริง, logo_NPU, logo_ARC, QR_LINEOA_ARC และ QR_WebApp_ARC",
+                "ทีมตรวจคำไทย ขนาดตัวอักษร โลโก้ QR และลองสแกนจากไฟล์ draft",
+            ],
+        ),
+        (
+            "รอบที่ 6 — ตรวจร่าง",
+            "REVIEW DRAFT: ทดสอบ QR แล้ว LINE OA ใช้ได้ เว็บใช้ได้ ข้อความโอเค",
+            [
+                "ถ้ายังไม่ผ่าน ให้ระบุปัญหา เช่น QR เล็กไป หัวข้อไม่เด่น ข้อความแน่น",
+                "รอ Codex สรุปว่าผ่านหรือยังไม่ผ่าน และเสนอรายการแก้รอบถัดไป",
+            ],
+        ),
+        (
+            "รอบที่ 7 — final render",
+            "FINAL RENDER: ป้ายที่ 1 ใช้ layout ที่อนุมัติแล้ว ห้ามเปลี่ยนโครง",
+            [
+                "รอภาพประกอบคุณภาพสูงหรือ final artwork ที่ไม่เปลี่ยนตำแหน่งหลักโดยพลการ",
+                "ทีมตรวจคุณภาพภาพ mood/tone และ artifact ก่อน export",
+            ],
+        ),
+        (
+            "รอบที่ 8 — export",
+            "EXPORT: ป้ายที่ 1 A3 print และ PNG web พร้อมไฟล์ source",
+            [
+                "รอไฟล์ print, web/social, source และรายงานว่าใช้โลโก้/QR จริงครบ",
+                "ทีมตรวจเปิดไฟล์ final และสแกน QR จากไฟล์ final อีกครั้ง",
+            ],
+        ),
+        (
+            "รอบที่ 9 — บันทึกงาน",
+            "RECORD JOB: ป้ายที่ 1 ผ่านการทดสอบ QR ข้อความ และไฟล์ export แล้ว",
+            [
+                "รอ Codex อัปเดต poster-plan/progress และบันทึก path ของไฟล์ final",
+                "ทีมตรวจว่าเอกสารตรงกับผลทดสอบจริง ก่อนอนุมัติ commit/push",
+            ],
+        ),
+        (
+            "รอบที่ 10 — ปิดงาน",
+            "END JOB: ป้ายที่ 1",
+            [
+                "รอ Codex สรุปไฟล์ final, source, commit ล่าสุด และสิ่งที่ยังค้าง",
+                "Codex ต้องไม่เปิดงานใหม่เองหลังปิดงาน",
+            ],
+        ),
+    ]
+
+    for title_text, command, checks in chat_rounds:
+        add_paragraph(doc, title_text, size=18, bold=True)
+        add_command_block(doc, command)
+        add_bullets(doc, checks)
+
+    add_paragraph(doc, "ชุดคำสั่งเต็มสำหรับป้ายที่ 1", size=18, bold=True)
+    for command in [
+        "START JOB: ป้ายที่ 1 ป้ายเปิดตัวระบบจอง",
+        "CHECK ASSETS: ป้ายที่ 1 ใช้ไฟล์ใน doc/illustrations",
+        "MAKE BRIEF: ป้ายที่ 1 ใช้โทน ARC/NPU ใส่ QR จริง 2 ช่องทาง และให้ personal_akeky เป็นมุม support",
+        "อนุมัติ brief",
+        "DRAFT LOW: ป้ายที่ 1 A3 แนวตั้ง เห็นตำแหน่งหัวข้อ โลโก้ QR และตัวละคร",
+        "LAYOUT DRAFT: ป้ายที่ 1 ใส่ข้อความจริง โลโก้จริง QR จริง และ export PNG สำหรับตรวจ",
+        "REVIEW DRAFT: ทดสอบ QR แล้ว LINE OA ใช้ได้ เว็บใช้ได้ ข้อความโอเค",
+        "FINAL RENDER: ป้ายที่ 1 ใช้ layout ที่อนุมัติแล้ว ห้ามเปลี่ยนโครง",
+        "EXPORT: ป้ายที่ 1 A3 print และ PNG web พร้อมไฟล์ source",
+        "RECORD JOB: ป้ายที่ 1 ผ่านการทดสอบ QR ข้อความ และไฟล์ export แล้ว",
+        "END JOB: ป้ายที่ 1",
+    ]:
+        add_command_block(doc, command)
 
     doc.add_page_break()
     add_paragraph(doc, "Infographic สรุป workflow", size=22, bold=True)
