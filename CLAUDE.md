@@ -100,6 +100,7 @@ api.npu.ac.th         MySQL reserv_db
 | `/api/calendar-events/` | `/reserv/api/calendar-events/` | JSON events |
 | `/manage/` | `/reserv/manage/` | Staff Portal ใช้ Django session login |
 | `/admin/` | `/reserv/admin/` | Django Admin |
+| `/health/` | `/reserv/health/` | Health check (NMS monitoring) — public, JSON `{status, db, db_ms}`, 200/503 |
 
 room keys: `mini`, `edutainment`, `canva`, `chat-gpt`, `meeting_f1`
 

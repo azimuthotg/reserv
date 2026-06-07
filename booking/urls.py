@@ -2,6 +2,9 @@ from django.urls import path
 from . import views, manage_views
 
 urlpatterns = [
+    # ── Health check (NMS monitoring) ─────────────────────────────────────────
+    path('health/',   views.health,        name='health'),
+
     # ── Landing & Register ────────────────────────────────────────────────────
     path('',          views.landing_page,  name='landing'),
     path('register/', views.register_page, name='register'),

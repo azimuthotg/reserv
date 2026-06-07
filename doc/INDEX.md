@@ -5,7 +5,7 @@
 
 ---
 
-## Timeline การพัฒนา (9 วัน)
+## Timeline การพัฒนา (10 วัน)
 
 | วันที่ | ไฟล์ | งานหลัก |
 |---|---|---|
@@ -18,6 +18,7 @@
 | 2 มิ.ย. 69 | [progress-2026-06-02.md](progress-2026-06-02.md) | Docs sync, Code Fix 1–5, Policy วันเสาร์–อาทิตย์, จองล่วงหน้า 7 วันบริการ |
 | 3 มิ.ย. 69 | [progress-2026-06-03.md](progress-2026-06-03.md) | คู่มือ workflow การเจนภาพและผลิตป้ายประชาสัมพันธ์ |
 | 6 มิ.ย. 69 | [progress-2026-06-06.md](progress-2026-06-06.md) | สร้าง INDEX.md, Notion Projects Hub, Global skill /update-docs |
+| 7 มิ.ย. 69 | [progress-2026-06-07.md](progress-2026-06-07.md) | เพิ่ม health endpoint `/health/` สำหรับ NMS Agent monitoring |
 
 ---
 
@@ -134,4 +135,4 @@ Scripts เหล่านี้ใช้สร้างไฟล์เอกส
 
 ---
 
-*อัปเดตล่าสุด: 6 มิถุนายน 2569*
+*อัปเดตล่าสุด: 7 มิถุนายน 2569*

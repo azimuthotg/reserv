@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Staff Self-service IoT</title>
+  <style>
+    :root {
+      --ink: #14213d;
+      --muted: #5b677a;
+      --paper: #f7f9fc;
+      --new: #2166b1;
+      --new-soft: #eaf3ff;
+      --data: #16845b;
+      --data-soft: #e8f7ef;
+      --auto: #7254b8;
+      --auto-soft: #f1edff;
+      --warn: #d96c3b;
+      --warn-soft: #fff1e8;
+      --line: #8290a3;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+    }
+
+    body {
+      margin: 0;
+      background: #dfe5ee;
+      color: var(--ink);
+      font-family: "Noto Sans Thai", "Tahoma", "Arial", sans-serif;
+    }
+
+    .slide {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      background:
+        linear-gradient(90deg, rgba(20,33,61,.035) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(20,33,61,.035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 48px 48px;
+      padding: 64px 78px 56px;
+    }
+
+    .slide::before {
+      content: "";
+      position: absolute;
+      inset: 28px;
+      border: 1px solid rgba(20,33,61,.12);
+      pointer-events: none;
+    }
+
+    .kicker {
+      font-size: 25px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    h1 {
+      margin: 8px 0 6px;
+      font-size: 54px;
+      line-height: 1.14;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      font-size: 27px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .diagram {
+      position: absolute;
+      left: 78px;
+      right: 78px;
+      top: 205px;
+      bottom: 92px;
+    }
+
+    .footer {
+      position: absolute;
+      left: 78px;
+      right: 78px;
+      bottom: 34px;
+      display: flex;
+      justify-content: space-between;
+      color: #667085;
+      font-size: 20px;
+    }
+
+    .box {
+      position: absolute;
+      border: 2px solid #b8c0cc;
+      background: rgba(255,255,255,.92);
+      border-radius: 10px;
+      padding: 20px 22px;
+      box-shadow: 0 18px 38px rgba(20,33,61,.075);
+    }
+
+    .box h2 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      line-height: 1.18;
+    }
+
+    .box p, .box li {
+      margin: 0;
+      font-size: 21px;
+      color: var(--muted);
+      line-height: 1.36;
+    }
+
+    .box ul {
+      margin: 8px 0 0;
+      padding-left: 24px;
+    }
+
+    .new { border-color: #6ba2dc; background: var(--new-soft); }
+    .data { border-color: #57b884; background: var(--data-soft); }
+    .auto { border-color: #a896dc; background: var(--auto-soft); }
+    .warn { border-color: #e58a61; background: var(--warn-soft); }
+
+    .arrow {
+      position: absolute;
+      height: 2px;
+      background: var(--line);
+    }
+
+    .arrow::after {
+      content: "";
+      position: absolute;
+      right: -1px;
+      top: -6px;
+      width: 0;
+      height: 0;
+      border-left: 12px solid var(--line);
+      border-top: 7px solid transparent;
+      border-bottom: 7px solid transparent;
+    }
+
+    .callout {
+      position: absolute;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.88);
+      border: 1px solid rgba(20,33,61,.16);
+      color: #475467;
+      font-size: 20px;
+      font-weight: 900;
+      box-shadow: 0 12px 24px rgba(20,33,61,.055);
+      white-space: nowrap;
+    }
+
+    .mockup {
+      position: absolute;
+      left: 760px;
+      top: 32px;
+      width: 940px;
+      height: 650px;
+      border: 2px dashed rgba(20,33,61,.20);
+      border-radius: 16px;
+      background: rgba(255,255,255,.36);
+      overflow: hidden;
+    }
+
+    .mockup-title {
+      position: absolute;
+      left: 28px;
+      top: 22px;
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--muted);
+    }
+
+    .sketch {
+      position: absolute;
+      left: 90px;
+      top: 92px;
+      width: 760px;
+      height: 520px;
+    }
+
+    .enclosure {
+      position: absolute;
+      left: 60px;
+      top: 86px;
+      width: 620px;
+      height: 332px;
+      border: 5px solid #1f2937;
+      border-radius: 3px;
+      background: rgba(255,255,255,.30);
+      transform: skewY(-5deg);
+    }
+
+    .enclosure::before {
+      content: "";
+      position: absolute;
+      left: -4px;
+      top: -58px;
+      width: 620px;
+      height: 58px;
+      border: 5px solid #1f2937;
+      border-bottom: none;
+      transform: skewX(-28deg);
+      transform-origin: left bottom;
+      background: rgba(255,255,255,.18);
+    }
+
+    .enclosure::after {
+      content: "";
+      position: absolute;
+      right: -62px;
+      top: -58px;
+      width: 58px;
+      height: 332px;
+      border: 5px solid #1f2937;
+      border-left: none;
+      transform: skewY(34deg);
+      transform-origin: left top;
+      background: rgba(255,255,255,.16);
+    }
+
+    .sonoff-drawing {
+      position: absolute;
+      left: 148px;
+      top: 210px;
+      width: 360px;
+      height: 116px;
+      border: 5px solid #1f2937;
+      border-radius: 8px;
+      background: rgba(255,255,255,.65);
+      transform: rotate(-2deg);
+    }
+
+    .sonoff-drawing::before {
+      content: "Sonoff";
+      position: absolute;
+      left: 105px;
+      top: 28px;
+      font-size: 44px;
+      font-weight: 900;
+      color: #1f2937;
+      opacity: .82;
+    }
+
+    .terminal {
+      position: absolute;
+      width: 24px;
+      height: 54px;
+      border: 4px solid #1f2937;
+      background: rgba(255,255,255,.72);
+    }
+
+    .reset-button {
+      position: absolute;
+      left: 560px;
+      top: 70px;
+      width: 86px;
+      height: 86px;
+      border: 5px solid #1f2937;
+      border-radius: 50%;
+      background: rgba(255,255,255,.70);
+    }
+
+    .reset-button::after {
+      content: "";
+      position: absolute;
+      inset: 16px;
+      border-radius: 50%;
+      background: #1f2937;
+      opacity: .88;
+    }
+
+    .wire {
+      position: absolute;
+      background: #1f2937;
+      border-radius: 999px;
+    }
+
+    .wire.live { background: #b42318; }
+    .wire.neutral { background: #1f2937; }
+
+    .dimension {
+      position: absolute;
+      color: #1f2937;
+      font-size: 28px;
+      font-weight: 900;
+      transform: rotate(-2deg);
+    }
+
+    .label-line {
+      position: absolute;
+      height: 2px;
+      background: #475467;
+      transform-origin: left center;
+    }
+
+    .label-line::after {
+      content: "";
+      position: absolute;
+      right: -1px;
+      top: -5px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #475467;
+    }
+
+    .status-band {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 88px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+    }
+
+    .metric {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(20,33,61,.14);
+      background: rgba(255,255,255,.88);
+      font-size: 22px;
+      font-weight: 900;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: currentColor;
+      flex: 0 0 auto;
+    }
+  </style>
+</head>
+<body>
+  <section class="slide">
+    <div class="kicker">ภาพเสนอแนวคิด / ยังไม่ได้พัฒนา</div>
+    <h1>Staff Self-service IoT Reset</h1>
+    <div class="subtitle">แนวทางให้เจ้าหน้าที่บริการ reset อุปกรณ์ IoT หน้าไซต์ได้ทันที เมื่อระบบแจ้งเตือนว่าอุปกรณ์ offline</div>
+
+    <div class="diagram">
+      <div class="box warn" style="left:0;top:32px;width:320px;height:142px;">
+        <h2>IoT Offline Alert</h2>
+        <p>ระบบแจ้งว่าอุปกรณ์ offline ไปยังผู้ดูแล</p>
+      </div>
+      <div class="box new" style="left:0;top:230px;width:320px;height:142px;">
+        <h2>เจ้าหน้าที่บริการ</h2>
+        <p>เดินไปยังจุดติดตั้งอุปกรณ์ โดยไม่ต้องรอ admin ระบบ</p>
+      </div>
+      <div class="box data" style="left:0;top:428px;width:320px;height:142px;">
+        <h2>กด Reset</h2>
+        <p>ใช้ปุ่ม reset ภายนอกกล่องเพื่อ restart อุปกรณ์</p>
+      </div>
+
+      <div class="box auto" style="left:370px;top:128px;width:305px;height:196px;">
+        <h2>Service Goal</h2>
+        <ul>
+          <li>ลดเวลารอ admin</li>
+          <li>แก้ปัญหา offline เบื้องต้น</li>
+          <li>เพิ่มความต่อเนื่องการให้บริการ</li>
+        </ul>
+      </div>
+      <div class="box warn" style="left:370px;top:382px;width:305px;height:150px;">
+        <h2>Budget</h2>
+        <p>ประมาณ 5,000 บาท สำหรับกล่อง, ปุ่ม reset, สายไฟ และงานติดตั้ง</p>
+      </div>
+
+      <div class="arrow" style="left:320px;top:103px;width:50px;"></div>
+      <div class="arrow" style="left:320px;top:301px;width:50px;"></div>
+      <div class="arrow" style="left:320px;top:499px;width:50px;"></div>
+
+      <div class="mockup">
+        <div class="mockup-title">Wireframe concept based on proposed reset enclosure</div>
+        <div class="sketch">
+          <div class="enclosure"></div>
+          <div class="sonoff-drawing"></div>
+          <div class="terminal" style="left:500px;top:220px;"></div>
+          <div class="terminal" style="left:500px;top:286px;"></div>
+          <div class="reset-button"></div>
+
+          <div class="wire live" style="left:604px;top:152px;width:5px;height:318px;"></div>
+          <div class="wire neutral" style="left:650px;top:152px;width:5px;height:318px;"></div>
+          <div class="wire live" style="left:520px;top:250px;width:95px;height:5px;transform:rotate(-18deg);"></div>
+          <div class="wire neutral" style="left:520px;top:318px;width:138px;height:5px;transform:rotate(8deg);"></div>
+
+          <div class="dimension" style="left:526px;top:26px;">reset button</div>
+          <div class="dimension" style="left:690px;top:145px;">L</div>
+          <div class="dimension" style="left:690px;top:226px;">N</div>
+          <div class="dimension" style="left:585px;top:465px;">power line</div>
+        </div>
+
+        <div class="label-line" style="left:694px;top:145px;width:92px;transform:rotate(-24deg);"></div>
+        <div class="callout" style="left:760px;top:78px;color:var(--auto);">Reset Button</div>
+        <div class="label-line" style="left:625px;top:420px;width:120px;transform:rotate(13deg);"></div>
+        <div class="callout" style="left:700px;top:432px;color:var(--new);">L / N Wiring</div>
+        <div class="label-line" style="left:312px;top:390px;width:140px;transform:rotate(-8deg);"></div>
+        <div class="callout" style="left:170px;top:338px;color:var(--data);">Sonoff Module</div>
+        <div class="callout" style="left:98px;top:538px;color:var(--muted);">Protective Enclosure</div>
+      </div>
+
+      <div class="status-band">
+        <div class="metric" style="color:var(--warn);"><span class="dot"></span> Planned / ยังไม่ได้พัฒนา</div>
+        <div class="metric" style="color:var(--data);"><span class="dot"></span> Staff Reset Without Waiting</div>
+        <div class="metric" style="color:var(--auto);"><span class="dot"></span> Estimated Budget 5,000 THB</div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>Smart Creative Learning Space Reservation</span>
+      <span>Improvement Proposal: Staff Self-service IoT</span>
+    </div>
+  </section>
+</body>
+</html>
