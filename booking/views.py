@@ -112,12 +112,22 @@ def _check_room_closure(room, b_date, s_time, e_time):
 
 # ── NPU API helpers ───────────────────────────────────────────────────────────
 
-def _verify_ldap(username, password):
-    """POST /auth-ldap/auth_ldap/ → True/False"""
+def _verify_ldap(username, password, line_uid='', display_name='', user_type=''):
+    """POST /auth-ldap/auth_ldap/ → True/False
+
+    แนบ LINE context (userId/displayName/user_type) เพื่อให้ฝั่ง API บันทึก
+    Monitor log ได้ว่า "LINE ของใคร" พยายามผูกบัญชี
+    """
     try:
         resp = requests.post(
             f'{NPU_API_BASE}/auth-ldap/auth_ldap/',
-            json={'userLdap': username, 'passLdap': password},
+            json={
+                'userLdap': username,
+                'passLdap': password,
+                'userId': line_uid,
+                'displayName': display_name,
+                'user_type': user_type,
+            },
             timeout=10,
         )
         if resp.status_code == 200:
@@ -133,12 +143,17 @@ def _verify_ldap(username, password):
     return False
 
 
-def _register_npu_user(user_id, user_ldap, user_type):
+def _register_npu_user(user_id, user_ldap, user_type, display_name=''):
     """POST /api/ ผูก LINE userId กับ LDAP → True/False"""
     try:
         resp = requests.post(
             f'{NPU_API_BASE}/api/',
-            json={'userId': user_id, 'userLdap': user_ldap, 'user_type': user_type},
+            json={
+                'userId': user_id,
+                'userLdap': user_ldap,
+                'user_type': user_type,
+                'displayName': display_name,
+            },
             timeout=10,
         )
         return resp.status_code in (200, 201)
@@ -305,9 +320,9 @@ def register_page(request):
             error = 'ไม่พบข้อมูล LINE userId กรุณาเข้าใช้งานผ่าน LINE ใหม่อีกครั้ง'
         elif not all([user_ldap, password, user_type]):
             error = 'กรุณากรอกข้อมูลให้ครบทุกช่อง'
-        elif not _verify_ldap(user_ldap, password):
+        elif not _verify_ldap(user_ldap, password, user_id, display_name, user_type):
             error = 'รหัสผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'
-        elif not _register_npu_user(user_id, user_ldap, user_type):
+        elif not _register_npu_user(user_id, user_ldap, user_type, display_name):
             error = 'ไม่สามารถผูกบัญชีกับระบบมหาวิทยาลัยได้ กรุณาลองใหม่อีกครั้ง'
         else:
             _get_or_refresh_line_user(user_id, display_name, user_ldap, user_type)
