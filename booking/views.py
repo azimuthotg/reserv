@@ -55,7 +55,29 @@ def health(request):
 
 # ── LINE Messaging API ────────────────────────────────────────────────────────
 
-LINE_PUSH_URL = 'https://api.line.me/v2/bot/message/push'
+LINE_PUSH_URL    = 'https://api.line.me/v2/bot/message/push'
+LINE_PROFILE_URL = 'https://api.line.me/v2/bot/profile/'
+
+
+def _fetch_line_display_name(user_id):
+    """ดึงชื่อ LINE จาก userId ผ่าน Messaging API (fallback เมื่อ LIFF ไม่ส่งชื่อมา)
+
+    ผู้ใช้ต้องเป็นเพื่อน (add friend) กับ OA ถึงจะได้ชื่อ — คืน '' ถ้าดึงไม่ได้
+    """
+    token = settings.LINE_CHANNEL_ACCESS_TOKEN
+    if not token or not user_id:
+        return ''
+    try:
+        resp = requests.get(
+            f'{LINE_PROFILE_URL}{user_id}',
+            headers={'Authorization': f'Bearer {token}'},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            return resp.json().get('displayName', '') or ''
+    except requests.RequestException:
+        pass
+    return ''
 
 
 def _push_line(user_id, messages):
@@ -315,6 +337,11 @@ def register_page(request):
         user_ldap = request.POST.get('user_ldap', '').strip()
         password  = request.POST.get('password', '')
         user_type = request.POST.get('user_type', '')
+
+        # ถ้า LIFF ไม่ได้ส่งชื่อมา ลองดึงจาก LINE ด้วย UID เพื่อให้ Monitor ฝั่ง API
+        # รู้ว่า "ใคร" ทำรายการ (ทั้งกรณีสำเร็จและไม่สำเร็จ)
+        if user_id and not display_name:
+            display_name = _fetch_line_display_name(user_id)
 
         if not user_id:
             error = 'ไม่พบข้อมูล LINE userId กรุณาเข้าใช้งานผ่าน LINE ใหม่อีกครั้ง'
