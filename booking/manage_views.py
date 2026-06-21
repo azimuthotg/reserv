@@ -4,10 +4,12 @@ from functools import wraps
 
 import requests
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.db.models import Q
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -15,7 +17,7 @@ from django.views.decorators.http import require_POST
 from .forms import HolidayDateForm, RoomClosureForm, RoomForm, StaffAddForm, StaffEditForm
 from .models import Booking, BookingLog, HolidayDate, LineUser, Room, RoomClosure, RoomDevice
 from .service_hours import room_service_hours
-from .views import _notify_booking_cancelled, _push_text
+from .views import _notify_booking_cancelled, _npu_v2_request, _push_text
 
 
 # ── Permission decorators ──────────────────────────────────────────────────────
@@ -767,3 +769,132 @@ def manage_broadcast_line(request):
         for lu in users:
             _push_text(lu.line_user_id, message)
     return redirect('manage_line_users')
+
+
+# ── External members (บุคคลภายนอกถาวร — ผ่าน NPU API v2) ────────────────────────
+# reserv ไม่เก็บข้อมูลสมาชิกถาวรเอง — เป็น proxy ไปยัง api (source of truth)
+# รูปดึงผ่าน manage_external_photo (reserv ถือ JWT → stream ให้ browser, ไม่เปิด api สาธารณะ)
+
+@staff_required
+def manage_external_list(request):
+    """รายการสมาชิกถาวร (filter ตามสถานะ)"""
+    status_f = request.GET.get('status', '')
+    path = '/v2/external/permanent/'
+    if status_f:
+        path += f'?status={status_f}'
+    resp = _npu_v2_request('GET', path)
+
+    members, error = [], None
+    if resp is None:
+        error = 'เชื่อมต่อ NPU API ไม่ได้'
+    elif resp.status_code == 200:
+        members = resp.json().get('results', [])
+    else:
+        error = f'NPU API ตอบกลับ {resp.status_code}'
+
+    return render(request, 'booking/manage/external_list.html', {
+        'members': members,
+        'status':  status_f,
+        'error':   error,
+    })
+
+
+@staff_required
+def manage_external_register(request):
+    """ลงทะเบียนสมาชิกถาวร (อัปโหลดรูป) → api สร้างสถานะ pending"""
+    if request.method == 'POST':
+        citizen_id = request.POST.get('citizen_id', '').strip()
+        first_name = request.POST.get('first_name', '').strip()
+        last_name  = request.POST.get('last_name', '').strip()
+        photo      = request.FILES.get('photo')
+
+        files = None
+        if photo:
+            # อ่านเป็น bytes เพื่อให้ retry (กรณี 401) ส่งซ้ำได้
+            files = {'photo': (photo.name, photo.read(), photo.content_type)}
+
+        resp = _npu_v2_request(
+            'POST', '/v2/external/permanent/register/',
+            data={'citizen_id': citizen_id, 'first_name': first_name, 'last_name': last_name},
+            files=files,
+        )
+
+        if resp is None:
+            messages.error(request, 'เชื่อมต่อ NPU API ไม่ได้')
+        elif resp.status_code == 201:
+            messages.success(request, 'ลงทะเบียนสมาชิกถาวรแล้ว — รอผู้ดูแลอนุมัติ')
+            return redirect('manage_external_detail', citizen_id=citizen_id)
+        elif resp.status_code == 400:
+            messages.error(request, 'ข้อมูลไม่ถูกต้อง — ตรวจเลขบัตรประชาชน 13 หลัก และชื่อ-สกุล')
+        elif resp.status_code == 409:
+            messages.warning(request, 'เลขบัตรนี้เป็นสมาชิกถาวรที่อนุมัติแล้ว')
+            return redirect('manage_external_detail', citizen_id=citizen_id)
+        else:
+            messages.error(request, f'ลงทะเบียนไม่สำเร็จ (NPU API {resp.status_code})')
+
+        return render(request, 'booking/manage/external_form.html', {
+            'form': {'citizen_id': citizen_id, 'first_name': first_name, 'last_name': last_name},
+        })
+
+    return render(request, 'booking/manage/external_form.html', {'form': {}})
+
+
+@staff_required
+def manage_external_detail(request, citizen_id):
+    """รายละเอียด + บัตรสมาชิกถาวร (รูป + QR จาก permanent_code)"""
+    resp = _npu_v2_request('GET', f'/v2/external/permanent/{citizen_id}/')
+    member, error = None, None
+    if resp is None:
+        error = 'เชื่อมต่อ NPU API ไม่ได้'
+    elif resp.status_code == 200:
+        member = resp.json()
+    elif resp.status_code == 404:
+        error = 'ไม่พบสมาชิกถาวรรายนี้'
+    else:
+        error = f'NPU API ตอบกลับ {resp.status_code}'
+
+    return render(request, 'booking/manage/external_detail.html', {
+        'member':     member,
+        'error':      error,
+        'citizen_id': citizen_id,
+    })
+
+
+@staff_required
+@require_POST
+def manage_external_approve(request, citizen_id):
+    """admin อนุมัติ → api ออก permanent_code + active"""
+    resp = _npu_v2_request('POST', f'/v2/external/permanent/{citizen_id}/approve/')
+    if resp is None:
+        messages.error(request, 'เชื่อมต่อ NPU API ไม่ได้')
+    elif resp.status_code == 200:
+        messages.success(request, 'อนุมัติแล้ว — ออกรหัสถาวรเรียบร้อย')
+    else:
+        messages.error(request, f'อนุมัติไม่สำเร็จ (NPU API {resp.status_code})')
+    return redirect('manage_external_detail', citizen_id=citizen_id)
+
+
+@staff_required
+@require_POST
+def manage_external_revoke(request, citizen_id):
+    """admin ระงับ → รหัสถาวรใช้ไม่ได้ทันที"""
+    resp = _npu_v2_request('POST', f'/v2/external/permanent/{citizen_id}/revoke/')
+    if resp is None:
+        messages.error(request, 'เชื่อมต่อ NPU API ไม่ได้')
+    elif resp.status_code == 200:
+        messages.success(request, 'ระงับสมาชิกแล้ว')
+    else:
+        messages.error(request, f'ระงับไม่สำเร็จ (NPU API {resp.status_code})')
+    return redirect('manage_external_detail', citizen_id=citizen_id)
+
+
+@staff_required
+def manage_external_photo(request, citizen_id):
+    """proxy รูปจาก api (ถือ JWT) → stream ให้ browser; รูปไม่เปิดสาธารณะที่ api"""
+    resp = _npu_v2_request('GET', f'/v2/external/permanent/{citizen_id}/photo/')
+    if resp is None or resp.status_code != 200:
+        return HttpResponse(status=404)
+    return HttpResponse(
+        resp.content,
+        content_type=resp.headers.get('Content-Type', 'application/octet-stream'),
+    )

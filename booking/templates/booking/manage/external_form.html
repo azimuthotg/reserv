@@ -1,0 +1,36 @@
+{% extends "booking/manage/base.html" %}
+{% block title %}ลงทะเบียนบุคคลภายนอก{% endblock %}
+{% block page_title %}ลงทะเบียนสมาชิกถาวร{% endblock %}
+
+{% block content %}
+<div class="table-card" style="max-width:520px;padding:24px;">
+    <p class="text-muted" style="font-size:13px;">
+        ลงทะเบียนบุคคลภายนอกที่ต้องเข้าใช้บริการประจำ (เช่น พนักงานส่งเอกสาร) —
+        ลงทะเบียนแล้วสถานะจะเป็น <strong>รออนุมัติ</strong> จนกว่าผู้ดูแลจะกดอนุมัติ
+    </p>
+    <form method="post" enctype="multipart/form-data" action="{% url 'manage_external_register' %}">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label" style="font-size:13px;font-weight:600;">ชื่อ</label>
+            <input type="text" name="first_name" class="form-control" value="{{ form.first_name }}" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label" style="font-size:13px;font-weight:600;">นามสกุล</label>
+            <input type="text" name="last_name" class="form-control" value="{{ form.last_name }}" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label" style="font-size:13px;font-weight:600;">เลขบัตรประชาชน (13 หลัก)</label>
+            <input type="text" name="citizen_id" class="form-control" value="{{ form.citizen_id }}"
+                   inputmode="numeric" pattern="[0-9]{13}" maxlength="13" minlength="13" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label" style="font-size:13px;font-weight:600;">รูปถ่าย (สำหรับทำบัตร)</label>
+            <input type="file" name="photo" class="form-control" accept="image/*" required>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-green">ลงทะเบียน</button>
+            <a href="{% url 'manage_external_list' %}" class="btn btn-outline-secondary">ยกเลิก</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

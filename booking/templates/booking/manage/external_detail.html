@@ -1,0 +1,94 @@
+{% extends "booking/manage/base.html" %}
+{% block title %}บัตรสมาชิกถาวร{% endblock %}
+{% block page_title %}บัตรสมาชิกถาวร{% endblock %}
+
+{% block content %}
+<a href="{% url 'manage_external_list' %}" class="btn btn-sm btn-outline-secondary mb-3">
+    <i class="bi bi-arrow-left"></i> กลับรายการ
+</a>
+
+{% if error %}
+<div class="alert alert-danger" style="font-size:13px;">{{ error }}</div>
+{% endif %}
+
+{% if member %}
+<div class="row g-3" style="max-width:760px;">
+    <!-- บัตร -->
+    <div class="col-12 col-md-6">
+        <div class="table-card" style="padding:20px;text-align:center;">
+            {% if member.has_photo %}
+            <img src="{% url 'manage_external_photo' member.citizen_id %}" alt=""
+                 style="width:120px;height:120px;border-radius:12px;object-fit:cover;margin-bottom:10px;">
+            {% else %}
+            <div class="text-muted mb-2"><i class="bi bi-person-square" style="font-size:80px;"></i></div>
+            {% endif %}
+            <div style="font-size:18px;font-weight:700;">{{ member.fullname }}</div>
+            <div class="text-muted" style="font-size:13px;">{{ member.citizen_id }}</div>
+
+            {% if member.status == 'active' and member.permanent_code %}
+            <div style="display:flex;justify-content:center;padding:14px 0 6px;">
+                <div id="qrcode"></div>
+            </div>
+            <div style="font-size:20px;letter-spacing:2px;font-weight:700;">{{ member.permanent_code }}</div>
+            <div class="text-muted" style="font-size:12px;">สแกนที่ประตูเพื่อเข้าใช้ (ใช้ได้ทุกวันจนกว่าจะถูกระงับ)</div>
+            {% elif member.status == 'pending' %}
+            <div class="alert alert-warning py-2 mt-3 mb-0" style="font-size:13px;">รออนุมัติ — ยังไม่มีรหัสเข้าใช้</div>
+            {% else %}
+            <div class="alert alert-danger py-2 mt-3 mb-0" style="font-size:13px;">ถูกระงับ — รหัสใช้ไม่ได้</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ข้อมูล + การจัดการ -->
+    <div class="col-12 col-md-6">
+        <div class="table-card" style="padding:20px;">
+            <div class="mb-3">
+                <span class="text-muted" style="font-size:12px;">สถานะ</span><br>
+                {% if member.status == 'active' %}
+                <span class="badge badge-confirmed">อนุมัติแล้ว</span>
+                {% elif member.status == 'pending' %}
+                <span class="badge bg-warning text-dark">รออนุมัติ</span>
+                {% else %}
+                <span class="badge badge-cancelled">ระงับ</span>
+                {% endif %}
+            </div>
+            {% if member.approved_at %}
+            <div class="mb-3" style="font-size:13px;">
+                <span class="text-muted" style="font-size:12px;">อนุมัติเมื่อ</span><br>
+                {{ member.approved_at }} {% if member.approved_by %}โดย {{ member.approved_by }}{% endif %}
+            </div>
+            {% endif %}
+
+            <hr>
+            <div class="d-flex gap-2">
+                {% if member.status != 'active' %}
+                <form method="post" action="{% url 'manage_external_approve' member.citizen_id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-green btn-sm"><i class="bi bi-check-lg"></i> อนุมัติ</button>
+                </form>
+                {% endif %}
+                {% if member.status != 'revoked' %}
+                <form method="post" action="{% url 'manage_external_revoke' member.citizen_id %}"
+                      onsubmit="return confirm('ยืนยันระงับสมาชิกรายนี้? รหัสจะใช้ไม่ได้ทันที');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-slash-circle"></i> ระงับ</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if member.status == 'active' and member.permanent_code %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+    new QRCode(document.getElementById('qrcode'), {
+        text: "{{ member.permanent_code|escapejs }}",
+        width: 160, height: 160, correctLevel: QRCode.CorrectLevel.M
+    });
+</script>
+{% endif %}
+{% endblock %}

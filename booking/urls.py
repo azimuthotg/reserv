@@ -74,6 +74,14 @@ urlpatterns = [
     path('manage/line-users/<int:pk>/send/',   manage_views.manage_send_line_message, name='manage_send_line_message'),
     path('manage/line-users/broadcast/',       manage_views.manage_broadcast_line,    name='manage_broadcast_line'),
 
+    # External members (บุคคลภายนอกถาวร — ผ่าน NPU API v2)
+    path('manage/external/',                       manage_views.manage_external_list,     name='manage_external_list'),
+    path('manage/external/register/',              manage_views.manage_external_register, name='manage_external_register'),
+    path('manage/external/<str:citizen_id>/',         manage_views.manage_external_detail,  name='manage_external_detail'),
+    path('manage/external/<str:citizen_id>/approve/', manage_views.manage_external_approve, name='manage_external_approve'),
+    path('manage/external/<str:citizen_id>/revoke/',  manage_views.manage_external_revoke,  name='manage_external_revoke'),
+    path('manage/external/<str:citizen_id>/photo/',   manage_views.manage_external_photo,   name='manage_external_photo'),
+
     # Booking Logs
     path('manage/bookings/<int:pk>/logs/', manage_views.manage_booking_logs, name='manage_booking_logs'),
 
