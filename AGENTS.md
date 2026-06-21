@@ -90,6 +90,7 @@ api.npu.ac.th         MySQL reserv_db
 | `/booking/?room=X` | `/reserv/booking/?room=X` | form จอง (LIFF) |
 | `/booking/success/` | `/reserv/booking/success/` | จองสำเร็จ |
 | `/calendar/` | `/reserv/calendar/` | FullCalendar แบบ public ไม่ต้อง login |
+| `/external/` | `/reserv/external/` | บุคคลภายนอกขอ QR เข้าห้องสมุด (public) — เรียก `/v2/external/issue/` ผ่าน JWT |
 | `/room/<booking_name>/` | `/reserv/room/<booking_name>/` | รายละเอียดห้องแบบ public |
 | `/card/` | `/reserv/card/` | Virtual Card + Walai status (LIFF) |
 | `/room-control/` | `/reserv/room-control/` | ควบคุมอุปกรณ์ IoT ระหว่างเวลาจอง (LIFF) |

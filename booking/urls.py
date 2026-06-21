@@ -20,6 +20,9 @@ urlpatterns = [
     # ── Calendar (public) ─────────────────────────────────────────────────────
     path('calendar/', views.calendar_page, name='calendar'),
 
+    # ── External visitor access (public — บุคคลภายนอก) ────────────────────────
+    path('external/', views.external_access, name='external_access'),
+
     # ── Room Detail (public) ──────────────────────────────────────────────────
     path('room/<str:booking_name>/', views.room_detail, name='room_detail'),
 

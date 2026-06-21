@@ -98,6 +98,13 @@ LINE_LIFF_ID             = os.getenv('LINE_LIFF_ID', '')
 # ── NPU API ───────────────────────────────────────────────────────────────────
 NPU_API_BASE = 'https://api.npu.ac.th'
 
+# NPU API v2 (JWT) — reserv ขอ access token จาก POST /v2/token/ ด้วย username/password
+# ของบัญชี reserv แล้ว cache ไว้ใช้แนบ Authorization: Bearer ในทุก v2 call
+# ถ้าตั้ง NPU_API_V2_TOKEN (access token สำเร็จรูป) ไว้ จะใช้ค่านั้นตรง ๆ โดยไม่เรียก /v2/token/
+NPU_API_USERNAME = os.getenv('NPU_API_USERNAME', '')
+NPU_API_PASSWORD = os.getenv('NPU_API_PASSWORD', '')
+NPU_API_V2_TOKEN = os.getenv('NPU_API_V2_TOKEN', '')
+
 # ── Phase 2: IoT ──────────────────────────────────────────────────────────────
 HA_ACCESS_SECRET = os.getenv('HA_ACCESS_SECRET', '')
 HA_IP            = os.getenv('HA_IP', '')

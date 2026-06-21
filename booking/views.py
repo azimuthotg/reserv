@@ -132,6 +132,66 @@ def _check_room_closure(room, b_date, s_time, e_time):
 
 
 
+# ── NPU API v2 JWT token layer ────────────────────────────────────────────────
+# reserv เรียก endpoint v2 (ต้องแนบ Bearer) ผ่าน helper ชุดนี้ — ขอ/cache token
+# จาก POST /v2/token/ ครั้งเดียวแล้วใช้ซ้ำ retry หนึ่งครั้งเมื่อ 401 (token หมดอายุ)
+_NPU_V2_TOKEN_CACHE = {'access': ''}
+
+
+def _obtain_npu_v2_token():
+    """ขอ access token จาก POST /v2/token/ ด้วย username/password ของบัญชี reserv → str | ''"""
+    username = settings.NPU_API_USERNAME
+    password = settings.NPU_API_PASSWORD
+    if not username or not password:
+        return ''
+    try:
+        resp = requests.post(
+            f'{NPU_API_BASE}/v2/token/',
+            json={'username': username, 'password': password},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            return resp.json().get('access', '')
+    except requests.RequestException:
+        pass
+    return ''
+
+
+def _npu_v2_token(force_refresh=False):
+    """คืน access token สำหรับ v2 — ถ้าตั้ง NPU_API_V2_TOKEN ใช้ค่านั้นตรง ๆ
+    มิฉะนั้น cache token ที่ขอจาก /v2/token/ ไว้ในหน่วยความจำ process
+    """
+    if settings.NPU_API_V2_TOKEN:
+        return settings.NPU_API_V2_TOKEN
+    if force_refresh or not _NPU_V2_TOKEN_CACHE['access']:
+        _NPU_V2_TOKEN_CACHE['access'] = _obtain_npu_v2_token()
+    return _NPU_V2_TOKEN_CACHE['access']
+
+
+def _npu_v2_request(method, path, **kwargs):
+    """เรียก endpoint v2 แนบ Authorization: Bearer + retry หนึ่งครั้งเมื่อ 401
+    คืน requests.Response หรือ None เมื่อเชื่อมต่อไม่ได้/ไม่มี token
+    """
+    token = _npu_v2_token()
+    if not token:
+        return None
+    url = f'{NPU_API_BASE}{path}'
+    kwargs.setdefault('timeout', 10)
+    headers = dict(kwargs.pop('headers', {}))
+    try:
+        headers['Authorization'] = f'Bearer {token}'
+        resp = requests.request(method, url, headers=headers, **kwargs)
+        if resp.status_code == 401:
+            token = _npu_v2_token(force_refresh=True)
+            if not token:
+                return resp
+            headers['Authorization'] = f'Bearer {token}'
+            resp = requests.request(method, url, headers=headers, **kwargs)
+        return resp
+    except requests.RequestException:
+        return None
+
+
 # ── NPU API helpers ───────────────────────────────────────────────────────────
 
 def _verify_ldap(username, password, line_uid='', display_name='', user_type=''):
@@ -420,6 +480,64 @@ def booking_success(request):
         'booking':  booking,
         'liff_id':  settings.LINE_LIFF_ID,
     })
+
+
+# ── External visitor access (บุคคลภายนอกเข้าห้องสมุด) ─────────────────────────
+
+@require_http_methods(["GET", "POST"])
+def external_access(request):
+    """หน้าสาธารณะให้บุคคลภายนอกขอรหัสเข้าห้องสมุด (ไม่ใช่ LIFF/ไม่ใช่ staff)
+
+    กรอกชื่อ-สกุล + เลขบัตรประชาชน 13 หลัก → reserv backend (ถือ JWT) เรียก
+    POST /v2/external/issue/ → ได้ access_code 10 หลัก → render เป็น QR (ใช้ได้เฉพาะวันนี้)
+    การตรวจ checksum/อนุมัติ/จัดสรรรหัส ทำฝั่ง api ทั้งหมด
+    """
+    ctx = {'form': {'first_name': '', 'last_name': '', 'citizen_id': ''}}
+
+    if request.method == 'GET':
+        return render(request, 'booking/external.html', ctx)
+
+    first_name = (request.POST.get('first_name') or '').strip()
+    last_name  = (request.POST.get('last_name') or '').strip()
+    citizen_id = (request.POST.get('citizen_id') or '').strip()
+    ctx['form'] = {'first_name': first_name, 'last_name': last_name, 'citizen_id': citizen_id}
+
+    # ตรวจเบื้องต้นฝั่ง reserv (api เป็นผู้ตรวจ checksum จริง)
+    if not first_name or not last_name:
+        ctx['error'] = 'กรุณากรอกชื่อและนามสกุลให้ครบ'
+        return render(request, 'booking/external.html', ctx)
+    if not (citizen_id.isdigit() and len(citizen_id) == 13):
+        ctx['error'] = 'เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก'
+        return render(request, 'booking/external.html', ctx)
+
+    resp = _npu_v2_request('POST', '/v2/external/issue/', json={
+        'citizen_id': citizen_id,
+        'first_name': first_name,
+        'last_name':  last_name,
+    })
+
+    if resp is None:
+        ctx['error'] = 'ระบบไม่พร้อมให้บริการขณะนี้ กรุณาลองใหม่หรือติดต่อเจ้าหน้าที่'
+        return render(request, 'booking/external.html', ctx)
+
+    if resp.status_code == 200:
+        data = resp.json()
+        ctx['result'] = {
+            'access_code': data.get('access_code', ''),
+            'valid_date':  data.get('valid_date', ''),
+            'member':      data.get('member', {}),
+        }
+        return render(request, 'booking/external.html', ctx)
+
+    if resp.status_code == 400:
+        ctx['error'] = 'เลขบัตรประชาชนไม่ถูกต้อง กรุณาตรวจสอบแล้วกรอกใหม่'
+    elif resp.status_code == 403:
+        ctx['error'] = 'บัญชีของคุณถูกระงับสิทธิ์เข้าใช้ กรุณาติดต่อเจ้าหน้าที่'
+    elif resp.status_code == 503:
+        ctx['error'] = 'รหัสเข้าใช้สำหรับวันนี้เต็มแล้ว กรุณาติดต่อเจ้าหน้าที่'
+    else:
+        ctx['error'] = 'เกิดข้อผิดพลาด กรุณาลองใหม่หรือติดต่อเจ้าหน้าที่'
+    return render(request, 'booking/external.html', ctx)
 
 
 # ── APIs ──────────────────────────────────────────────────────────────────────
