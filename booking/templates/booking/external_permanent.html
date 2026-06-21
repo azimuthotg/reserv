@@ -1,0 +1,110 @@
+{% load th_filters %}
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>บัตรเข้าห้องสมุด (บุคคลภายนอกถาวร) — Library@NPU</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body { background: #f5f5f5; font-family: 'Sarabun', sans-serif; }
+        .card-box { background:#fff; border-radius:12px; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+        .brand { color:#06C755; font-weight:700; }
+        .qr-wrap { display:flex; justify-content:center; padding:12px; }
+        .code-text { font-size:22px; letter-spacing:3px; font-weight:700; color:#333; }
+        .member-photo { width:110px; height:110px; border-radius:12px; object-fit:cover; border:3px solid #06C755; }
+    </style>
+</head>
+<body>
+<div class="container py-4" style="max-width:480px;">
+
+    <div class="text-center mb-3">
+        <h5 class="brand mb-1">บัตรเข้าห้องสมุด — บุคคลภายนอก (ถาวร)</h5>
+        <p class="text-muted" style="font-size:13px;">สำนักวิทยบริการ มหาวิทยาลัยนครพนม</p>
+    </div>
+
+    {% if result %}
+    <!-- ── บัตร ── -->
+    <div class="card-box mb-3 text-center">
+        {% if result.photo_data %}
+        <img src="{{ result.photo_data }}" alt="" class="member-photo mb-2">
+        {% endif %}
+        <div style="font-size:18px;font-weight:700;">{{ result.fullname }}</div>
+        <div class="badge badge-confirmed" style="background:#e8f9ee;color:#06C755;font-weight:600;">สมาชิกถาวร</div>
+        <div class="qr-wrap"><div id="qrcode"></div></div>
+        <div class="code-text mb-1">{{ result.permanent_code }}</div>
+        <div class="alert alert-success py-2 mb-0" style="font-size:13px;">
+            ✅ บัตรนี้ใช้เข้าได้ทุกวัน — แสดง QR ที่ประตูเพื่อเข้าใช้บริการ
+        </div>
+    </div>
+    <div class="text-center">
+        <a href="{% url 'external_permanent' %}" class="btn btn-outline-secondary btn-sm">เสร็จสิ้น</a>
+    </div>
+
+    {% elif pending %}
+    <div class="card-box text-center">
+        <div style="font-size:48px;">⏳</div>
+        <h6 class="fw-bold mt-2">{% if just_registered %}ลงทะเบียนเรียบร้อย{% endif %} รอเจ้าหน้าที่อนุมัติ</h6>
+        <p class="text-muted" style="font-size:13px;">
+            เมื่อเจ้าหน้าที่อนุมัติแล้ว กลับมากรอกเลขบัตรประชาชนที่หน้านี้อีกครั้งเพื่อรับบัตร
+        </p>
+        <a href="{% url 'external_permanent' %}" class="btn btn-outline-secondary btn-sm">กลับ</a>
+    </div>
+
+    {% elif revoked %}
+    <div class="card-box text-center">
+        <div class="alert alert-danger mb-2" style="font-size:14px;">บัตรของคุณถูกระงับ กรุณาติดต่อเจ้าหน้าที่</div>
+        <a href="{% url 'external_permanent' %}" class="btn btn-outline-secondary btn-sm">กลับ</a>
+    </div>
+
+    {% else %}
+    <!-- ── ฟอร์ม: ดูบัตร (กรอกเลขบัตร) หรือ ขอใหม่ (กรอกครบ+รูป) ── -->
+    <div class="card-box">
+        {% if error %}
+        <div class="alert alert-danger py-2" style="font-size:13px;">{{ error }}</div>
+        {% endif %}
+        <p class="text-muted mb-3" style="font-size:13px;">
+            <strong>มีบัตรแล้ว:</strong> กรอกเลขบัตรประชาชนเพื่อดูบัตร ·
+            <strong>ขอใหม่:</strong> กรอกชื่อ-สกุล + เลขบัตร + แนบรูป
+        </p>
+        <form method="post" enctype="multipart/form-data" action="{% url 'external_permanent' %}">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label" style="font-size:13px;font-weight:600;">เลขบัตรประชาชน (13 หลัก)</label>
+                <input type="text" name="citizen_id" class="form-control" value="{{ form.citizen_id }}"
+                       inputmode="numeric" pattern="[0-9]{13}" maxlength="13" minlength="13" required>
+            </div>
+            <hr>
+            <p class="text-muted mb-2" style="font-size:12px;">กรอกด้านล่างเฉพาะกรณีลงทะเบียนใหม่</p>
+            <div class="mb-3">
+                <label class="form-label" style="font-size:13px;font-weight:600;">ชื่อ</label>
+                <input type="text" name="first_name" class="form-control" value="{{ form.first_name }}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label" style="font-size:13px;font-weight:600;">นามสกุล</label>
+                <input type="text" name="last_name" class="form-control" value="{{ form.last_name }}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label" style="font-size:13px;font-weight:600;">รูปถ่าย (สำหรับลงทะเบียนใหม่)</label>
+                <input type="file" name="photo" class="form-control" accept="image/*">
+            </div>
+            <button type="submit" class="btn w-100 text-white" style="background:#06C755;border-color:#06C755;">
+                ดูบัตร / ลงทะเบียน
+            </button>
+        </form>
+    </div>
+    {% endif %}
+
+</div>
+
+{% if result %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+    new QRCode(document.getElementById('qrcode'), {
+        text: "{{ result.permanent_code|escapejs }}",
+        width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M
+    });
+</script>
+{% endif %}
+</body>
+</html>

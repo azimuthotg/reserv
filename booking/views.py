@@ -1,3 +1,4 @@
+import base64
 import json
 import time
 import requests
@@ -538,6 +539,88 @@ def external_access(request):
     else:
         ctx['error'] = 'เกิดข้อผิดพลาด กรุณาลองใหม่หรือติดต่อเจ้าหน้าที่'
     return render(request, 'booking/external.html', ctx)
+
+
+def _external_photo_data_uri(citizen_id):
+    """ดึงรูปสมาชิกถาวรจาก api (ถือ JWT) แล้วคืนเป็น data URI ฝังในหน้า
+    (ไม่สร้าง URL รูปสาธารณะ — รูปโผล่เฉพาะในหน้าที่กรอกเลขบัตรถูกเท่านั้น)
+    """
+    resp = _npu_v2_request('GET', f'/v2/external/permanent/{citizen_id}/photo/')
+    if resp is None or resp.status_code != 200:
+        return ''
+    ct = resp.headers.get('Content-Type', 'image/jpeg')
+    return f'data:{ct};base64,{base64.b64encode(resp.content).decode("ascii")}'
+
+
+@require_http_methods(["GET", "POST"])
+def external_permanent(request):
+    """หน้าสาธารณะ self-service: ขอ/ดูบัตรสมาชิกภายนอกถาวร
+
+    - กรอกเลขบัตร 13 หลัก: มีบัตร active → แสดงบัตร (รูป+QR); pending → รออนุมัติ; revoked → ถูกระงับ
+    - ยังไม่มี + แนบชื่อ-สกุล+รูป → ลงทะเบียนใหม่ (pending) รอเจ้าหน้าที่อนุมัติ
+    เจ้าหน้าที่ approve/revoke ที่ /manage/external/
+    """
+    ctx = {'form': {'first_name': '', 'last_name': '', 'citizen_id': ''}}
+    if request.method == 'GET':
+        return render(request, 'booking/external_permanent.html', ctx)
+
+    first_name = (request.POST.get('first_name') or '').strip()
+    last_name  = (request.POST.get('last_name') or '').strip()
+    citizen_id = (request.POST.get('citizen_id') or '').strip()
+    photo      = request.FILES.get('photo')
+    ctx['form'] = {'first_name': first_name, 'last_name': last_name, 'citizen_id': citizen_id}
+
+    if not (citizen_id.isdigit() and len(citizen_id) == 13):
+        ctx['error'] = 'เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก'
+        return render(request, 'booking/external_permanent.html', ctx)
+
+    # ดูสถานะปัจจุบันก่อน
+    detail = _npu_v2_request('GET', f'/v2/external/permanent/{citizen_id}/')
+    if detail is None:
+        ctx['error'] = 'ระบบไม่พร้อมให้บริการขณะนี้ กรุณาลองใหม่'
+        return render(request, 'booking/external_permanent.html', ctx)
+
+    if detail.status_code == 200:
+        member = detail.json()
+        st = member.get('status')
+        if st == 'active' and member.get('permanent_code'):
+            ctx['result'] = {
+                'permanent_code': member['permanent_code'],
+                'fullname':       member.get('fullname', ''),
+                'photo_data':     _external_photo_data_uri(citizen_id) if member.get('has_photo') else '',
+            }
+        elif st == 'pending':
+            ctx['pending'] = True
+        else:
+            ctx['revoked'] = True
+        return render(request, 'booking/external_permanent.html', ctx)
+
+    # 404 → ยังไม่มี → ลงทะเบียนใหม่ (ต้องมีชื่อ-สกุล + รูป)
+    if detail.status_code == 404:
+        if not first_name or not last_name or not photo:
+            ctx['need_register'] = True
+            ctx['error'] = 'ยังไม่มีบัตร — กรอกชื่อ-นามสกุล และแนบรูปถ่าย เพื่อลงทะเบียนใหม่'
+            return render(request, 'booking/external_permanent.html', ctx)
+
+        files = {'photo': (photo.name, photo.read(), photo.content_type)}
+        reg = _npu_v2_request(
+            'POST', '/v2/external/permanent/register/',
+            data={'citizen_id': citizen_id, 'first_name': first_name, 'last_name': last_name},
+            files=files,
+        )
+        if reg is not None and reg.status_code == 201:
+            ctx['pending'] = True
+            ctx['just_registered'] = True
+        elif reg is not None and reg.status_code == 400:
+            ctx['error'] = 'ข้อมูลไม่ถูกต้อง กรุณาตรวจเลขบัตร/ชื่อ-สกุล'
+            ctx['need_register'] = True
+        else:
+            ctx['error'] = 'ลงทะเบียนไม่สำเร็จ กรุณาลองใหม่'
+            ctx['need_register'] = True
+        return render(request, 'booking/external_permanent.html', ctx)
+
+    ctx['error'] = 'เกิดข้อผิดพลาด กรุณาลองใหม่'
+    return render(request, 'booking/external_permanent.html', ctx)
 
 
 # ── APIs ──────────────────────────────────────────────────────────────────────
