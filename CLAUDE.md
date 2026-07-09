@@ -2,15 +2,15 @@
 name: reserv
 status: active
 deployment: production
-progress: 92
+progress: 94
 phase: ระบบใช้งานจริง (production) ครบ 4 phase แล้ว อยู่ระหว่างงาน cosmetic/เอกสารปิดท้าย
 done_2026-07-09:
   - ✅ จำกัดการจอง 1 ครั้ง/ห้อง/วัน (prod verified) — `create_booking()` + `booking/tests.py`
   - ✅ หน้าวิเคราะห์การจอง `/manage/analytics/` (prod verified) — utilization, ผู้ใช้จองถี่, no-show จาก auto-cancel log, ยกเลิกโดยผู้ใช้, แนวโน้มรายวัน
+  - ✅ cosmetic external member (prod verified) — `approved_by` ชื่อ staff จริง (แก้ 2 ฝั่ง reserv+api) + `approved_at` เวลาไทย + ปุ่ม "ลบ" (hard delete ครบ 3 ชั้น)
 next:
   - (ถ้ามีความต้องการ) รายงาน export PDF/Excel จากหน้า analytics — ตอนนี้ตัดสินใจยังไม่ทำ
   - ทำ traceon route ที่ยังค้างตามที่ระบุใน commit e666b92 (งาน door team)
-  - เคลียร์ cosmetic backlog ที่เหลือ (`approved_by` ชื่อเจ้าหน้าที่จริง, format เวลา approved_at เป็นเวลาไทย)
   - commit ไฟล์ doc/admin-manual-v2.docx/.pdf ที่ยังไม่ได้ add (มี untracked/modified อยู่)
   - ตรวจสอบเอกสาร "Report Improvement Plan" ที่ยังเป็น untracked file
 updated: 2026-07-09
