@@ -8,11 +8,10 @@ done_2026-07-09:
   - ✅ จำกัดการจอง 1 ครั้ง/ห้อง/วัน (prod verified) — `create_booking()` + `booking/tests.py`
   - ✅ หน้าวิเคราะห์การจอง `/manage/analytics/` (prod verified) — utilization, ผู้ใช้จองถี่, no-show จาก auto-cancel log, ยกเลิกโดยผู้ใช้, แนวโน้มรายวัน
   - ✅ cosmetic external member (prod verified) — `approved_by` ชื่อ staff จริง (แก้ 2 ฝั่ง reserv+api) + `approved_at` เวลาไทย + ปุ่ม "ลบ" (hard delete ครบ 3 ชั้น)
+  - ✅ เก็บเอกสารเข้า repo — คู่มือ admin v2 (docx+pdf) + โฟลเดอร์ Report Improvement Plan
 next:
   - (ถ้ามีความต้องการ) รายงาน export PDF/Excel จากหน้า analytics — ตอนนี้ตัดสินใจยังไม่ทำ
-  - ทำ traceon route ที่ยังค้างตามที่ระบุใน commit e666b92 (งาน door team)
-  - commit ไฟล์ doc/admin-manual-v2.docx/.pdf ที่ยังไม่ได้ add (มี untracked/modified อยู่)
-  - ตรวจสอบเอกสาร "Report Improvement Plan" ที่ยังเป็น untracked file
+  - traceon route: แจ้งทีมประตูให้เพิ่ม route รหัส 10 หลัก → `/v2/external/check/` (api พร้อมแล้ว ไม่ใช่งานโค้ด repo นี้)
 updated: 2026-07-09
 -->
 
