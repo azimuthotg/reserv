@@ -800,6 +800,18 @@ def create_booking(request):
         if conflict:
             return JsonResponse({'error': 'ช่วงเวลานี้มีการจองแล้ว กรุณาเลือกเวลาอื่น'}, status=409)
 
+        already_booked = Booking.objects.select_for_update().filter(
+            room         = room,
+            booking_date = b_date,
+            status       = 'confirmed',
+            line_user    = lu,
+        ).exists()
+
+        if already_booked:
+            return JsonResponse({
+                'error': f'คุณจองห้อง {room.name} ในวันนี้ไปแล้ว จองได้ห้องละ 1 ครั้งต่อวัน',
+            }, status=409)
+
         booking = Booking.objects.create(
             room         = room,
             line_user    = lu,

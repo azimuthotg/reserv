@@ -50,6 +50,9 @@ urlpatterns = [
     # Daily schedule
     path('manage/daily/',  manage_views.manage_daily_schedule, name='manage_daily_schedule'),
 
+    # Analytics
+    path('manage/analytics/', manage_views.manage_analytics, name='manage_analytics'),
+
     # Bookings
     path('manage/bookings/',                    manage_views.manage_bookings,       name='manage_bookings'),
     path('manage/bookings/<int:pk>/cancel/',    manage_views.manage_booking_cancel, name='manage_booking_cancel'),

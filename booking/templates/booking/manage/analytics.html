@@ -1,0 +1,223 @@
+{% extends "booking/manage/base.html" %}
+{% load th_filters %}
+{% block title %}วิเคราะห์การจอง{% endblock %}
+{% block page_title %}วิเคราะห์การจอง{% endblock %}
+
+{% block content %}
+
+{{ trend_labels|json_script:"trend-labels" }}
+{{ trend_counts|json_script:"trend-counts" }}
+
+<!-- Period filter -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="text-muted" style="font-size:13px;">
+        ช่วงข้อมูล {{ range_start|th_date_long }} – {{ range_end|th_date_long }}
+    </div>
+    <div class="btn-group btn-group-sm">
+        <a href="?period=7"  class="btn btn-outline-secondary {% if days == 7 %}active{% endif %}">7 วัน</a>
+        <a href="?period=30" class="btn btn-outline-secondary {% if days == 30 %}active{% endif %}">30 วัน</a>
+        <a href="?period=90" class="btn btn-outline-secondary {% if days == 90 %}active{% endif %}">90 วัน</a>
+    </div>
+</div>
+
+<!-- KPI cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value">{{ total_confirmed }}</div>
+                    <div class="stat-label">การจองสำเร็จ</div>
+                </div>
+                <div class="stat-icon" style="background:#e8f9ee;color:#06C755;">
+                    <i class="bi bi-calendar-check"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value">{{ overall_utilization }}%</div>
+                    <div class="stat-label">อัตราการใช้ห้องรวม</div>
+                </div>
+                <div class="stat-icon" style="background:#e3f2fd;color:#1976d2;">
+                    <i class="bi bi-bar-chart-line"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value">{{ no_show_rate }}%</div>
+                    <div class="stat-label">No-show ({{ no_show_count }}/{{ past_confirmed }})</div>
+                </div>
+                <div class="stat-icon" style="background:#fff3e0;color:#ff9800;">
+                    <i class="bi bi-person-dash"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value">{{ cancellation_rate }}%</div>
+                    <div class="stat-label">อัตรายกเลิก ({{ total_cancelled }})</div>
+                </div>
+                <div class="stat-icon" style="background:#ffeaea;color:#dc3545;">
+                    <i class="bi bi-x-circle"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <!-- Trend chart -->
+    <div class="col-lg-7">
+        <div class="table-card">
+            <div class="table-card-header">
+                <span class="table-title">แนวโน้มการจองรายวัน</span>
+            </div>
+            <div style="padding:16px 20px;">
+                <canvas id="trendChart" height="90"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Room utilization -->
+    <div class="col-lg-5">
+        <div class="table-card">
+            <div class="table-card-header">
+                <span class="table-title">อัตราการใช้ห้อง</span>
+            </div>
+            <div style="padding:14px 20px;">
+                {% for r in room_stats %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between" style="font-size:13px;">
+                        <span>{{ r.room.name }}</span>
+                        <span class="text-muted">{{ r.utilization }}% · {{ r.booked_hours }} ชม.</span>
+                    </div>
+                    <div class="progress" style="height:8px;">
+                        <div class="progress-bar" role="progressbar"
+                             style="width: {{ r.utilization }}%; background:#06C755;"></div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center text-muted py-3" style="font-size:13px;">ไม่มีห้องเปิดใช้งาน</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Top users -->
+    <div class="col-lg-7">
+        <div class="table-card">
+            <div class="table-card-header">
+                <span class="table-title">ผู้ใช้จองถี่ที่สุด</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0" style="font-size:13px;">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ผู้ใช้</th>
+                            <th>คณะ/หน่วยงาน</th>
+                            <th class="text-end">จองสำเร็จ</th>
+                            <th class="text-end">No-show</th>
+                            <th class="text-end">ยกเลิกกระชั้นชิด</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in top_users %}
+                        <tr>
+                            <td>
+                                {{ e.user.full_name|default:e.user.display_name }}
+                                {% if e.heavy %}
+                                <span class="badge bg-warning text-dark ms-1" title="จองถี่ผิดปกติในช่วงนี้ — ควรตรวจสอบเพิ่มเติม">จองถี่</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-muted">{{ e.user.faculty|default:"—" }}</td>
+                            <td class="text-end">{{ e.count }}</td>
+                            <td class="text-end">{{ e.no_show|default:0 }}</td>
+                            <td class="text-end">{{ e.late_cancel|default:0 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-center text-muted py-3">ยังไม่มีข้อมูลในช่วงนี้</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="text-muted" style="font-size:11px;padding:8px 20px;">
+                ป้าย "จองถี่" เป็นสัญญาณเบื้องต้นสำหรับตรวจสอบเพิ่มเติมเท่านั้น ไม่ใช่ข้อสรุปว่าผิดกฎ
+            </div>
+        </div>
+    </div>
+
+    <!-- Late cancellations -->
+    <div class="col-lg-5">
+        <div class="table-card">
+            <div class="table-card-header">
+                <span class="table-title">ยกเลิกกระชั้นชิด (≤60 นาทีก่อนเริ่ม)</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0" style="font-size:12px;">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ผู้ใช้</th>
+                            <th>ห้อง/วันที่</th>
+                            <th class="text-end">ก่อนเริ่ม</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lc in late_cancels %}
+                        <tr>
+                            <td>{{ lc.booking.line_user.full_name|default:lc.booking.line_user.display_name }}</td>
+                            <td>{{ lc.booking.room.name }}<br>
+                                <span class="text-muted">{{ lc.booking.booking_date|th_date }} {{ lc.booking.start_time|time:"H:i" }}</span>
+                            </td>
+                            <td class="text-end">{{ lc.lead_minutes }} นาที</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3" class="text-center text-muted py-3">ไม่มีในช่วงนี้</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    const trendLabels = JSON.parse(document.getElementById('trend-labels').textContent);
+    const trendCounts = JSON.parse(document.getElementById('trend-counts').textContent);
+    new Chart(document.getElementById('trendChart'), {
+        type: 'line',
+        data: {
+            labels: trendLabels,
+            datasets: [{
+                label: 'จำนวนการจอง',
+                data: trendCounts,
+                borderColor: '#06C755',
+                backgroundColor: 'rgba(6,199,85,.1)',
+                tension: 0.3,
+                fill: true,
+                pointRadius: 2,
+            }],
+        },
+        options: {
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+        },
+    });
+</script>
+{% endblock %}

@@ -1,3 +1,20 @@
+<!-- PROJECT-STATUS
+name: reserv
+status: active
+deployment: production
+progress: 90
+phase: ระบบใช้งานจริง (production) ครบ 4 phase แล้ว อยู่ระหว่างงาน cosmetic/เอกสารปิดท้าย
+next:
+  - จำกัดการจอง 1 ครั้ง/ห้อง/วัน: ✅ เขียนโค้ดแล้ว (`create_booking()` ใน `booking/views.py`) + ตรวจ logic ผ่านด้วย automated test (`booking/tests.py`, 5/5) — **เหลือทดสอบบน prod จริง** ก่อนถือว่าปิดงาน (ดู `doc/progress-2026-07-09.md`)
+  - หน้า dashboard วิเคราะห์การจอง `/manage/analytics/`: ✅ เขียนโค้ดแล้ว (utilization, พฤติกรรมผู้ใช้/ผู้ใช้จองถี่, no-show/ยกเลิกกระชั้นชิด, แนวโน้มรายวัน) + ตรวจผ่านทั้ง automated test และเบราว์เซอร์จริง (ข้อมูลจำลอง) — **เหลือทดสอบบน prod จริงกับข้อมูลจริง** (ดู `doc/progress-2026-07-09.md` ส่วนที่ 2) ตัดสินใจแล้วว่ายังไม่ต้อง export PDF/Excel
+  - ทำรายงาน (report) แบบ export PDF/Excel จากผลวิเคราะห์ข้างต้น — ตอนนี้ตัดสินใจยังไม่ทำ รอความต้องการจริงก่อน
+  - ทำ traceon route ที่ยังค้างตามที่ระบุใน commit ล่าสุด (e666b92)
+  - เคลียร์ cosmetic backlog ที่เหลือ
+  - commit ไฟล์ doc/admin-manual-v2.docx/.pdf ที่ยังไม่ได้ add (มี untracked/modified อยู่)
+  - ตรวจสอบเอกสาร "Report Improvement Plan" ที่ยังเป็น untracked file
+updated: 2026-07-09
+-->
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -287,3 +304,8 @@ location /reserv/ {
 7. เมื่อ deploy Python code ขึ้น production ให้ restart service ก่อนทดสอบ และบันทึกผล production test ใน progress log
 
 Progress log สำหรับการ sync ครั้งนี้: `doc/progress-2026-06-02.md`
+
+## กติกาการปิด session
+ก่อนจบงานทุกครั้ง ให้อัปเดตบล็อก <!-- PROJECT-STATUS --> ด้านบนของไฟล์นี้:
+ปรับ progress, phase, รายการ next ให้ตรงกับงานจริง และแก้ updated เป็นวันที่ปัจจุบัน
+จากนั้นรัน `python C:\projects\project_status.py` เพื่ออัปเดต dashboard รวม

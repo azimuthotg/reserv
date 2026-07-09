@@ -1,5 +1,6 @@
 import json
-from datetime import date, timedelta
+from collections import defaultdict
+from datetime import date, datetime, timedelta
 from functools import wraps
 
 import requests
@@ -94,6 +95,153 @@ def manage_dashboard(request):
         'recent_bookings': recent_bookings,
         'upcoming_holidays': upcoming_holidays,
         'today': today,
+    })
+
+
+@staff_required
+def manage_analytics(request):
+    """
+    หน้าวิเคราะห์การจอง — อัตราการใช้ห้อง, แนวโน้มตามช่วงเวลา, พฤติกรรมผู้ใช้, no-show/ยกเลิกกระชั้นชิด
+    หมายเหตุ: อัตราการใช้ห้องคำนวณจากเวลาเปิดบริการเท่านั้น ไม่หักช่วง RoomClosure (ปิดชั่วคราว)
+    """
+    today = date.today()
+    now_local = timezone.localtime(timezone.now())
+
+    try:
+        days = int(request.GET.get('period', '30'))
+    except ValueError:
+        days = 30
+    if days not in (7, 30, 90):
+        days = 30
+
+    range_start = today - timedelta(days=days - 1)
+
+    period_qs = Booking.objects.filter(booking_date__gte=range_start, booking_date__lte=today)
+    confirmed = list(
+        period_qs.filter(status='confirmed')
+        .select_related('room', 'line_user')
+        .order_by('booking_date')
+    )
+    cancelled = list(
+        period_qs.filter(status='cancelled')
+        .select_related('room', 'line_user')
+    )
+
+    total_confirmed = len(confirmed)
+    total_cancelled = len(cancelled)
+    total_all = total_confirmed + total_cancelled
+    cancellation_rate = round(total_cancelled / total_all * 100, 1) if total_all else 0
+
+    # ── เวลาที่ถูกจอง (นาที) + แนวโน้มรายวัน ──────────────────────────────────
+    total_booked_minutes = 0
+    trend_by_day = defaultdict(int)
+    for b in confirmed:
+        total_booked_minutes += (
+            (b.end_time.hour * 60 + b.end_time.minute)
+            - (b.start_time.hour * 60 + b.start_time.minute)
+        )
+        trend_by_day[b.booking_date] += 1
+
+    trend_labels, trend_counts = [], []
+    d = range_start
+    while d <= today:
+        trend_labels.append(d.strftime('%d/%m'))
+        trend_counts.append(trend_by_day.get(d, 0))
+        d += timedelta(days=1)
+
+    # ── No-show: booking ที่จบไปแล้วแต่ไม่ check-in ────────────────────────────
+    past_confirmed = 0
+    no_show_count = 0
+    for b in confirmed:
+        booking_end = datetime.combine(b.booking_date, b.end_time)
+        if booking_end >= datetime.combine(today, now_local.time()):
+            continue  # ยังไม่ถึงเวลาจบ ไม่นับ
+        past_confirmed += 1
+        if not b.checked_in:
+            no_show_count += 1
+    no_show_rate = round(no_show_count / past_confirmed * 100, 1) if past_confirmed else 0
+
+    # ── อัตราการใช้ห้อง (utilization) ──────────────────────────────────────────
+    rooms = list(Room.objects.filter(is_active=True).order_by('name'))
+    booked_minutes_by_room = defaultdict(int)
+    for b in confirmed:
+        booked_minutes_by_room[b.room_id] += (
+            (b.end_time.hour * 60 + b.end_time.minute)
+            - (b.start_time.hour * 60 + b.start_time.minute)
+        )
+
+    available_minutes_by_room = defaultdict(int)
+    d = range_start
+    while d <= today:
+        for room in rooms:
+            open_t, close_t = room_service_hours(room, d)
+            available_minutes_by_room[room.id] += (
+                (close_t.hour * 60 + close_t.minute) - (open_t.hour * 60 + open_t.minute)
+            )
+        d += timedelta(days=1)
+
+    room_stats = []
+    for room in rooms:
+        available = available_minutes_by_room[room.id]
+        booked = booked_minutes_by_room[room.id]
+        room_stats.append({
+            'room': room,
+            'booked_hours': round(booked / 60, 1),
+            'utilization': round(booked / available * 100, 1) if available else 0,
+        })
+    room_stats.sort(key=lambda r: r['utilization'], reverse=True)
+
+    total_available_minutes = sum(available_minutes_by_room.values())
+    overall_utilization = (
+        round(total_booked_minutes / total_available_minutes * 100, 1) if total_available_minutes else 0
+    )
+
+    # ── พฤติกรรมผู้ใช้ + ผู้ใช้จองถี่ ──────────────────────────────────────────
+    user_stats = defaultdict(lambda: {'user': None, 'count': 0, 'no_show': 0, 'late_cancel': 0})
+    for b in confirmed:
+        entry = user_stats[b.line_user_id]
+        entry['user']  = b.line_user
+        entry['count'] += 1
+        booking_end = datetime.combine(b.booking_date, b.end_time)
+        if booking_end < datetime.combine(today, now_local.time()) and not b.checked_in:
+            entry['no_show'] += 1
+
+    # ยกเลิกกระชั้นชิด (ภายใน 60 นาทีก่อนเวลาเริ่ม) — สัญญาณที่ควรตรวจสอบเพิ่มเติม ไม่ใช่ข้อสรุปว่าเป็นพฤติกรรมมิชอบ
+    late_cancels = []
+    for b in cancelled:
+        if not b.cancelled_at:
+            continue
+        start_dt = timezone.make_aware(datetime.combine(b.booking_date, b.start_time))
+        lead_minutes = (start_dt - b.cancelled_at).total_seconds() / 60
+        if 0 <= lead_minutes <= 60:
+            late_cancels.append({'booking': b, 'lead_minutes': round(lead_minutes)})
+            entry = user_stats[b.line_user_id]
+            entry['user'] = b.line_user
+            entry['late_cancel'] += 1
+    late_cancels.sort(key=lambda x: x['booking'].cancelled_at, reverse=True)
+
+    heavy_threshold = max(3, round(days * 0.5))  # จองอย่างน้อยครึ่งหนึ่งของจำนวนวันในช่วง = จองถี่ผิดปกติ
+    top_users = sorted(user_stats.values(), key=lambda e: e['count'], reverse=True)[:10]
+    for entry in top_users:
+        entry['heavy'] = entry['count'] >= heavy_threshold
+
+    return render(request, 'booking/manage/analytics.html', {
+        'days': days,
+        'range_start': range_start,
+        'range_end': today,
+        'total_confirmed': total_confirmed,
+        'total_cancelled': total_cancelled,
+        'cancellation_rate': cancellation_rate,
+        'total_booked_hours': round(total_booked_minutes / 60, 1),
+        'overall_utilization': overall_utilization,
+        'no_show_rate': no_show_rate,
+        'no_show_count': no_show_count,
+        'past_confirmed': past_confirmed,
+        'room_stats': room_stats,
+        'trend_labels': trend_labels,
+        'trend_counts': trend_counts,
+        'top_users': top_users,
+        'late_cancels': late_cancels[:20],
     })
 
 
