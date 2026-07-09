@@ -10,7 +10,7 @@ done_2026-07-09:
   - ✅ cosmetic external member (prod verified) — `approved_by` ชื่อ staff จริง (แก้ 2 ฝั่ง reserv+api) + `approved_at` เวลาไทย + ปุ่ม "ลบ" (hard delete ครบ 3 ชั้น)
   - ✅ เก็บเอกสารเข้า repo — คู่มือ admin v2 (docx+pdf) + โฟลเดอร์ Report Improvement Plan
 next:
-  - (ถ้ามีความต้องการ) รายงาน export PDF/Excel จากหน้า analytics — ตอนนี้ตัดสินใจยังไม่ทำ
+  - export PDF/Excel จากหน้า analytics — ค้างไว้เป็น task (spawn แล้ว 2026-07-09) รอทำเมื่อมีความต้องการจริง; ระวังฟอนต์ไทยใน PDF (embed TH Sarabun New)
   - traceon route: แจ้งทีมประตูให้เพิ่ม route รหัส 10 หลัก → `/v2/external/check/` (api พร้อมแล้ว ไม่ใช่งานโค้ด repo นี้)
 updated: 2026-07-09
 -->
