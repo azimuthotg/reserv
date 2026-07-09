@@ -168,11 +168,11 @@ Response:
 
 ## 6. เรื่องที่ยังเปิด / ความเสี่ยงที่ต้องรู้
 
-- **ต้องแจ้ง api — เก็บ `approved_by` จริง (2026-07-09):** ตอนนี้ reserv ส่ง field `approved_by`
-  (ชื่อ staff ที่ล็อกอิน) ไปกับ `POST /v2/external/permanent/<citizen_id>/approve/` (form data) แล้ว
-  ขอให้ฝั่ง api **อ่านค่านี้จาก request แล้วเก็บลงคอลัมน์ `approved_by`** แทนค่า default "reserv"
-  (ถ้า api ยังไม่อ่าน การอนุมัติยังทำงานปกติ แค่ยังโชว์ "reserv" เหมือนเดิม — ไม่พัง)
-  ฝั่ง reserv format `approved_at` เป็นเวลาไทยแล้ว (ฟิลเตอร์ `th_iso_datetime`) — จบในตัว ไม่ต้องแก้ api
+- **`approved_by` เก็บชื่อ staff จริง (2026-07-09): ✅ แก้ครบทั้ง 2 ฝั่งแล้ว**
+  - reserv ส่ง field `approved_by` (ชื่อ staff ที่ล็อกอิน) ไปกับ `POST /v2/external/permanent/<citizen_id>/approve/` (reserv commit `344f6fc`)
+  - api อ่านค่านี้ไปเก็บลงคอลัมน์ `approved_by` แล้ว fallback เป็น username JWT ถ้าไม่ส่ง (api commit `359bd3b`)
+  - format `approved_at` เป็นเวลาไทยแล้ว (ฟิลเตอร์ `th_iso_datetime` ฝั่ง reserv)
+  - **รอ deploy prod ทั้ง 2 repo** แล้วอนุมัติสมาชิก pending รายใหม่เพื่อยืนยัน (ของเก่าจะยังขึ้น "reserv" — ไม่เปลี่ยนย้อนหลัง)
 - **ต้องแจ้ง traceon** (ข้อ 3) — เร่งสุด: ให้เพิ่ม route 10 หลัก → `/v2/external/check/` (convention 200=เปิด ตรงกับที่ traceon ทำอยู่แล้ว ไม่ต้องแก้ logic)
 - **บัตรถาวร = เสมือนบนจอ** (รูป+QR ที่ `/external/permanent/`) ตามที่ตกลง — ยังไม่มีวันหมดอายุ (ถาวรจนกว่าจะระงับ)
 - **ความจุ pool รายวัน** 100/วัน (รับ ≤ ~50 คน/วันสบาย) — เกินกว่านี้ขยายที่ api (`seed_access_codes --count`)
