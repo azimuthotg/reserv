@@ -173,3 +173,25 @@ class ManageAnalyticsTests(TestCase):
         anon_client = Client()
         resp = anon_client.get(reverse('manage_analytics'))
         self.assertEqual(resp.status_code, 302)
+
+
+class ThIsoDatetimeFilterTests(TestCase):
+    """ฟิลเตอร์ th_iso_datetime — แปลง ISO string จาก API เป็นเวลาไทย พ.ศ."""
+
+    def _fmt(self, value):
+        from booking.templatetags.th_filters import th_iso_datetime
+        return th_iso_datetime(value)
+
+    def test_utc_z_string_converts_to_thai_time(self):
+        # 07:30 UTC = 14:30 เวลาไทย, ปี 2026 = พ.ศ. 2569
+        self.assertEqual(self._fmt('2026-06-21T07:30:00Z'), '21 มิถุนายน 2569 14:30')
+
+    def test_offset_string_keeps_local_time(self):
+        self.assertEqual(self._fmt('2026-06-21T14:30:00+07:00'), '21 มิถุนายน 2569 14:30')
+
+    def test_empty_returns_dash(self):
+        self.assertEqual(self._fmt(''), '—')
+        self.assertEqual(self._fmt(None), '—')
+
+    def test_unparseable_string_returned_raw(self):
+        self.assertEqual(self._fmt('ไม่ใช่วันที่'), 'ไม่ใช่วันที่')

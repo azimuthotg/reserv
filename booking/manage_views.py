@@ -1030,8 +1030,14 @@ def manage_external_detail(request, citizen_id):
 @staff_required
 @require_POST
 def manage_external_approve(request, citizen_id):
-    """admin อนุมัติ → api ออก permanent_code + active"""
-    resp = _npu_v2_request('POST', f'/v2/external/permanent/{citizen_id}/approve/')
+    """admin อนุมัติ → api ออก permanent_code + active
+    ส่งชื่อ staff ที่ล็อกอินไปด้วย (approved_by) เพื่อให้ api เก็บผู้อนุมัติจริงแทน "reserv"
+    """
+    approved_by = request.user.get_full_name().strip() or request.user.username
+    resp = _npu_v2_request(
+        'POST', f'/v2/external/permanent/{citizen_id}/approve/',
+        data={'approved_by': approved_by},
+    )
     if resp is None:
         messages.error(request, 'เชื่อมต่อ NPU API ไม่ได้')
     elif resp.status_code == 200:

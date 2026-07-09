@@ -1,4 +1,5 @@
 {% extends "booking/manage/base.html" %}
+{% load th_filters %}
 {% block title %}บัตรสมาชิกถาวร{% endblock %}
 {% block page_title %}บัตรสมาชิกถาวร{% endblock %}
 
@@ -55,7 +56,7 @@
             {% if member.approved_at %}
             <div class="mb-3" style="font-size:13px;">
                 <span class="text-muted" style="font-size:12px;">อนุมัติเมื่อ</span><br>
-                {{ member.approved_at }} {% if member.approved_by %}โดย {{ member.approved_by }}{% endif %}
+                {{ member.approved_at|th_iso_datetime }} {% if member.approved_by %}โดย {{ member.approved_by }}{% endif %}
             </div>
             {% endif %}
 

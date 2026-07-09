@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django import template
 from django.utils import timezone
 
@@ -75,4 +77,29 @@ def th_datetime_sec(value):
         v = timezone.localtime(value) if timezone.is_aware(value) else value
         return f'{v.day:02d}/{v.month:02d}/{v.year + 543} {v.hour:02d}:{v.minute:02d}:{v.second:02d}'
     except AttributeError:
+        return str(value)
+
+
+@register.filter
+def th_iso_datetime(value):
+    """แปลง ISO datetime string (จาก NPU API) → เวลาไทย พ.ศ. เช่น '21 มิถุนายน 2569 14:30'
+
+    รับได้ทั้ง string ISO 8601 (เช่น '2026-06-21T14:30:00Z' หรือ '...+07:00')
+    และ datetime object แปลงเป็น timezone ปัจจุบัน (Asia/Bangkok) เมื่อค่ามี tzinfo
+    ถ้า parse ไม่ได้คืนค่าดิบ (ไม่พังหน้า)
+    """
+    if not value:
+        return '—'
+    if isinstance(value, str):
+        s = value.strip()
+        if s.endswith('Z'):
+            s = s[:-1] + '+00:00'
+        try:
+            value = datetime.fromisoformat(s)
+        except ValueError:
+            return value
+    try:
+        v = timezone.localtime(value) if timezone.is_aware(value) else value
+        return f'{v.day} {_MONTHS_LONG[v.month]} {v.year + 543} {v.hour:02d}:{v.minute:02d}'
+    except (AttributeError, IndexError):
         return str(value)
