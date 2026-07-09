@@ -2,14 +2,15 @@
 name: reserv
 status: active
 deployment: production
-progress: 90
+progress: 92
 phase: ระบบใช้งานจริง (production) ครบ 4 phase แล้ว อยู่ระหว่างงาน cosmetic/เอกสารปิดท้าย
+done_2026-07-09:
+  - ✅ จำกัดการจอง 1 ครั้ง/ห้อง/วัน (prod verified) — `create_booking()` + `booking/tests.py`
+  - ✅ หน้าวิเคราะห์การจอง `/manage/analytics/` (prod verified) — utilization, ผู้ใช้จองถี่, no-show จาก auto-cancel log, ยกเลิกโดยผู้ใช้, แนวโน้มรายวัน
 next:
-  - จำกัดการจอง 1 ครั้ง/ห้อง/วัน: ✅ เขียนโค้ดแล้ว (`create_booking()` ใน `booking/views.py`) + ตรวจ logic ผ่านด้วย automated test (`booking/tests.py`, 5/5) — **เหลือทดสอบบน prod จริง** ก่อนถือว่าปิดงาน (ดู `doc/progress-2026-07-09.md`)
-  - หน้า dashboard วิเคราะห์การจอง `/manage/analytics/`: ✅ **ทดสอบ prod ผ่านแล้ว 2026-07-09** (utilization, พฤติกรรมผู้ใช้/ผู้ใช้จองถี่, no-show จาก auto-cancel log, ยกเลิกโดยผู้ใช้แยกก้อน, แนวโน้มรายวัน) — ดู `doc/progress-2026-07-09.md` ส่วนที่ 2-3 ตัดสินใจแล้วว่ายังไม่ต้อง export PDF/Excel
-  - ทำรายงาน (report) แบบ export PDF/Excel จากผลวิเคราะห์ข้างต้น — ตอนนี้ตัดสินใจยังไม่ทำ รอความต้องการจริงก่อน
-  - ทำ traceon route ที่ยังค้างตามที่ระบุใน commit ล่าสุด (e666b92)
-  - เคลียร์ cosmetic backlog ที่เหลือ
+  - (ถ้ามีความต้องการ) รายงาน export PDF/Excel จากหน้า analytics — ตอนนี้ตัดสินใจยังไม่ทำ
+  - ทำ traceon route ที่ยังค้างตามที่ระบุใน commit e666b92 (งาน door team)
+  - เคลียร์ cosmetic backlog ที่เหลือ (`approved_by` ชื่อเจ้าหน้าที่จริง, format เวลา approved_at เป็นเวลาไทย)
   - commit ไฟล์ doc/admin-manual-v2.docx/.pdf ที่ยังไม่ได้ add (มี untracked/modified อยู่)
   - ตรวจสอบเอกสาร "Report Improvement Plan" ที่ยังเป็น untracked file
 updated: 2026-07-09
