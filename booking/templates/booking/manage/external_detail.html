@@ -75,6 +75,11 @@
                     <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-slash-circle"></i> ระงับ</button>
                 </form>
                 {% endif %}
+                <form method="post" action="{% url 'manage_external_delete' member.citizen_id %}"
+                      onsubmit="return confirm('ยืนยันลบสมาชิกรายนี้ออกจากระบบถาวร?\n\nการลบนี้กู้คืนไม่ได้ — เลขบัตร รหัสถาวร และรูปจะถูกลบทั้งหมด (เลขบัตรนี้ลงทะเบียนใหม่ได้ภายหลัง)');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger btn-sm"><i class="bi bi-trash"></i> ลบ</button>
+                </form>
             </div>
         </div>
     </div>

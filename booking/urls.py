@@ -84,6 +84,7 @@ urlpatterns = [
     path('manage/external/<str:citizen_id>/',         manage_views.manage_external_detail,  name='manage_external_detail'),
     path('manage/external/<str:citizen_id>/approve/', manage_views.manage_external_approve, name='manage_external_approve'),
     path('manage/external/<str:citizen_id>/revoke/',  manage_views.manage_external_revoke,  name='manage_external_revoke'),
+    path('manage/external/<str:citizen_id>/delete/',  manage_views.manage_external_delete,  name='manage_external_delete'),
     path('manage/external/<str:citizen_id>/photo/',   manage_views.manage_external_photo,   name='manage_external_photo'),
 
     # Booking Logs

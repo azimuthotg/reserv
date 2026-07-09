@@ -1062,6 +1062,21 @@ def manage_external_revoke(request, citizen_id):
 
 
 @staff_required
+@require_POST
+def manage_external_delete(request, citizen_id):
+    """admin ลบสมาชิกถาวรออกจากระบบ (hard delete ที่ api) — กู้คืนไม่ได้"""
+    resp = _npu_v2_request('POST', f'/v2/external/permanent/{citizen_id}/delete/')
+    if resp is None:
+        messages.error(request, 'เชื่อมต่อ NPU API ไม่ได้')
+        return redirect('manage_external_detail', citizen_id=citizen_id)
+    if resp.status_code == 200:
+        messages.success(request, 'ลบสมาชิกออกจากระบบแล้ว')
+        return redirect('manage_external_list')  # เรคคอร์ดถูกลบแล้ว กลับหน้ารายการ
+    messages.error(request, f'ลบไม่สำเร็จ (NPU API {resp.status_code})')
+    return redirect('manage_external_detail', citizen_id=citizen_id)
+
+
+@staff_required
 def manage_external_photo(request, citizen_id):
     """proxy รูปจาก api (ถือ JWT) → stream ให้ browser; รูปไม่เปิดสาธารณะที่ api"""
     resp = _npu_v2_request('GET', f'/v2/external/permanent/{citizen_id}/photo/')
