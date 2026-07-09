@@ -129,8 +129,24 @@ def manage_analytics(request):
 
     total_confirmed = len(confirmed)
     total_cancelled = len(cancelled)
-    total_all = total_confirmed + total_cancelled
-    cancellation_rate = round(total_cancelled / total_all * 100, 1) if total_all else 0
+    total_made = total_confirmed + total_cancelled
+
+    # ── No-show ดึงจาก auto-cancel (ไม่ใช่ confirmed ที่ไม่ check-in) ──────────
+    # ระบบ auto-cancel booking ที่ไม่ check-in ภายใน 15 นาทีหลังเริ่ม (send_reminders.py)
+    # → no-show จริงกลายเป็น status='cancelled' + BookingLog action='auto_cancelled'
+    # ถ้านับจาก confirmed ที่ไม่ check-in จะได้ ~0 เสมอ เพราะโดน auto-cancel ไปหมดแล้ว
+    no_show_logs = list(
+        BookingLog.objects
+        .filter(action='auto_cancelled',
+                booking__booking_date__gte=range_start,
+                booking__booking_date__lte=today)
+        .select_related('booking__line_user')
+    )
+    no_show_count = len({log.booking_id for log in no_show_logs})
+
+    # ยกเลิกโดยผู้ใช้ = cancelled ทั้งหมด − no-show (auto-cancel)
+    user_cancelled = max(0, total_cancelled - no_show_count)
+    user_cancel_rate = round(user_cancelled / total_made * 100, 1) if total_made else 0
 
     # ── เวลาที่ถูกจอง (นาที) + แนวโน้มรายวัน ──────────────────────────────────
     total_booked_minutes = 0
@@ -149,17 +165,15 @@ def manage_analytics(request):
         trend_counts.append(trend_by_day.get(d, 0))
         d += timedelta(days=1)
 
-    # ── No-show: booking ที่จบไปแล้วแต่ไม่ check-in ────────────────────────────
+    # ── No-show rate = no-show ÷ (มาจริง + no-show) ────────────────────────────
+    # "มาจริง" = booking ที่ผ่านเวลาจบแล้วและยัง confirmed อยู่ (ไม่ถูก auto-cancel)
     past_confirmed = 0
-    no_show_count = 0
     for b in confirmed:
         booking_end = datetime.combine(b.booking_date, b.end_time)
-        if booking_end >= datetime.combine(today, now_local.time()):
-            continue  # ยังไม่ถึงเวลาจบ ไม่นับ
-        past_confirmed += 1
-        if not b.checked_in:
-            no_show_count += 1
-    no_show_rate = round(no_show_count / past_confirmed * 100, 1) if past_confirmed else 0
+        if booking_end < datetime.combine(today, now_local.time()):
+            past_confirmed += 1
+    no_show_denom = past_confirmed + no_show_count
+    no_show_rate = round(no_show_count / no_show_denom * 100, 1) if no_show_denom else 0
 
     # ── อัตราการใช้ห้อง (utilization) ──────────────────────────────────────────
     rooms = list(Room.objects.filter(is_active=True).order_by('name'))
@@ -202,15 +216,19 @@ def manage_analytics(request):
         entry = user_stats[b.line_user_id]
         entry['user']  = b.line_user
         entry['count'] += 1
-        booking_end = datetime.combine(b.booking_date, b.end_time)
-        if booking_end < datetime.combine(today, now_local.time()) and not b.checked_in:
-            entry['no_show'] += 1
+    # no-show ต่อผู้ใช้ นับจาก auto-cancel log (ตั้ง user object ให้ด้วยเผื่อผู้ใช้ไม่มี confirmed)
+    for log in no_show_logs:
+        entry = user_stats[log.booking.line_user_id]
+        entry['user'] = log.booking.line_user
+        entry['no_show'] += 1
 
     # ยกเลิกกระชั้นชิด (ภายใน 60 นาทีก่อนเวลาเริ่ม) — สัญญาณที่ควรตรวจสอบเพิ่มเติม ไม่ใช่ข้อสรุปว่าเป็นพฤติกรรมมิชอบ
     late_cancels = []
     for b in cancelled:
         if not b.cancelled_at:
             continue
+        if 'auto-cancel' in (b.cancel_reason or ''):
+            continue  # no-show ที่ระบบยกเลิกเอง ไม่นับเป็นยกเลิกกระชั้นชิดของผู้ใช้
         start_dt = timezone.make_aware(datetime.combine(b.booking_date, b.start_time))
         lead_minutes = (start_dt - b.cancelled_at).total_seconds() / 60
         if 0 <= lead_minutes <= 60:
@@ -231,12 +249,13 @@ def manage_analytics(request):
         'range_end': today,
         'total_confirmed': total_confirmed,
         'total_cancelled': total_cancelled,
-        'cancellation_rate': cancellation_rate,
+        'user_cancelled': user_cancelled,
+        'user_cancel_rate': user_cancel_rate,
         'total_booked_hours': round(total_booked_minutes / 60, 1),
         'overall_utilization': overall_utilization,
         'no_show_rate': no_show_rate,
         'no_show_count': no_show_count,
-        'past_confirmed': past_confirmed,
+        'no_show_denom': no_show_denom,
         'room_stats': room_stats,
         'trend_labels': trend_labels,
         'trend_counts': trend_counts,

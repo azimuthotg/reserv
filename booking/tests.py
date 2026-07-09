@@ -6,7 +6,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import Booking, LineUser, Room
+from .models import Booking, BookingLog, LineUser, Room
 
 
 def _next_weekday(from_date):
@@ -136,6 +136,18 @@ class ManageAnalyticsTests(TestCase):
             attendees='1', status='confirmed', checked_in=True,
         )
 
+        # no-show จริง = booking ที่ถูก auto-cancel (ไม่ check-in) + มี BookingLog
+        no_show_booking = Booking.objects.create(
+            room=self.room, line_user=self.user2, faculty='คณะ B', group_name='กลุ่ม',
+            booking_date=yesterday, start_time='13:00', end_time='14:00',
+            attendees='1', status='cancelled',
+            cancel_reason='ไม่ check-in ภายในเวลาที่กำหนด (auto-cancel)',
+        )
+        no_show_start = timezone.make_aware(datetime.combine(yesterday, time(13, 0)))
+        no_show_booking.cancelled_at = no_show_start + timedelta(minutes=15)
+        no_show_booking.save(update_fields=['cancelled_at'])
+        BookingLog.objects.create(booking=no_show_booking, action='auto_cancelled')
+
         today = date.today()
         late_cancel_booking = Booking.objects.create(
             room=self.room, line_user=self.user1, faculty='คณะ A', group_name='กลุ่ม',
@@ -150,10 +162,11 @@ class ManageAnalyticsTests(TestCase):
         resp = self.client.get(reverse('manage_analytics'), {'period': '30'})
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.context['total_confirmed'], 2)
-        self.assertEqual(resp.context['total_cancelled'], 1)
-        self.assertEqual(resp.context['no_show_count'], 1)
-        self.assertEqual(resp.context['past_confirmed'], 2)
-        self.assertEqual(len(resp.context['late_cancels']), 1)
+        self.assertEqual(resp.context['total_cancelled'], 2)   # auto-cancel + late-cancel
+        self.assertEqual(resp.context['no_show_count'], 1)     # นับจาก auto_cancelled log
+        self.assertEqual(resp.context['no_show_denom'], 3)     # past_confirmed(2) + no_show(1)
+        self.assertEqual(resp.context['user_cancelled'], 1)    # total_cancelled − no_show
+        self.assertEqual(len(resp.context['late_cancels']), 1)  # auto-cancel ไม่ถูกนับ
         self.assertEqual(resp.context['late_cancels'][0]['lead_minutes'], 30)
 
     def test_analytics_requires_staff_login(self):
