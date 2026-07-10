@@ -990,6 +990,11 @@ def manage_external_register(request):
             messages.error(request, 'เชื่อมต่อ NPU API ไม่ได้')
         elif resp.status_code == 201:
             messages.success(request, 'ลงทะเบียนสมาชิกถาวรแล้ว — รอผู้ดูแลอนุมัติ')
+            # ใช้ citizen_id จาก api — กรณีเว้นว่าง (บุคคลสำคัญ) api ออกรหัสอ้างอิงขึ้นต้น V ให้
+            try:
+                citizen_id = resp.json()['member']['citizen_id'] or citizen_id
+            except (ValueError, KeyError):
+                pass
             return redirect('manage_external_detail', citizen_id=citizen_id)
         elif resp.status_code == 400:
             messages.error(request, 'ข้อมูลไม่ถูกต้อง — ตรวจเลขบัตรประชาชน 13 หลัก และชื่อ-สกุล')

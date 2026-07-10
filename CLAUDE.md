@@ -4,15 +4,13 @@ status: active
 deployment: production
 progress: 94
 phase: ระบบใช้งานจริง (production) ครบ 4 phase แล้ว อยู่ระหว่างงาน cosmetic/เอกสารปิดท้าย
-done_2026-07-09:
-  - ✅ จำกัดการจอง 1 ครั้ง/ห้อง/วัน (prod verified) — `create_booking()` + `booking/tests.py`
-  - ✅ หน้าวิเคราะห์การจอง `/manage/analytics/` (prod verified) — utilization, ผู้ใช้จองถี่, no-show จาก auto-cancel log, ยกเลิกโดยผู้ใช้, แนวโน้มรายวัน
-  - ✅ cosmetic external member (prod verified) — `approved_by` ชื่อ staff จริง (แก้ 2 ฝั่ง reserv+api) + `approved_at` เวลาไทย + ปุ่ม "ลบ" (hard delete ครบ 3 ชั้น)
-  - ✅ เก็บเอกสารเข้า repo — คู่มือ admin v2 (docx+pdf) + โฟลเดอร์ Report Improvement Plan
+done_2026-07-10:
+  - ✅ สมาชิกถาวรไม่บังคับเลขบัตร (รองรับ VVIP เช่น นายกสภาฯ) — เว้นว่างได้ api gen รหัสอ้างอิง `V`+12 หลัก, แก้ 2 ฝั่ง (reserv form/redirect/แสดงผล + api permanent_register/regex), test ผ่าน reserv 13/13 + api 10/10 — **รอ deploy prod + e2e**
 next:
-  - export PDF/Excel จากหน้า analytics — ค้างไว้เป็น task (spawn แล้ว 2026-07-09) รอทำเมื่อมีความต้องการจริง; ระวังฟอนต์ไทยใน PDF (embed TH Sarabun New)
+  - deploy prod ทั้ง reserv+apiproject (ไม่มี migration) + ทดสอบ e2e ลงทะเบียนไม่ใส่เลขบัตร → อนุมัติ → เช็คประตู 200 (ดู doc/progress-2026-07-10.md)
+  - export PDF/Excel จากหน้า analytics — ค้างเป็น task (spawn แล้ว 2026-07-09) รอทำเมื่อมีความต้องการจริง (ดู MEM.md: embed ฟอนต์ TH Sarabun New กันตัวอักษรหาย)
   - traceon route: แจ้งทีมประตูให้เพิ่ม route รหัส 10 หลัก → `/v2/external/check/` (api พร้อมแล้ว ไม่ใช่งานโค้ด repo นี้)
-updated: 2026-07-09
+updated: 2026-07-10
 -->
 
 # CLAUDE.md

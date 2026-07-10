@@ -54,7 +54,11 @@
                         {% endif %}
                     </td>
                     <td style="font-weight:600;">{{ m.fullname }}</td>
-                    <td style="color:#888;">{{ m.citizen_id }}</td>
+                    <td style="color:#888;">
+                        {% if m.citizen_id|slice:":1" == "V" %}
+                        <span title="ไม่ได้ให้เลขบัตร — รหัสอ้างอิง {{ m.citizen_id }}">—</span>
+                        {% else %}{{ m.citizen_id }}{% endif %}
+                    </td>
                     <td>{{ m.permanent_code|default:"—" }}</td>
                     <td>
                         {% if m.status == 'active' %}

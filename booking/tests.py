@@ -195,3 +195,32 @@ class ThIsoDatetimeFilterTests(TestCase):
 
     def test_unparseable_string_returned_raw(self):
         self.assertEqual(self._fmt('ไม่ใช่วันที่'), 'ไม่ใช่วันที่')
+
+
+class ManageExternalRegisterTests(TestCase):
+    """ลงทะเบียนสมาชิกถาวรโดยไม่ใส่เลขบัตร — redirect ตาม citizen_id ที่ api gen ให้ (ขึ้นต้น V)"""
+
+    def setUp(self):
+        User.objects.create_user(username='staff1', password='pass12345', is_staff=True)
+        self.client = Client()
+        self.client.login(username='staff1', password='pass12345')
+
+    def test_form_shows_optional_citizen_id(self):
+        resp = self.client.get(reverse('manage_external_register'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'ไม่บังคับ')
+        self.assertNotContains(resp, 'name="citizen_id" class="form-control" value="" required')
+
+    def test_register_without_citizen_id_redirects_to_generated_id(self):
+        from unittest.mock import Mock, patch
+
+        fake = Mock(status_code=201)
+        fake.json.return_value = {'success': True, 'member': {'citizen_id': 'V000000000001'}}
+        with patch('booking.manage_views._npu_v2_request', return_value=fake):
+            resp = self.client.post(reverse('manage_external_register'), data={
+                'citizen_id': '', 'first_name': 'นายก', 'last_name': 'สภามหาวิทยาลัย',
+            })
+        self.assertRedirects(
+            resp, reverse('manage_external_detail', kwargs={'citizen_id': 'V000000000001'}),
+            fetch_redirect_response=False,
+        )

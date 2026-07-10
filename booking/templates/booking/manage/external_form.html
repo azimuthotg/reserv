@@ -19,9 +19,15 @@
             <input type="text" name="last_name" class="form-control" value="{{ form.last_name }}" required>
         </div>
         <div class="mb-3">
-            <label class="form-label" style="font-size:13px;font-weight:600;">เลขบัตรประชาชน (13 หลัก)</label>
+            <label class="form-label" style="font-size:13px;font-weight:600;">
+                เลขบัตรประชาชน (13 หลัก) <span class="text-muted" style="font-weight:400;">— ไม่บังคับ</span>
+            </label>
             <input type="text" name="citizen_id" class="form-control" value="{{ form.citizen_id }}"
-                   inputmode="numeric" pattern="[0-9]{13}" maxlength="13" minlength="13" required>
+                   inputmode="numeric" pattern="[0-9]{13}" maxlength="13" minlength="13">
+            <div class="form-text" style="font-size:12px;">
+                เว้นว่างได้สำหรับบุคคลสำคัญที่ไม่สะดวกให้เลขบัตร (เช่น ผู้บริหาร/แขกของสำนัก) —
+                ระบบจะออกรหัสอ้างอิงให้อัตโนมัติ
+            </div>
         </div>
         <div class="mb-3">
             <label class="form-label" style="font-size:13px;font-weight:600;">รูปถ่าย (สำหรับทำบัตร)</label>
