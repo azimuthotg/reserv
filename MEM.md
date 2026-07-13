@@ -11,8 +11,14 @@
 
 ## บันทึกงานที่ทำ (changelog)
 
+### 2026-07-13
+- ✅ ส่งตัวอย่าง JSON response ของ endpoint `/v2/external/check/` ให้ทีมประตูแล้ว (รับแจ้งงาน 2026-07-12) — ทีมประตูเอาไปเขียนโค้ดรับค่าฝั่งเขาต่อ เหลืองานเดียวจากรอบนี้: ทีมประตูทดสอบ QR code เข้าจริง
+
 ### 2026-07-10
 - ✅ สมาชิกถาวรไม่บังคับเลขบัตร (รองรับ VVIP เช่น นายกสภาฯ) — เว้นว่างแล้ว api gen รหัสอ้างอิง `V`+12 หลัก, แก้ 2 ฝั่ง (reserv+apiproject) ไม่มี endpoint ใหม่/ไม่มี migration, test reserv 13/13 + api 10/10 — commit แล้วทั้ง 2 repo แต่ **push ค้าง** (GitHub token ใน WSL หมดอายุ) — รอ push + deploy prod + e2e
+- ✅ push ค้าง 2 repo แก้แล้ว โดย push จากฝั่ง Windows แทน WSL (token หมดอายุ) — reserv `38dc88e..369369e`, apiproject `54de5ee..8779351`
+- ✅ deploy prod ทั้ง reserv+apiproject (git pull+restart) เรียบร้อย, เทส prod ผ่านหมด — ฟีเจอร์ VVIP ไม่บังคับเลขบัตรทำงานถูกต้องบน production
+- เหลืองานเดียว: แจ้งทีมประตูเอา QR code ไปทดสอบว่าเข้าได้จริงหรือไม่ (route `/v2/external/check/` ฝั่ง api พร้อมรอแล้ว)
 
 ## ปัญหา & วิธีแก้ (เพิ่มเติม)
 

@@ -2,16 +2,17 @@
 name: reserv
 status: active
 deployment: production
-progress: 94
-phase: ระบบใช้งานจริง (production) ครบ 4 phase แล้ว อยู่ระหว่างงาน cosmetic/เอกสารปิดท้าย
+progress: 96
+phase: ระบบใช้งานจริง (production) ครบ 4 phase แล้ว — deploy+e2e รอบล่าสุด (VVIP ไม่บังคับเลขบัตร) ผ่านหมด เหลือรอทีมประตูเทส QR code
 done_2026-07-10:
-  - ✅ สมาชิกถาวรไม่บังคับเลขบัตร (รองรับ VVIP เช่น นายกสภาฯ) — เว้นว่างได้ api gen รหัสอ้างอิง `V`+12 หลัก, แก้ 2 ฝั่ง (reserv form/redirect/แสดงผล + api permanent_register/regex), test ผ่าน reserv 13/13 + api 10/10 — **รอ deploy prod + e2e**
+  - ✅ push ค้างทั้ง 2 repo (reserv+apiproject) ขึ้น GitHub สำเร็จ (แก้จากฝั่ง Windows แทน WSL token ที่หมดอายุ)
+  - ✅ deploy prod ทั้ง reserv+apiproject (git pull+restart, ไม่มี migration) เรียบร้อย เทส prod ผ่าน
+  - ✅ สมาชิกถาวรไม่บังคับเลขบัตร (รองรับ VVIP เช่น นายกสภาฯ) — เว้นว่างได้ api gen รหัสอ้างอิง `V`+12 หลัก, แก้ 2 ฝั่ง (reserv form/redirect/แสดงผล + api permanent_register/regex), test ผ่าน reserv 13/13 + api 10/10
 next:
-  - ⚠️ push ค้างทั้ง 2 repo (commit แล้ว) — GitHub token ใน WSL credential store หมดอายุ/ถูก revoke → สร้าง PAT ใหม่ หรือ push จากฝั่ง Windows (`C:\projects\reserv` + `C:\projects\apiproject`)
-  - deploy prod ทั้ง reserv+apiproject (ไม่มี migration) + ทดสอบ e2e ลงทะเบียนไม่ใส่เลขบัตร → อนุมัติ → เช็คประตู 200 (ดู doc/progress-2026-07-10.md)
+  - แจ้งทีมประตูให้เอา QR code ไปทดสอบว่าเข้าได้จริงหรือไม่ (route รหัส 10 หลัก → `/v2/external/check/` ฝั่ง api พร้อมแล้ว)
   - export PDF/Excel จากหน้า analytics — ค้างเป็น task (spawn แล้ว 2026-07-09) รอทำเมื่อมีความต้องการจริง (ดู MEM.md: embed ฟอนต์ TH Sarabun New กันตัวอักษรหาย)
-  - traceon route: แจ้งทีมประตูให้เพิ่ม route รหัส 10 หลัก → `/v2/external/check/` (api พร้อมแล้ว ไม่ใช่งานโค้ด repo นี้)
-updated: 2026-07-10
+  - ทำฟีเจอร์เพิ่มวันหยุดอัตโนมัติในตารางวันหยุด (ตอนนี้ต้องเพิ่มเองทีละวัน) — รับแจ้ง 2026-07-12
+updated: 2026-07-13
 -->
 
 # CLAUDE.md
