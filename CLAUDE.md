@@ -8,6 +8,9 @@ done_2026-07-10:
   - ✅ push ค้างทั้ง 2 repo (reserv+apiproject) ขึ้น GitHub สำเร็จ (แก้จากฝั่ง Windows แทน WSL token ที่หมดอายุ)
   - ✅ deploy prod ทั้ง reserv+apiproject (git pull+restart, ไม่มี migration) เรียบร้อย เทส prod ผ่าน
   - ✅ สมาชิกถาวรไม่บังคับเลขบัตร (รองรับ VVIP เช่น นายกสภาฯ) — เว้นว่างได้ api gen รหัสอ้างอิง `V`+12 หลัก, แก้ 2 ฝั่ง (reserv form/redirect/แสดงผล + api permanent_register/regex), test ผ่าน reserv 13/13 + api 10/10
+done_2026-07-13:
+  - ✅ ส่งตัวอย่าง JSON response ของ `/v2/external/check/` ให้ทีมประตูแล้ว
+  - ✅ ทำคู่มือแจ้งเจ้าหน้าที่ — ระบบบุคคลภายนอกเข้าใช้บริการ: [doc/external-access-manual.docx](doc/external-access-manual.docx)
 next:
   - แจ้งทีมประตูให้เอา QR code ไปทดสอบว่าเข้าได้จริงหรือไม่ (route รหัส 10 หลัก → `/v2/external/check/` ฝั่ง api พร้อมแล้ว)
   - export PDF/Excel จากหน้า analytics — ค้างเป็น task (spawn แล้ว 2026-07-09) รอทำเมื่อมีความต้องการจริง (ดู MEM.md: embed ฟอนต์ TH Sarabun New กันตัวอักษรหาย)
