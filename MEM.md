@@ -28,7 +28,9 @@
 - ✅ day flow `/external/` — ปลดบังคับเลขบัตร (**แก้ครบ 2 ฝั่ง reserv+apiproject**):
   - (reserv) `external_access()` ใน [booking/views.py](booking/views.py) ตรวจ citizen_id เฉพาะเมื่อกรอกมา + omit key ออกจาก payload เมื่อว่าง, template [external.html](booking/templates/booking/external.html) ปลด `required` + label "ไม่บังคับ", เทส `ExternalAccessDayTests` 4 เคส (reserv 17/17)
   - (apiproject) `/v2/external/issue/` ทำ citizen_id optional + gen `V`-id เมื่อว่าง, เทสเพิ่ม 2 เคส (api 22/22) ดู changelog apiproject 2026-07-16
-  - **ยังไม่ push/deploy ทั้ง 2 repo** — deploy: reserv `nssm restart reserv-booking`, apiproject `deploy.ps1` (recycle app pool)
+  - push แล้วทั้ง 2 repo (reserv `336d4e2` → origin/master, apiproject `2ad5701` → origin/main) — **ยังไม่ deploy prod**: ต้อง deploy apiproject ก่อน (`deploy.ps1`) แล้วค่อย reserv (`git pull` + `nssm restart reserv-booking`)
+- ✅ อัปเดตคู่มือแจ้งเจ้าหน้าที่ v1.0 → **v1.1** ให้ตรงพฤติกรรมใหม่ — แก้ [doc/make_external_manual_docx.py](doc/make_external_manual_docx.py) แล้ว regenerate [doc/external-access-manual.docx](doc/external-access-manual.docx): ตารางเปรียบเทียบเพิ่มแถวเลขบัตรบังคับ/ไม่บังคับ, บท 2 ขั้นตอน+info box อธิบายข้อแลกเปลี่ยน, ตาราง error, FAQ ข้อใหม่ "รายวันต้องกรอกเลขบัตรไหม"
+- 📌 ทำชุดข้อมูล/prompt ให้ผู้ใช้เอาไปสร้าง infographic 2 ภาพ (รายวัน/ถาวร) ที่ ChatGPT — **ข้อควรระวัง:** image gen ของ ChatGPT เขียนภาษาไทยเพี้ยน แนะนำสร้างเลย์เอาต์เปล่าแล้วใส่ข้อความไทยเองใน Canva/PowerPoint หรือให้ทำเป็น HTML/SVG แทน
 
 ### 2026-07-13
 - ✅ ส่งตัวอย่าง JSON response ของ endpoint `/v2/external/check/` ให้ทีมประตูแล้ว (รับแจ้งงาน 2026-07-12) — ทีมประตูเอาไปเขียนโค้ดรับค่าฝั่งเขาต่อ เหลืองานเดียวจากรอบนี้: ทีมประตูทดสอบ QR code เข้าจริง

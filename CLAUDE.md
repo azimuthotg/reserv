@@ -2,8 +2,15 @@
 name: reserv
 status: active
 deployment: production
+deploy_url: https://lib.npu.ac.th/reserv/
+deploy_server: 110.78.83.102 (lib.npu.ac.th)
+deploy_os: Windows Server 2019
+deploy_method: NSSM + Waitress (service reserv-booking) ผ่าน gateway IIS+ARR
+deploy_db: MySQL `reserv_db` บนเครื่อง api.npu.ac.th (202.29.55.217)
+deploy_notes:
+  - restart: nssm restart reserv-booking
 progress: 96
-phase: ระบบใช้งานจริง (production) ครบ 4 phase แล้ว — deploy+e2e รอบล่าสุด (VVIP ไม่บังคับเลขบัตร) ผ่านหมด เหลือรอทีมประตูเทส QR code
+phase: ระบบใช้งานจริง (production) ครบ 4 phase แล้ว — งานล่าสุด (รายวันไม่บังคับเลขบัตร) push แล้วทั้ง 2 repo รอ deploy prod + e2e · เหลือรอทีมประตูเทส QR code
 done_2026-07-10:
   - ✅ push ค้างทั้ง 2 repo (reserv+apiproject) ขึ้น GitHub สำเร็จ (แก้จากฝั่ง Windows แทน WSL token ที่หมดอายุ)
   - ✅ deploy prod ทั้ง reserv+apiproject (git pull+restart, ไม่มี migration) เรียบร้อย เทส prod ผ่าน
@@ -11,11 +18,17 @@ done_2026-07-10:
 done_2026-07-13:
   - ✅ ส่งตัวอย่าง JSON response ของ `/v2/external/check/` ให้ทีมประตูแล้ว
   - ✅ ทำคู่มือแจ้งเจ้าหน้าที่ — ระบบบุคคลภายนอกเข้าใช้บริการ: [doc/external-access-manual.docx](doc/external-access-manual.docx)
+done_2026-07-16:
+  - ✅ บุคคลภายนอกรายวัน (`/external/`) ไม่บังคับเลขบัตร — บังคับแค่ชื่อ-สกุล, แก้ 2 ฝั่ง (reserv `external_access()`+template / api `/v2/external/issue/` gen ref-id `V` เมื่อไม่ส่งเลขบัตร), test reserv 17/17 + api 22/22 — push แล้วทั้ง 2 repo (reserv `336d4e2`, apiproject `2ad5701`)
+  - ✅ อัปเดตคู่มือแจ้งเจ้าหน้าที่เป็น v1.1 ให้ตรงพฤติกรรมใหม่ [doc/external-access-manual.docx](doc/external-access-manual.docx)
 next:
+  - deploy prod งานรายวันไม่บังคับเลขบัตร — **deploy apiproject ก่อน** (`deploy.ps1`) แล้วค่อย reserv (`git pull` + `nssm restart reserv-booking`) จากนั้น e2e: `/external/` กรอกแค่ชื่อ-สกุล ต้องได้ QR
   - แจ้งทีมประตูให้เอา QR code ไปทดสอบว่าเข้าได้จริงหรือไม่ (route รหัส 10 หลัก → `/v2/external/check/` ฝั่ง api พร้อมแล้ว)
   - export PDF/Excel จากหน้า analytics — ค้างเป็น task (spawn แล้ว 2026-07-09) รอทำเมื่อมีความต้องการจริง (ดู MEM.md: embed ฟอนต์ TH Sarabun New กันตัวอักษรหาย)
   - ทำฟีเจอร์เพิ่มวันหยุดอัตโนมัติในตารางวันหยุด (ตอนนี้ต้องเพิ่มเองทีละวัน) — รับแจ้ง 2026-07-12
-updated: 2026-07-13
+risks:
+  - รายวันไม่บังคับเลขบัตร → ระงับสิทธิ์/โควตารายคนใช้ไม่ได้ + pool 100 รหัส/วันอาจหมดเร็ว (ดู MEM.md — มีแผนถอย)
+updated: 2026-07-16
 -->
 
 # CLAUDE.md
