@@ -224,3 +224,51 @@ class ManageExternalRegisterTests(TestCase):
             resp, reverse('manage_external_detail', kwargs={'citizen_id': 'V000000000001'}),
             fetch_redirect_response=False,
         )
+
+
+class ExternalAccessDayTests(TestCase):
+    """หน้า day (/external/): บังคับชื่อ-สกุล, เลขบัตรเป็น optional"""
+
+    def test_form_citizen_id_not_required(self):
+        resp = self.client.get(reverse('external_access'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'ไม่บังคับ')
+        self.assertNotContains(resp, 'placeholder="x-xxxx-xxxxx-xx-x" required')
+
+    def test_issue_without_citizen_id_omits_key(self):
+        from unittest.mock import Mock, patch
+
+        fake = Mock(status_code=200)
+        fake.json.return_value = {
+            'access_code': '1234567890', 'valid_date': '2026-07-16',
+            'member': {'first_name': 'สมชาย', 'last_name': 'ใจดี'},
+        }
+        with patch('booking.views._npu_v2_request', return_value=fake) as mock_req:
+            resp = self.client.post(reverse('external_access'), data={
+                'first_name': 'สมชาย', 'last_name': 'ใจดี', 'citizen_id': '',
+            })
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, '1234567890')
+        sent = mock_req.call_args.kwargs['json']
+        self.assertNotIn('citizen_id', sent)
+        self.assertEqual(sent['first_name'], 'สมชาย')
+
+    def test_missing_name_rejected_before_api(self):
+        from unittest.mock import patch
+
+        with patch('booking.views._npu_v2_request') as mock_req:
+            resp = self.client.post(reverse('external_access'), data={
+                'first_name': '', 'last_name': 'ใจดี', 'citizen_id': '',
+            })
+        self.assertContains(resp, 'กรุณากรอกชื่อและนามสกุล')
+        mock_req.assert_not_called()
+
+    def test_bad_citizen_id_when_provided_rejected(self):
+        from unittest.mock import patch
+
+        with patch('booking.views._npu_v2_request') as mock_req:
+            resp = self.client.post(reverse('external_access'), data={
+                'first_name': 'สมชาย', 'last_name': 'ใจดี', 'citizen_id': '123',
+            })
+        self.assertContains(resp, 'ต้องเป็นตัวเลข 13 หลัก')
+        mock_req.assert_not_called()

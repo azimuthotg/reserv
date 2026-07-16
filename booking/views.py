@@ -489,9 +489,12 @@ def booking_success(request):
 def external_access(request):
     """หน้าสาธารณะให้บุคคลภายนอกขอรหัสเข้าห้องสมุด (ไม่ใช่ LIFF/ไม่ใช่ staff)
 
-    กรอกชื่อ-สกุล + เลขบัตรประชาชน 13 หลัก → reserv backend (ถือ JWT) เรียก
-    POST /v2/external/issue/ → ได้ access_code 10 หลัก → render เป็น QR (ใช้ได้เฉพาะวันนี้)
+    กรอกชื่อ-สกุล (บังคับ) + เลขบัตรประชาชน 13 หลัก (ไม่บังคับ) → reserv backend (ถือ JWT)
+    เรียก POST /v2/external/issue/ → ได้ access_code 10 หลัก → render เป็น QR (ใช้ได้เฉพาะวันนี้)
     การตรวจ checksum/อนุมัติ/จัดสรรรหัส ทำฝั่ง api ทั้งหมด
+
+    หมายเหตุ: เลขบัตรเป็น optional ตามนโยบายปัจจุบัน (บังคับแค่ชื่อ-สกุล) — ฝั่ง api ต้อง
+    ยอมออกรหัสเมื่อไม่ส่ง citizen_id ด้วย มิฉะนั้นจะได้ 400 ถ้าไม่กรอกเลขบัตร ดู MEM.md
     """
     ctx = {'form': {'first_name': '', 'last_name': '', 'citizen_id': ''}}
 
@@ -504,18 +507,18 @@ def external_access(request):
     ctx['form'] = {'first_name': first_name, 'last_name': last_name, 'citizen_id': citizen_id}
 
     # ตรวจเบื้องต้นฝั่ง reserv (api เป็นผู้ตรวจ checksum จริง)
+    # นโยบาย: บังคับชื่อ-สกุล, เลขบัตรเป็น optional — ถ้ากรอกมาต้องเป็นตัวเลข 13 หลัก
     if not first_name or not last_name:
         ctx['error'] = 'กรุณากรอกชื่อและนามสกุลให้ครบ'
         return render(request, 'booking/external.html', ctx)
-    if not (citizen_id.isdigit() and len(citizen_id) == 13):
-        ctx['error'] = 'เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก'
+    if citizen_id and not (citizen_id.isdigit() and len(citizen_id) == 13):
+        ctx['error'] = 'หากกรอกเลขบัตรประชาชน ต้องเป็นตัวเลข 13 หลัก'
         return render(request, 'booking/external.html', ctx)
 
-    resp = _npu_v2_request('POST', '/v2/external/issue/', json={
-        'citizen_id': citizen_id,
-        'first_name': first_name,
-        'last_name':  last_name,
-    })
+    payload = {'first_name': first_name, 'last_name': last_name}
+    if citizen_id:
+        payload['citizen_id'] = citizen_id
+    resp = _npu_v2_request('POST', '/v2/external/issue/', json=payload)
 
     if resp is None:
         ctx['error'] = 'ระบบไม่พร้อมให้บริการขณะนี้ กรุณาลองใหม่หรือติดต่อเจ้าหน้าที่'
