@@ -9,8 +9,8 @@ deploy_method: NSSM + Waitress (service reserv-booking) ผ่าน gateway IIS
 deploy_db: MySQL `reserv_db` บนเครื่อง api.npu.ac.th (202.29.55.217)
 deploy_notes:
   - restart: nssm restart reserv-booking
-progress: 96
-phase: ระบบใช้งานจริง (production) ครบ 4 phase แล้ว — งานล่าสุด (รายวันไม่บังคับเลขบัตร) push แล้วทั้ง 2 repo รอ deploy prod + e2e · เหลือรอทีมประตูเทส QR code
+progress: 98
+phase: ระบบใช้งานจริง (production) ครบ 4 phase แล้ว — external access ปิดครบวงจร (deploy+e2e+ทีมประตูเทส QR ผ่านทั้งรายวันและถาวร) · เหลือเฉพาะงาน enhancement (analytics export, วันหยุดอัตโนมัติ)
 done_2026-07-10:
   - ✅ push ค้างทั้ง 2 repo (reserv+apiproject) ขึ้น GitHub สำเร็จ (แก้จากฝั่ง Windows แทน WSL token ที่หมดอายุ)
   - ✅ deploy prod ทั้ง reserv+apiproject (git pull+restart, ไม่มี migration) เรียบร้อย เทส prod ผ่าน
@@ -21,9 +21,9 @@ done_2026-07-13:
 done_2026-07-16:
   - ✅ บุคคลภายนอกรายวัน (`/external/`) ไม่บังคับเลขบัตร — บังคับแค่ชื่อ-สกุล, แก้ 2 ฝั่ง (reserv `external_access()`+template / api `/v2/external/issue/` gen ref-id `V` เมื่อไม่ส่งเลขบัตร), test reserv 17/17 + api 22/22 — push แล้วทั้ง 2 repo (reserv `336d4e2`, apiproject `2ad5701`)
   - ✅ อัปเดตคู่มือแจ้งเจ้าหน้าที่เป็น v1.1 ให้ตรงพฤติกรรมใหม่ [doc/external-access-manual.docx](doc/external-access-manual.docx)
+  - ✅ deploy prod ทั้ง 2 repo (apiproject → reserv + restart) + เทส prod ผ่าน — รายวันกรอกแค่ชื่อ-สกุลได้ QR สมบูรณ์
+  - ✅ **ทีมประตูเทส QR จริงผ่านแล้วทั้ง 2 แบบ (รายวัน + ถาวร)** — ปิดงาน external access ครบวงจร (task ค้างตั้งแต่ 2026-07-12)
 next:
-  - deploy prod งานรายวันไม่บังคับเลขบัตร — **deploy apiproject ก่อน** (`deploy.ps1`) แล้วค่อย reserv (`git pull` + `nssm restart reserv-booking`) จากนั้น e2e: `/external/` กรอกแค่ชื่อ-สกุล ต้องได้ QR
-  - แจ้งทีมประตูให้เอา QR code ไปทดสอบว่าเข้าได้จริงหรือไม่ (route รหัส 10 หลัก → `/v2/external/check/` ฝั่ง api พร้อมแล้ว)
   - export PDF/Excel จากหน้า analytics — ค้างเป็น task (spawn แล้ว 2026-07-09) รอทำเมื่อมีความต้องการจริง (ดู MEM.md: embed ฟอนต์ TH Sarabun New กันตัวอักษรหาย)
   - ทำฟีเจอร์เพิ่มวันหยุดอัตโนมัติในตารางวันหยุด (ตอนนี้ต้องเพิ่มเองทีละวัน) — รับแจ้ง 2026-07-12
 risks:
