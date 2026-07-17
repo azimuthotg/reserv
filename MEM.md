@@ -5,11 +5,35 @@
 
 ## ปัญหา & วิธีแก้
 
+### 2026-07-17 — ⚠️ `.env` ในเครื่อง dev ชี้ MySQL production จริง (กับดัก)
+`.env` ชี้ `DB_HOST=202.29.55.213 / reserv_db` ซึ่งเป็น **ฐานเดียวกับที่ production ใช้**
+(ยืนยันแล้ว: prod มองเห็นข้อมูลที่เขียนจากเครื่อง dev) → `python manage.py migrate` บนเครื่อง dev
+**ลงฐาน production ทันที** ไม่มี DB ทดสอบแยก
+**บทเรียน:** ก่อนรัน `migrate`/สคริปต์เขียนข้อมูลบนเครื่อง dev ให้เช็ค `settings.DATABASES['default']['HOST']` ก่อนเสมอ
+และเช็คว่ามี migration ค้างที่ยังไม่ตั้งใจ apply หรือไม่ด้วย (`python manage.py showmigrations booking`)
+**เคสจริง:** 2026-07-17 ตอน migrate ฟีเจอร์อุปกรณ์ส่วนกลาง มี `0011_update_room_hours` ค้างอยู่ก่อนแล้ว
+เลยถูก apply ไปด้วย — มันสั่ง `Room.objects.all().update(open_time=08:30, close_time=16:30)` **ทุกห้อง**
+ผลตรงกับเวลาบริการวันธรรมดาใน CLAUDE.md อยู่แล้วจึงไม่เสียหาย แต่**กู้ค่าเดิมไม่ได้**
+**ผลพลอยได้:** ตอน deploy ฟีเจอร์ที่มี migration จากเครื่องนี้ **ไม่ต้องรัน migrate บนเซิร์ฟเวอร์**
+เพราะฐานถูก migrate ไปแล้ว — แค่ `git pull` + `nssm restart reserv-booking`
+**หมายเหตุ:** PROJECT-STATUS เดิมเขียน `deploy_db` เป็น `202.29.55.217` (api.npu.ac.th) ซึ่งไม่ตรงกับ `.env` จริง — แก้เป็น `.213` แล้ว 2026-07-17
+
 ### 2026-07-09 — ฟอนต์ไทยหายตอน export PDF
 เวลาทำฟีเจอร์ export PDF (เช่น จากหน้า analytics) **ต้อง embed ฟอนต์ TH Sarabun New ใน PDF**
 ไม่งั้นตัวอักษรไทยจะหาย/กลายเป็นกล่องว่าง
 
 ## การตัดสินใจ
+
+### 2026-07-17 — อุปกรณ์ที่ไม่สังกัดห้อง = "อุปกรณ์ส่วนกลาง" ไม่ใช่ Room ปลอม
+flip gate (ประตูทางเข้า) ไม่สังกัดห้องจองใด เลือกทำเป็น `RoomDevice` ที่ `room=None` + `group_name`
+แทนการสร้าง `Room` ปลอมมารองรับ
+**เหตุผล:** `Room` ลาก `open_time`/`close_time` ติดมาด้วย ซึ่งเวลาใน Room มีความหมายกับ "การจอง" เท่านั้น
+แต่ flip gate มีตารางของตัวเองใน HA (เปิด 07:20 ปิด 17:00) ต่างจากห้องจอง (automation `Close ALL` ปิด 16:30
+และ **ไม่แตะ gate**) ถ้าเป็น Room จะได้เวลาที่ไม่ตรงความจริงติดมา แถมโผล่ในหน้าจอง/ปฏิทิน/สถิติโดยไม่จำเป็น
+**ขอบเขต:** ฝั่ง Django **ไม่มี logic เรื่องเวลาของอุปกรณ์ส่วนกลางเลย** — ปล่อยให้ HA automation คุมทั้งหมด
+หน้า `/manage/iot-monitor/` ทำแค่ดูสถานะ + ให้ staff override ด้วยมือ
+**ถ้าจะเพิ่มอุปกรณ์ส่วนกลางตัวใหม่:** เพิ่มผ่าน Django Admin (`/admin/`) ตั้ง `room` ว่าง + `group_name`
+ไม่ต้องแก้โค้ด — หน้า monitor จับกลุ่มให้เอง (หน้า `manage_room_devices` ใช้ไม่ได้เพราะเป็นหน้าราย "ห้อง")
 
 ### 2026-07-16 — day flow (/external/): บังคับชื่อ-สกุล, เลขบัตรเป็น optional
 เลือกแนวทาง B (เลขบัตร optional) แทนแนวทาง A (รวมโมเดล คีย์ด้วยเลขบัตร แบบ permanent)
@@ -23,6 +47,22 @@
 (default 100/วัน ขยายด้วย `python manage.py seed_access_codes --count N` ฝั่ง api)
 
 ## บันทึกงานที่ทำ (changelog)
+
+### 2026-07-17
+- ✅ **อุปกรณ์ส่วนกลางในหน้า IoT Monitor — flip gate 1-3** (deploy + เทส prod ผ่านแล้ว)
+  ดูรายละเอียดครบใน [doc/progress-2026-07-17.md](doc/progress-2026-07-17.md)
+  - `RoomDevice.room` ให้ว่างได้ + เพิ่ม `group_name` (migration `0012`), รวม logic จัดกลุ่มไว้ที่
+    helper กลาง `_iot_cards()` ใน [booking/manage_views.py](booking/manage_views.py) แล้วให้หน้า monitor,
+    refresh, แจ้งกลุ่ม LINE และ `morning_iot_report` ใช้ร่วมกัน (เดิม 4 จุดต่างคนต่าง loop ห้องเอง)
+  - ลงทะเบียน `RoomDevice` ใน Django Admin (เดิมไม่มี) เพื่อจัดการอุปกรณ์กลุ่มที่ไม่มีหน้าห้อง
+  - push แล้ว: `be97232` (ฟีเจอร์) + `6fc7113` (คำบรรยายหน้า) → `origin/master`
+- 📌 **entity_id ของ flip gate** (Sonoff S40TPB Lite, HA area `flip gate` บน floor `ชั้น1`):
+  gate1 `switch.sonoff_10018d4dfb_1` · gate2 `switch.sonoff_10018d50d7_1` · gate3 `switch.sonoff_10018d5622_1`
+  — HA automation `start flip gate` เปิด 07:20 / `stop flip gate` ปิด 17:00 (ดูโปรเจกต์ `C:\projects\ha`)
+- ⚠️ **key ของการ์ดกลุ่มใช้ md5 ย่อ ไม่ใช่ slugify** — `slugify(name, allow_unicode=True)` **ตัดสระ/วรรณยุกต์ไทยทิ้ง**
+  (`อุปกรณ์ส่วนกลาง` → `อปกรณสวนกลาง`) ชื่อที่ต่างกันจึงเหลือ slug เดียวกันได้ ระวังถ้าจะใช้ slugify กับข้อความไทยที่อื่น
+- ⚠️ **JSON ของ `/manage/iot-monitor/refresh/` เปลี่ยน shape** — จาก `{rooms:[{room_name, room_key,…}]}`
+  เป็น `{cards:[{name, key,…}]}` (ตรวจแล้วไม่มี consumer อื่นนอกจากหน้า monitor)
 
 ### 2026-07-16
 - ✅ day flow `/external/` — ปลดบังคับเลขบัตร (**แก้ครบ 2 ฝั่ง reserv+apiproject**):
