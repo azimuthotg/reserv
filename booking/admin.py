@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Booking, BookingLog, HolidayDate, LineUser, Room, RoomClosure
+from .models import Booking, BookingLog, HolidayDate, LineUser, Room, RoomClosure, RoomDevice
 
 
 class BookingLogInline(admin.TabularInline):
@@ -33,6 +33,14 @@ class RoomAdmin(admin.ModelAdmin):
     list_display  = ('name', 'booking_name', 'capacity', 'location', 'open_time', 'close_time', 'is_active')
     list_editable = ('is_active',)
     search_fields = ('name', 'booking_name')
+
+
+@admin.register(RoomDevice)
+class RoomDeviceAdmin(admin.ModelAdmin):
+    list_display  = ('device_name', 'owner_name', 'entity_id', 'order')
+    list_filter   = ('room', 'group_name')
+    search_fields = ('device_name', 'entity_id', 'group_name')
+    ordering      = ('room', 'group_name', 'order')
 
 
 @admin.register(LineUser)

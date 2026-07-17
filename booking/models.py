@@ -29,7 +29,11 @@ class Room(models.Model):
 
 
 class RoomDevice(models.Model):
-    room        = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='devices')
+    # room ว่างได้ = อุปกรณ์หลังบ้านที่ไม่สังกัดห้องจอง (เช่น flip gate ทางเข้า)
+    # อุปกรณ์แบบนี้จับกลุ่มด้วย group_name และเห็นเฉพาะหน้า IoT Monitor ของ admin เท่านั้น
+    room        = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='devices',
+                                    null=True, blank=True, verbose_name='ห้อง')
+    group_name  = models.CharField(max_length=100, blank=True, verbose_name='กลุ่มอุปกรณ์ (ใช้เมื่อไม่สังกัดห้อง)')
     device_name = models.CharField(max_length=100, verbose_name='ชื่ออุปกรณ์')
     entity_id   = models.CharField(max_length=200, verbose_name='Entity ID (Home Assistant)')
     order       = models.PositiveSmallIntegerField(default=0, verbose_name='ลำดับ')
@@ -37,8 +41,14 @@ class RoomDevice(models.Model):
     class Meta:
         ordering = ['order', 'id']
 
+    @property
+    def owner_name(self):
+        if self.room_id:
+            return self.room.name
+        return self.group_name or 'ไม่ระบุกลุ่ม'
+
     def __str__(self):
-        return f'{self.room.name} — {self.device_name}'
+        return f'{self.owner_name} — {self.device_name}'
 
 
 class LineUser(models.Model):

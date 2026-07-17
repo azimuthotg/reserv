@@ -8,7 +8,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from booking.models import Room, RoomDevice
+from booking.manage_views import _iot_cards
 
 LINE_PUSH_URL = 'https://api.line.me/v2/bot/message/push'
 
@@ -58,7 +58,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         now = timezone.localtime(timezone.now())
-        rooms = Room.objects.filter(is_active=True).prefetch_related('devices')
 
         all_ok    = True
         room_lines = []
@@ -66,8 +65,8 @@ class Command(BaseCommand):
         total_offline = 0
         total_unknown = 0
 
-        for room in rooms:
-            devices = list(room.devices.all())
+        for card in _iot_cards():
+            devices = card['devices']
             if not devices:
                 continue
 
@@ -95,7 +94,7 @@ class Command(BaseCommand):
                 all_ok = False
 
             status_icon = '✅' if room_ok else '⚠️'
-            room_lines.append(f'{status_icon} {room.name}')
+            room_lines.append(f'{status_icon} {card["name"]}')
             room_lines.extend(device_lines)
 
         # สร้างข้อความสรุป

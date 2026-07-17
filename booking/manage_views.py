@@ -1,3 +1,4 @@
+import hashlib
 import json
 from collections import defaultdict
 from datetime import date, datetime, timedelta
@@ -655,10 +656,39 @@ def manage_room_device_delete(request, pk):
     device = get_object_or_404(RoomDevice, pk=pk)
     room_pk = device.room_id
     device.delete()
+    if room_pk is None:      # อุปกรณ์กลุ่มที่ไม่สังกัดห้อง ไม่มีหน้าห้องให้กลับไป
+        return redirect('manage_iot_monitor')
     return redirect('manage_room_devices', pk=room_pk)
 
 
 # ── IoT Monitor (staff) ────────────────────────────────────────────────────────
+
+def _iot_cards():
+    """คืนการ์ดทั้งหมดของหน้า IoT Monitor เรียงห้องที่เปิดใช้งานก่อน
+    แล้วตามด้วยกลุ่มอุปกรณ์หลังบ้านที่ไม่สังกัดห้อง (room=None) จับกลุ่มตาม group_name
+    """
+    cards = []
+    for room in Room.objects.filter(is_active=True).prefetch_related('devices'):
+        cards.append({
+            'key':     f'room-{room.booking_name}',
+            'name':    room.name,
+            'devices': list(room.devices.all()),
+        })
+
+    groups = {}
+    for d in RoomDevice.objects.filter(room__isnull=True).order_by('group_name', 'order', 'id'):
+        groups.setdefault(d.group_name or 'ไม่ระบุกลุ่ม', []).append(d)
+    for name, devices in groups.items():
+        # ใช้ hash ของชื่อกลุ่มเป็น key เพราะ slugify ตัดสระ/วรรณยุกต์ไทยทิ้ง
+        # ทำให้ชื่อที่ต่างกันเหลือ slug เดียวกันได้ ส่วน key นี้ใช้เป็น id ใน DOM เท่านั้น
+        digest = hashlib.md5(name.encode('utf-8')).hexdigest()[:8]
+        cards.append({
+            'key':     f'group-{digest}',
+            'name':    name,
+            'devices': devices,
+        })
+    return cards
+
 
 def _ha_get_state_manage(entity_id):
     """ดึงสถานะ HA สำหรับหน้า monitor คืน dict {state, error}"""
@@ -730,14 +760,9 @@ def manage_iot_device_control(request, pk):
 
 @staff_required
 def manage_iot_monitor(request):
-    """หน้า IoT Monitor — แสดงสถานะอุปกรณ์ทุกห้อง"""
-    rooms = Room.objects.filter(is_active=True).prefetch_related('devices')
-    room_data = []
-    for room in rooms:
-        devices = list(room.devices.all())
-        room_data.append({'room': room, 'devices': devices, 'has_devices': bool(devices)})
+    """หน้า IoT Monitor — แสดงสถานะอุปกรณ์ทุกห้อง + กลุ่มอุปกรณ์หลังบ้าน"""
     return render(request, 'booking/manage/iot_monitor.html', {
-        'room_data':        room_data,
+        'cards':            _iot_cards(),
         'ha_configured':    bool(getattr(settings, 'HA_IP', '') and getattr(settings, 'HA_TOKEN', '')),
         'group_configured': bool(getattr(settings, 'LINE_GROUP_ID', '')),
     })
@@ -752,13 +777,12 @@ def manage_iot_notify_group(request):
     from django.http import JsonResponse
     from django.utils import timezone
 
-    rooms = Room.objects.filter(is_active=True).prefetch_related('devices')
     all_ok = True
     total_online = total_offline = total_unknown = 0
     room_lines = []
 
-    for room in rooms:
-        devices = list(room.devices.all())
+    for card in _iot_cards():
+        devices = card['devices']
         if not devices:
             continue
         room_ok = True
@@ -782,7 +806,7 @@ def manage_iot_notify_group(request):
         if not room_ok:
             all_ok = False
         status_icon = '✅' if room_ok else '⚠️'
-        room_lines.append(f'{status_icon} {room.name}')
+        room_lines.append(f'{status_icon} {card["name"]}')
         room_lines.extend(device_lines)
 
     now      = timezone.localtime(timezone.now())
@@ -818,14 +842,13 @@ def manage_iot_notify_group(request):
 def manage_iot_refresh(request):
     """
     GET /manage/iot-monitor/refresh/
-    คืน JSON สถานะอุปกรณ์ทุกห้อง (เรียกจาก JS ปุ่ม Refresh)
+    คืน JSON สถานะอุปกรณ์ทุกการ์ด (เรียกจาก JS ปุ่ม Refresh)
     """
     from django.http import JsonResponse
-    rooms = Room.objects.filter(is_active=True).prefetch_related('devices')
     result = []
-    for room in rooms:
+    for card in _iot_cards():
         devices = []
-        for d in room.devices.all():
+        for d in card['devices']:
             info = _ha_get_state_manage(d.entity_id)
             devices.append({
                 'id':          d.pk,
@@ -834,8 +857,8 @@ def manage_iot_refresh(request):
                 'state':       info['state'],
                 'error':       info['error'],
             })
-        result.append({'room_name': room.name, 'room_key': room.booking_name, 'devices': devices})
-    return JsonResponse({'rooms': result})
+        result.append({'name': card['name'], 'key': card['key'], 'devices': devices})
+    return JsonResponse({'cards': result})
 
 
 # ── Staff (admin only) ─────────────────────────────────────────────────────────

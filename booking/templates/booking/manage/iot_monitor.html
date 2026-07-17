@@ -61,18 +61,18 @@
 {% endif %}
 
 <div id="monitor-grid" class="row g-3">
-{% for item in room_data %}
-<div class="col-12 col-md-6 col-xl-4" id="room-card-{{ item.room.booking_name }}">
+{% for card in cards %}
+<div class="col-12 col-md-6 col-xl-4" id="iot-card-{{ card.key }}">
     <div class="card h-100 shadow-sm">
         <div class="card-header d-flex justify-content-between align-items-center py-2">
-            <span class="fw-bold" style="font-size:14px;">{{ item.room.name }}</span>
-            <span class="badge bg-secondary room-status-badge" id="badge-{{ item.room.booking_name }}">รอโหลด</span>
+            <span class="fw-bold" style="font-size:14px;">{{ card.name }}</span>
+            <span class="badge bg-secondary room-status-badge" id="badge-{{ card.key }}">รอโหลด</span>
         </div>
         <div class="card-body p-0">
-            {% if item.has_devices %}
-            <table class="table table-sm mb-0" id="table-{{ item.room.booking_name }}">
+            {% if card.devices %}
+            <table class="table table-sm mb-0" id="table-{{ card.key }}">
                 <tbody>
-                {% for d in item.devices %}
+                {% for d in card.devices %}
                 <tr id="row-device-{{ d.pk }}">
                     <td class="ps-3" style="font-size:13px; width:45%;">{{ d.device_name }}</td>
                     <td style="font-size:12px; color:#aaa; width:40%;">{{ d.entity_id }}</td>
@@ -91,7 +91,7 @@
                 </tbody>
             </table>
             {% else %}
-            <div class="text-muted text-center py-3" style="font-size:13px;">ยังไม่มีอุปกรณ์ในห้องนี้</div>
+            <div class="text-muted text-center py-3" style="font-size:13px;">ยังไม่มีอุปกรณ์</div>
             {% endif %}
         </div>
     </div>
@@ -162,17 +162,17 @@ async function refreshStatus() {
         const resp = await fetch(REFRESH_URL);
         const data = await resp.json();
 
-        data.rooms.forEach(room => {
+        data.cards.forEach(card => {
             let roomOk = true;
-            room.devices.forEach(d => {
+            card.devices.forEach(d => {
                 const input = document.querySelector(`.device-toggle-input[data-id="${d.id}"]`);
                 if (input) updateToggleSwitch(input, d.state);
                 if (d.state === null || d.state === 'unavailable') roomOk = false;
             });
 
-            const badge = document.getElementById(`badge-${room.room_key}`);
+            const badge = document.getElementById(`badge-${card.key}`);
             if (badge) {
-                if (!room.devices.length) {
+                if (!card.devices.length) {
                     badge.className = 'badge bg-secondary room-status-badge';
                     badge.textContent = 'ไม่มีอุปกรณ์';
                 } else if (roomOk) {
