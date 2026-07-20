@@ -1239,7 +1239,12 @@ def walai_card(request):
 
 # ── Card login (public — ไม่ผ่าน LIFF) ────────────────────────────────────────
 
-CARD_LOGIN_MAX_ATTEMPTS = 5      # ครั้งต่อ IP
+# Rate limit — นับต่อ "บัญชี" เป็นหลัก ไม่ใช่ต่อ IP
+# เพราะผู้ใช้จริงเกือบทั้งหมดออกเน็ตผ่าน NAT ของมหาลัยหรือค่ายมือถือ = แชร์ IP กัน
+# ถ้านับต่อ IP คนเดียวพิมพ์ผิดครบโควตาแล้วจะล็อกทุกคนที่อยู่หลัง IP เดียวกันไปด้วย
+CARD_LOGIN_MAX_ATTEMPTS = 5      # ครั้งต่อ 1 รหัสผู้ใช้ — กันเดารหัสผ่านรายบัญชี
+CARD_LOGIN_IP_MAX       = 60     # ครั้งต่อ IP — กันกวาดรหัสทีละหลายบัญชี ตั้งหลวมพอ
+                                 # ให้ทั้งวิทยาเขตที่แชร์ IP ใช้งานตามปกติได้
 CARD_LOGIN_WINDOW_SEC   = 300    # ภายใน 5 นาที
 
 # "จดจำฉันไว้" — ใช้ signed cookie แยกต่างหาก ไม่ใช้ Django session
@@ -1306,27 +1311,31 @@ def card_login(request):
     remember  = bool(request.POST.get('remember'))
     ctx['form'] = {'user_ldap': user_ldap, 'remember': remember}
 
-    # ── Rate limit ต่อ IP — กันเดารหัสผ่าน AD เพราะหน้านี้เปิดสาธารณะ ───────────
-    cache_key = f'card_login_fail:{_client_ip(request)}'
-    if cache.get(cache_key, 0) >= CARD_LOGIN_MAX_ATTEMPTS:
-        ctx['error'] = 'พยายามเข้าสู่ระบบผิดหลายครั้งเกินไป กรุณารอสักครู่แล้วลองใหม่'
-        return render(request, 'booking/card_login.html', ctx)
-
     if not user_ldap or not password:
         ctx['error'] = 'กรุณากรอกรหัสผู้ใช้และรหัสผ่านให้ครบ'
         return render(request, 'booking/card_login.html', ctx)
 
+    # ── Rate limit — กันเดารหัสผ่าน AD เพราะหน้านี้เปิดสาธารณะ ─────────────────
+    user_key = f'card_login_fail:u:{user_ldap.lower()}'
+    ip_key   = f'card_login_fail:ip:{_client_ip(request)}'
+    if (cache.get(user_key, 0) >= CARD_LOGIN_MAX_ATTEMPTS or
+            cache.get(ip_key, 0) >= CARD_LOGIN_IP_MAX):
+        ctx['error'] = 'พยายามเข้าสู่ระบบผิดหลายครั้งเกินไป กรุณารอสักครู่แล้วลองใหม่'
+        return render(request, 'booking/card_login.html', ctx)
+
     if not _verify_ldap(user_ldap, password):
         # นับเฉพาะครั้งที่ผิดจริง — ใส่ค่าเริ่มพร้อม timeout ก่อนแล้วค่อย incr
-        cache.add(cache_key, 0, CARD_LOGIN_WINDOW_SEC)
-        try:
-            cache.incr(cache_key)
-        except ValueError:
-            cache.set(cache_key, 1, CARD_LOGIN_WINDOW_SEC)
+        for key in (user_key, ip_key):
+            cache.add(key, 0, CARD_LOGIN_WINDOW_SEC)
+            try:
+                cache.incr(key)
+            except ValueError:
+                cache.set(key, 1, CARD_LOGIN_WINDOW_SEC)
         ctx['error'] = 'รหัสผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'
         return render(request, 'booking/card_login.html', ctx)
 
-    cache.delete(cache_key)
+    # ล็อกอินผ่าน — ล้างเฉพาะตัวนับของบัญชีนี้ ตัวนับ IP ยังเดินต่อ
+    cache.delete(user_key)
 
     ctx['qr'] = _card_login_qr_value(user_ldap)
     resp = render(request, 'booking/card_login.html', ctx)
