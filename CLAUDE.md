@@ -26,13 +26,16 @@ done_2026-07-16:
   - ✅ **ทีมประตูเทส QR จริงผ่านแล้วทั้ง 2 แบบ (รายวัน + ถาวร)** — ปิดงาน external access ครบวงจร (task ค้างตั้งแต่ 2026-07-12)
 done_2026-07-17:
   - ✅ **อุปกรณ์ส่วนกลางในหน้า IoT Monitor — flip gate 1-3** (deploy + เทส prod ผ่านแล้ว) — `RoomDevice.room` ว่างได้ + `group_name` (migration `0012`), รวม logic ไว้ที่ helper กลาง `_iot_cards()`, ลงทะเบียน RoomDevice ใน Django Admin — push `be97232` + `6fc7113` → origin/master (ดู doc/progress-2026-07-17.md)
+done_2026-07-20:
+  - ✅ **หน้าแก้ไขชื่อ-สกุลสมาชิกถาวร** `/manage/external/<id>/edit/` — proxy ไป `/v2/external/permanent/<id>/update/` ของ api (ใหม่), เปลี่ยนรูปได้ (เว้นว่าง = ใช้รูปเดิม), เพิ่มปุ่ม "แก้ไข" ในหน้ารายละเอียด — push `379d456` จับคู่ apiproject `e14897d` · deploy prod ทั้ง 2 repo + เทสจริงผ่าน
 next:
+  - เพิ่ม test ให้หน้าแก้ไขสมาชิกถาวร `/manage/external/<id>/edit/` (deploy+เทสมือผ่านแล้ว แต่ยังไม่มีเคส)
   - export PDF/Excel จากหน้า analytics — ค้างเป็น task (spawn แล้ว 2026-07-09) รอทำเมื่อมีความต้องการจริง (ดู MEM.md: embed ฟอนต์ TH Sarabun New กันตัวอักษรหาย)
   - ทำฟีเจอร์เพิ่มวันหยุดอัตโนมัติในตารางวันหยุด (ตอนนี้ต้องเพิ่มเองทีละวัน) — รับแจ้ง 2026-07-12
 risks:
   - รายวันไม่บังคับเลขบัตร → ระงับสิทธิ์/โควตารายคนใช้ไม่ได้ + pool 100 รหัส/วันอาจหมดเร็ว (ดู MEM.md — มีแผนถอย)
   - .env เครื่อง dev ชี้ DB production ตัวเดียวกัน ไม่มีฐานทดสอบแยก → migrate/สคริปต์เขียนข้อมูลลงฐานจริงทันที (ดู MEM.md)
-updated: 2026-07-17
+updated: 2026-07-20
 -->
 
 # CLAUDE.md
