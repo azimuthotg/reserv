@@ -66,6 +66,9 @@
 
             <hr>
             <div class="d-flex gap-2">
+                <a href="{% url 'manage_external_edit' member.citizen_id %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-pencil"></i> แก้ไข
+                </a>
                 {% if member.status != 'active' %}
                 <form method="post" action="{% url 'manage_external_approve' member.citizen_id %}">
                     {% csrf_token %}

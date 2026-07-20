@@ -82,6 +82,7 @@ urlpatterns = [
     path('manage/external/',                       manage_views.manage_external_list,     name='manage_external_list'),
     path('manage/external/register/',              manage_views.manage_external_register, name='manage_external_register'),
     path('manage/external/<str:citizen_id>/',         manage_views.manage_external_detail,  name='manage_external_detail'),
+    path('manage/external/<str:citizen_id>/edit/',    manage_views.manage_external_edit,    name='manage_external_edit'),
     path('manage/external/<str:citizen_id>/approve/', manage_views.manage_external_approve, name='manage_external_approve'),
     path('manage/external/<str:citizen_id>/revoke/',  manage_views.manage_external_revoke,  name='manage_external_revoke'),
     path('manage/external/<str:citizen_id>/delete/',  manage_views.manage_external_delete,  name='manage_external_delete'),

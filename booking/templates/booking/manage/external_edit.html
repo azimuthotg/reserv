@@ -1,0 +1,44 @@
+{% extends "booking/manage/base.html" %}
+{% block title %}แก้ไขสมาชิกถาวร{% endblock %}
+{% block page_title %}แก้ไขข้อมูลสมาชิกถาวร{% endblock %}
+
+{% block content %}
+<div class="table-card" style="max-width:520px;padding:24px;">
+    <p class="text-muted" style="font-size:13px;">
+        แก้ไขได้เฉพาะชื่อ-สกุลและรูปถ่าย — สถานะและรหัสถาวรไม่เปลี่ยน
+        {% if citizen_id|slice:":1" == "V" %}
+        (รหัสอ้างอิง <strong>{{ citizen_id }}</strong>)
+        {% else %}
+        (เลขบัตร <strong>{{ citizen_id }}</strong>)
+        {% endif %}
+    </p>
+    <form method="post" enctype="multipart/form-data" action="{% url 'manage_external_edit' citizen_id %}">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label" style="font-size:13px;font-weight:600;">ชื่อ</label>
+            <input type="text" name="first_name" class="form-control" value="{{ form.first_name }}" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label" style="font-size:13px;font-weight:600;">นามสกุล</label>
+            <input type="text" name="last_name" class="form-control" value="{{ form.last_name }}" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label" style="font-size:13px;font-weight:600;">
+                รูปถ่าย <span class="text-muted" style="font-weight:400;">— เลือกไฟล์ใหม่เฉพาะเมื่อต้องการเปลี่ยน</span>
+            </label>
+            {% if member.has_photo %}
+            <div class="mb-2">
+                <img src="{% url 'manage_external_photo' citizen_id %}" alt=""
+                     style="width:80px;height:80px;border-radius:10px;object-fit:cover;">
+            </div>
+            {% endif %}
+            <input type="file" name="photo" class="form-control" accept="image/*">
+            <div class="form-text" style="font-size:12px;">เว้นว่างไว้ = ใช้รูปเดิม</div>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-green">บันทึก</button>
+            <a href="{% url 'manage_external_detail' citizen_id %}" class="btn btn-outline-secondary">ยกเลิก</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

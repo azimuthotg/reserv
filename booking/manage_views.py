@@ -1056,6 +1056,63 @@ def manage_external_detail(request, citizen_id):
 
 
 @staff_required
+def manage_external_edit(request, citizen_id):
+    """แก้ไขชื่อ-สกุล (และรูป ถ้าเลือกไฟล์ใหม่) — ไม่แตะสถานะ/รหัสถาวรที่ api"""
+    if request.method == 'POST':
+        first_name = request.POST.get('first_name', '').strip()
+        last_name  = request.POST.get('last_name', '').strip()
+        photo      = request.FILES.get('photo')
+
+        files = None
+        if photo:
+            # อ่านเป็น bytes เพื่อให้ retry (กรณี 401) ส่งซ้ำได้
+            files = {'photo': (photo.name, photo.read(), photo.content_type)}
+
+        resp = _npu_v2_request(
+            'POST', f'/v2/external/permanent/{citizen_id}/update/',
+            data={'first_name': first_name, 'last_name': last_name},
+            files=files,
+        )
+
+        if resp is None:
+            messages.error(request, 'เชื่อมต่อ NPU API ไม่ได้')
+        elif resp.status_code == 200:
+            messages.success(request, 'แก้ไขข้อมูลสมาชิกแล้ว')
+            return redirect('manage_external_detail', citizen_id=citizen_id)
+        elif resp.status_code == 400:
+            messages.error(request, 'ข้อมูลไม่ถูกต้อง — ต้องกรอกทั้งชื่อและนามสกุล')
+        elif resp.status_code == 404:
+            messages.error(request, 'ไม่พบสมาชิกถาวรรายนี้')
+            return redirect('manage_external_list')
+        else:
+            messages.error(request, f'แก้ไขไม่สำเร็จ (NPU API {resp.status_code})')
+
+        return render(request, 'booking/manage/external_edit.html', {
+            'form': {'first_name': first_name, 'last_name': last_name},
+            'citizen_id': citizen_id,
+        })
+
+    # GET → ดึงข้อมูลปัจจุบันมาเติมในฟอร์ม
+    resp = _npu_v2_request('GET', f'/v2/external/permanent/{citizen_id}/')
+    if resp is None:
+        messages.error(request, 'เชื่อมต่อ NPU API ไม่ได้')
+        return redirect('manage_external_detail', citizen_id=citizen_id)
+    if resp.status_code == 404:
+        messages.error(request, 'ไม่พบสมาชิกถาวรรายนี้')
+        return redirect('manage_external_list')
+    if resp.status_code != 200:
+        messages.error(request, f'NPU API ตอบกลับ {resp.status_code}')
+        return redirect('manage_external_detail', citizen_id=citizen_id)
+
+    member = resp.json()
+    return render(request, 'booking/manage/external_edit.html', {
+        'form': {'first_name': member.get('first_name', ''), 'last_name': member.get('last_name', '')},
+        'member': member,
+        'citizen_id': citizen_id,
+    })
+
+
+@staff_required
 @require_POST
 def manage_external_approve(request, citizen_id):
     """admin อนุมัติ → api ออก permanent_code + active
