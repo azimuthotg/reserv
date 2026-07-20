@@ -1258,61 +1258,9 @@ def _client_ip(request):
     return request.META.get('REMOTE_ADDR', '') or 'unknown'
 
 
-STUDENT_LDAP_LEN = 12   # รหัสนักศึกษาเป็นตัวเลข 12 หลัก นอกนั้นถือเป็นบุคลากร
-
-
-def _fetch_npu_profile_auto(user_ldap):
-    """เดาประเภทผู้ใช้เอง — คืน (profile, user_type) หรือ (None, '') ถ้าไม่พบ
-
-    ใช้จำนวนหลักเป็นตัว "เรียงลำดับ" ว่าจะลอง endpoint ไหนก่อนเท่านั้น
-    ไม่ได้ฟันธง — ถ้าอันแรกไม่เจอยังยิงอีกทางเสมอ รหัสนอกแพตเทิร์นจึงไม่พัง
-    ผู้ใช้จึงไม่ต้องเลือกบุคลากร/นักศึกษาเอง และไม่มีทางเลือกผิดจนบัตรว่าง
-    """
-    looks_like_student = user_ldap.isdigit() and len(user_ldap) == STUDENT_LDAP_LEN
-    order = (
-        ('นักศึกษา', 'บุคลากรภายในมหาวิทยาลัย') if looks_like_student
-        else ('บุคลากรภายในมหาวิทยาลัย', 'นักศึกษา')
-    )
-
-    for user_type in order:
-        profile = _fetch_npu_profile(user_ldap, user_type)
-        if profile:
-            full_name, _, _ = _parse_profile(profile)
-            if full_name:
-                return profile, user_type
-    return None, ''
-
-
-def _walai_status(user_ldap):
-    """เช็คสมาชิก Walai ฝั่ง server — ใช้แทน walai_card() ที่บังคับต้องมี LineUser"""
-    try:
-        resp = requests.get(
-            f'{NPU_API_BASE}/walai/check_user_walai/{user_ldap}/',
-            timeout=10,
-        )
-        if resp.status_code == 200:
-            data = resp.json()
-            return isinstance(data, list) and len(data) > 0
-    except requests.RequestException:
-        pass
-    return False
-
-
-def _card_context(user_ldap):
-    """ประกอบข้อมูลบัตรจาก user_ldap — ดึงโปรไฟล์ + สถานะ Walai สดทุกครั้ง
-
-    ถ้า NPU API ล่มจนดึงโปรไฟล์ไม่ได้ ยังคืนบัตรที่มี QR ใช้งานได้เสมอ
-    เพราะ QR ต้องการแค่ user_ldap — ชื่อ/คณะเป็นส่วนประกอบ ไม่ใช่สิ่งจำเป็น
-    """
-    profile, user_type = _fetch_npu_profile_auto(user_ldap)
-    full_name, faculty, _ = _parse_profile(profile)
-    return {
-        'user_ldap': user_ldap,
-        'full_name': full_name or user_ldap,
-        'user_type': user_type or 'ผู้ใช้บริการ',
-        'faculty':   faculty,
-        'is_member': _walai_status(user_ldap),
-    }
+def _card_login_qr_value(user_ldap):
+    """ค่าที่ใส่ใน QR — ใช้ user_ldap ตรง ๆ ตัวเดียวกับหน้า /card/ ประตูจึงสแกนได้เหมือนกัน"""
+    return user_ldap
 
 
 def _remembered_ldap(request):
@@ -1327,12 +1275,13 @@ def _remembered_ldap(request):
 
 
 def card_login(request):
-    """หน้าสาธารณะ: ล็อกอิน AD → ออก QR เข้าใช้บริการ (ไม่ใช่ LIFF/ไม่ใช่ staff)
+    """หน้าสาธารณะ: ตรวจ AD → ออก QR สแกนเข้าประตู (ไม่ใช่ LIFF/ไม่ใช่ staff)
 
     สำหรับผู้ใช้ที่มาใช้พื้นที่อย่างเดียว ไม่ได้เป็นเพื่อน LINE OA จึงเข้า /card/ ไม่ได้
-    เนื้อใน QR เป็น user_ldap ตัวเดียวกับที่ /card/ ใช้ ประตูจึงสแกนได้เหมือนกันทุกประการ
-    หน้านี้ไม่แตะ LineUser และจองห้องไม่ได้ — การจองยังต้องผ่าน LIFF เท่านั้น
+    ทำงานแค่ 2 ขั้น: ตรวจรหัสกับ AD → ออก QR จบ
+    ไม่ดึงโปรไฟล์ ไม่เช็คสมาชิกห้องสมุด ไม่แตะ LineUser และจองห้องไม่ได้
 
+    เนื้อใน QR เป็น user_ldap ตัวเดียวกับที่ /card/ ใช้ ประตูจึงสแกนได้เหมือนกันทุกประการ
     "จดจำฉันไว้" เก็บแค่ user_ldap ใน signed cookie — ไม่เก็บรหัสผ่านที่ใดทั้งสิ้น
     """
     from django.core.cache import cache
@@ -1348,8 +1297,8 @@ def card_login(request):
     if request.method == 'GET':
         remembered = _remembered_ldap(request)
         if remembered:
-            ctx['card'] = _card_context(remembered)
-            ctx['remembered'] = True
+            # จำได้แล้ว — ออก QR ให้เลย ไม่ต้องยิง API ใดๆ
+            ctx['qr'] = _card_login_qr_value(remembered)
         return render(request, 'booking/card_login.html', ctx)
 
     user_ldap = (request.POST.get('user_ldap') or '').strip()
@@ -1379,7 +1328,7 @@ def card_login(request):
 
     cache.delete(cache_key)
 
-    ctx['card'] = _card_context(user_ldap)
+    ctx['qr'] = _card_login_qr_value(user_ldap)
     resp = render(request, 'booking/card_login.html', ctx)
 
     if remember:
