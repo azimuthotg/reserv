@@ -15,6 +15,8 @@ urlpatterns = [
 
     # ── Virtual Card (LIFF) ───────────────────────────────────────────────────
     path('card/',            views.card_page,         name='card'),
+    # บัตร + QR สำหรับผู้ที่ไม่ได้เป็นเพื่อน LINE OA (public, ล็อกอิน AD, จองไม่ได้)
+    path('card-login/',      views.card_login,        name='card_login'),
     path('room-control/',    views.room_control_page, name='room_control'),
 
     # ── Calendar (public) ─────────────────────────────────────────────────────

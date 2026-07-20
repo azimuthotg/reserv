@@ -1237,6 +1237,113 @@ def walai_card(request):
     return JsonResponse({'is_member': False, 'error': 'ไม่สามารถตรวจสอบ Walai ได้'})
 
 
+# ── Card login (public — ไม่ผ่าน LIFF) ────────────────────────────────────────
+
+CARD_LOGIN_MAX_ATTEMPTS = 5      # ครั้งต่อ IP
+CARD_LOGIN_WINDOW_SEC   = 300    # ภายใน 5 นาที
+
+
+def _client_ip(request):
+    """IP จริงของ client — อยู่หลัง nginx จึงอ่าน X-Forwarded-For ก่อน"""
+    fwd = request.META.get('HTTP_X_FORWARDED_FOR', '')
+    if fwd:
+        return fwd.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR', '') or 'unknown'
+
+
+STUDENT_LDAP_LEN = 12   # รหัสนักศึกษาเป็นตัวเลข 12 หลัก นอกนั้นถือเป็นบุคลากร
+
+
+def _fetch_npu_profile_auto(user_ldap):
+    """เดาประเภทผู้ใช้เอง — คืน (profile, user_type) หรือ (None, '') ถ้าไม่พบ
+
+    ใช้จำนวนหลักเป็นตัว "เรียงลำดับ" ว่าจะลอง endpoint ไหนก่อนเท่านั้น
+    ไม่ได้ฟันธง — ถ้าอันแรกไม่เจอยังยิงอีกทางเสมอ รหัสนอกแพตเทิร์นจึงไม่พัง
+    ผู้ใช้จึงไม่ต้องเลือกบุคลากร/นักศึกษาเอง และไม่มีทางเลือกผิดจนบัตรว่าง
+    """
+    looks_like_student = user_ldap.isdigit() and len(user_ldap) == STUDENT_LDAP_LEN
+    order = (
+        ('นักศึกษา', 'บุคลากรภายในมหาวิทยาลัย') if looks_like_student
+        else ('บุคลากรภายในมหาวิทยาลัย', 'นักศึกษา')
+    )
+
+    for user_type in order:
+        profile = _fetch_npu_profile(user_ldap, user_type)
+        if profile:
+            full_name, _, _ = _parse_profile(profile)
+            if full_name:
+                return profile, user_type
+    return None, ''
+
+
+def _walai_status(user_ldap):
+    """เช็คสมาชิก Walai ฝั่ง server — ใช้แทน walai_card() ที่บังคับต้องมี LineUser"""
+    try:
+        resp = requests.get(
+            f'{NPU_API_BASE}/walai/check_user_walai/{user_ldap}/',
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            return isinstance(data, list) and len(data) > 0
+    except requests.RequestException:
+        pass
+    return False
+
+
+def card_login(request):
+    """หน้าสาธารณะ: ล็อกอิน AD → ออก QR เข้าใช้บริการ (ไม่ใช่ LIFF/ไม่ใช่ staff)
+
+    สำหรับผู้ใช้ที่มาใช้พื้นที่อย่างเดียว ไม่ได้เป็นเพื่อน LINE OA จึงเข้า /card/ ไม่ได้
+    เนื้อใน QR เป็น user_ldap ตัวเดียวกับที่ /card/ ใช้ ประตูจึงสแกนได้เหมือนกันทุกประการ
+    หน้านี้ไม่แตะ LineUser และจองห้องไม่ได้ — การจองยังต้องผ่าน LIFF เท่านั้น
+    """
+    from django.core.cache import cache
+
+    ctx = {'form': {'user_ldap': ''}}
+
+    if request.method == 'GET':
+        return render(request, 'booking/card_login.html', ctx)
+
+    user_ldap = (request.POST.get('user_ldap') or '').strip()
+    password  = request.POST.get('password') or ''
+    ctx['form'] = {'user_ldap': user_ldap}
+
+    # ── Rate limit ต่อ IP — กันเดารหัสผ่าน AD เพราะหน้านี้เปิดสาธารณะ ───────────
+    cache_key = f'card_login_fail:{_client_ip(request)}'
+    if cache.get(cache_key, 0) >= CARD_LOGIN_MAX_ATTEMPTS:
+        ctx['error'] = 'พยายามเข้าสู่ระบบผิดหลายครั้งเกินไป กรุณารอสักครู่แล้วลองใหม่'
+        return render(request, 'booking/card_login.html', ctx)
+
+    if not user_ldap or not password:
+        ctx['error'] = 'กรุณากรอกรหัสผู้ใช้และรหัสผ่านให้ครบ'
+        return render(request, 'booking/card_login.html', ctx)
+
+    if not _verify_ldap(user_ldap, password):
+        # นับเฉพาะครั้งที่ผิดจริง — ใส่ค่าเริ่มพร้อม timeout ก่อนแล้วค่อย incr
+        cache.add(cache_key, 0, CARD_LOGIN_WINDOW_SEC)
+        try:
+            cache.incr(cache_key)
+        except ValueError:
+            cache.set(cache_key, 1, CARD_LOGIN_WINDOW_SEC)
+        ctx['error'] = 'รหัสผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'
+        return render(request, 'booking/card_login.html', ctx)
+
+    cache.delete(cache_key)
+
+    profile, user_type = _fetch_npu_profile_auto(user_ldap)
+    full_name, faculty, _ = _parse_profile(profile)
+
+    ctx['card'] = {
+        'user_ldap': user_ldap,
+        'full_name': full_name or user_ldap,
+        'user_type': user_type or 'ผู้ใช้บริการ',
+        'faculty':   faculty,
+        'is_member': _walai_status(user_ldap),
+    }
+    return render(request, 'booking/card_login.html', ctx)
+
+
 # ── Home Assistant helpers ─────────────────────────────────────────────────────
 
 def _ha_url(path):
