@@ -1242,6 +1242,13 @@ def walai_card(request):
 CARD_LOGIN_MAX_ATTEMPTS = 5      # ครั้งต่อ IP
 CARD_LOGIN_WINDOW_SEC   = 300    # ภายใน 5 นาที
 
+# "จดจำฉันไว้" — ใช้ signed cookie แยกต่างหาก ไม่ใช้ Django session
+# เพราะ session ก้อนเดียวกันถูกใช้โดย Staff Portal (/manage/) ที่ตั้ง SESSION_COOKIE_AGE
+# ไว้ 24 ชม. ถ้าไป set_expiry(90 วัน) ทับ จะกลายเป็นยืดอายุ session ของ staff ตามไปด้วย
+CARD_COOKIE      = 'card_ldap'
+CARD_COOKIE_SALT = 'card-login'
+CARD_REMEMBER_DAYS = 90
+
 
 def _client_ip(request):
     """IP จริงของ client — อยู่หลัง nginx จึงอ่าน X-Forwarded-For ก่อน"""
@@ -1291,23 +1298,64 @@ def _walai_status(user_ldap):
     return False
 
 
+def _card_context(user_ldap):
+    """ประกอบข้อมูลบัตรจาก user_ldap — ดึงโปรไฟล์ + สถานะ Walai สดทุกครั้ง
+
+    ถ้า NPU API ล่มจนดึงโปรไฟล์ไม่ได้ ยังคืนบัตรที่มี QR ใช้งานได้เสมอ
+    เพราะ QR ต้องการแค่ user_ldap — ชื่อ/คณะเป็นส่วนประกอบ ไม่ใช่สิ่งจำเป็น
+    """
+    profile, user_type = _fetch_npu_profile_auto(user_ldap)
+    full_name, faculty, _ = _parse_profile(profile)
+    return {
+        'user_ldap': user_ldap,
+        'full_name': full_name or user_ldap,
+        'user_type': user_type or 'ผู้ใช้บริการ',
+        'faculty':   faculty,
+        'is_member': _walai_status(user_ldap),
+    }
+
+
+def _remembered_ldap(request):
+    """อ่าน user_ldap จาก signed cookie — คืน '' ถ้าไม่มีหรือถูกแก้ไข"""
+    try:
+        return request.get_signed_cookie(
+            CARD_COOKIE, default='', salt=CARD_COOKIE_SALT,
+            max_age=CARD_REMEMBER_DAYS * 86400,
+        ) or ''
+    except Exception:
+        return ''
+
+
 def card_login(request):
     """หน้าสาธารณะ: ล็อกอิน AD → ออก QR เข้าใช้บริการ (ไม่ใช่ LIFF/ไม่ใช่ staff)
 
     สำหรับผู้ใช้ที่มาใช้พื้นที่อย่างเดียว ไม่ได้เป็นเพื่อน LINE OA จึงเข้า /card/ ไม่ได้
     เนื้อใน QR เป็น user_ldap ตัวเดียวกับที่ /card/ ใช้ ประตูจึงสแกนได้เหมือนกันทุกประการ
     หน้านี้ไม่แตะ LineUser และจองห้องไม่ได้ — การจองยังต้องผ่าน LIFF เท่านั้น
+
+    "จดจำฉันไว้" เก็บแค่ user_ldap ใน signed cookie — ไม่เก็บรหัสผ่านที่ใดทั้งสิ้น
     """
     from django.core.cache import cache
 
     ctx = {'form': {'user_ldap': ''}}
 
+    # ── ออกจากระบบ — ลบ cookie แล้วกลับหน้าฟอร์ม ─────────────────────────────
+    if request.GET.get('logout'):
+        resp = render(request, 'booking/card_login.html', ctx)
+        resp.delete_cookie(CARD_COOKIE)
+        return resp
+
     if request.method == 'GET':
+        remembered = _remembered_ldap(request)
+        if remembered:
+            ctx['card'] = _card_context(remembered)
+            ctx['remembered'] = True
         return render(request, 'booking/card_login.html', ctx)
 
     user_ldap = (request.POST.get('user_ldap') or '').strip()
     password  = request.POST.get('password') or ''
-    ctx['form'] = {'user_ldap': user_ldap}
+    remember  = bool(request.POST.get('remember'))
+    ctx['form'] = {'user_ldap': user_ldap, 'remember': remember}
 
     # ── Rate limit ต่อ IP — กันเดารหัสผ่าน AD เพราะหน้านี้เปิดสาธารณะ ───────────
     cache_key = f'card_login_fail:{_client_ip(request)}'
@@ -1331,17 +1379,19 @@ def card_login(request):
 
     cache.delete(cache_key)
 
-    profile, user_type = _fetch_npu_profile_auto(user_ldap)
-    full_name, faculty, _ = _parse_profile(profile)
+    ctx['card'] = _card_context(user_ldap)
+    resp = render(request, 'booking/card_login.html', ctx)
 
-    ctx['card'] = {
-        'user_ldap': user_ldap,
-        'full_name': full_name or user_ldap,
-        'user_type': user_type or 'ผู้ใช้บริการ',
-        'faculty':   faculty,
-        'is_member': _walai_status(user_ldap),
-    }
-    return render(request, 'booking/card_login.html', ctx)
+    if remember:
+        resp.set_signed_cookie(
+            CARD_COOKIE, user_ldap,
+            salt     = CARD_COOKIE_SALT,
+            max_age  = CARD_REMEMBER_DAYS * 86400,
+            secure   = request.is_secure(),
+            httponly = True,          # JS อ่านไม่ได้ ลดผลกระทบถ้าเจอ XSS
+            samesite = 'Lax',
+        )
+    return resp
 
 
 # ── Home Assistant helpers ─────────────────────────────────────────────────────
