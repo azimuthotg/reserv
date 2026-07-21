@@ -13,6 +13,7 @@ from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
@@ -1279,6 +1280,7 @@ def _remembered_ldap(request):
         return ''
 
 
+@never_cache
 def card_login(request):
     """หน้าสาธารณะ: ตรวจ AD → ออก QR สแกนเข้าประตู (ไม่ใช่ LIFF/ไม่ใช่ staff)
 
