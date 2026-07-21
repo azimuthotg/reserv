@@ -1240,12 +1240,11 @@ def walai_card(request):
 
 # ── Card login (public — ไม่ผ่าน LIFF) ────────────────────────────────────────
 
-# Rate limit — นับต่อ "บัญชี" เป็นหลัก ไม่ใช่ต่อ IP
+# Rate limit — นับต่อ "บัญชี" เท่านั้น ไม่นับต่อ IP
 # เพราะผู้ใช้จริงเกือบทั้งหมดออกเน็ตผ่าน NAT ของมหาลัยหรือค่ายมือถือ = แชร์ IP กัน
-# ถ้านับต่อ IP คนเดียวพิมพ์ผิดครบโควตาแล้วจะล็อกทุกคนที่อยู่หลัง IP เดียวกันไปด้วย
-CARD_LOGIN_MAX_ATTEMPTS = 5      # ครั้งต่อ 1 รหัสผู้ใช้ — กันเดารหัสผ่านรายบัญชี
-CARD_LOGIN_IP_MAX       = 60     # ครั้งต่อ IP — กันกวาดรหัสทีละหลายบัญชี ตั้งหลวมพอ
-                                 # ให้ทั้งวิทยาเขตที่แชร์ IP ใช้งานตามปกติได้
+# การนับต่อ IP จะล็อกทุกคนหลัง IP เดียวกันเมื่อรวมกันผิดครบโควตา — กวนผู้ใช้จริง
+# โดยที่โควตาต่อบัญชีก็กันการเดารหัสผ่านรายคนได้อยู่แล้ว
+CARD_LOGIN_MAX_ATTEMPTS = 5      # ครั้งต่อ 1 รหัสผู้ใช้ ภายในกรอบเวลา
 CARD_LOGIN_WINDOW_SEC   = 300    # ภายใน 5 นาที
 
 # "จดจำฉันไว้" — ใช้ signed cookie แยกต่างหาก ไม่ใช้ Django session
@@ -1254,14 +1253,6 @@ CARD_LOGIN_WINDOW_SEC   = 300    # ภายใน 5 นาที
 CARD_COOKIE      = 'card_ldap'
 CARD_COOKIE_SALT = 'card-login'
 CARD_REMEMBER_DAYS = 90
-
-
-def _client_ip(request):
-    """IP จริงของ client — อยู่หลัง nginx จึงอ่าน X-Forwarded-For ก่อน"""
-    fwd = request.META.get('HTTP_X_FORWARDED_FOR', '')
-    if fwd:
-        return fwd.split(',')[0].strip()
-    return request.META.get('REMOTE_ADDR', '') or 'unknown'
 
 
 def _card_login_qr_value(user_ldap):
@@ -1295,8 +1286,10 @@ def card_login(request):
 
     ctx = {'form': {'user_ldap': ''}}
 
-    # ── ออกจากระบบ — ลบ cookie แล้วกลับหน้าฟอร์ม ─────────────────────────────
-    if request.GET.get('logout'):
+    # ── ออกจากระบบ — ลบ cookie แล้วกลับหน้าฟอร์ม (เฉพาะ GET) ──────────────────
+    # เช็คเฉพาะ GET เท่านั้น มิฉะนั้นถ้าฟอร์มถูก POST ไปยัง URL ที่ยังมี ?logout=1
+    # ค้างอยู่ (เช่นเพิ่งกดออกจากระบบมา) จะเข้า branch นี้แทนการตรวจ login
+    if request.method == 'GET' and request.GET.get('logout'):
         resp = render(request, 'booking/card_login.html', ctx)
         resp.delete_cookie(CARD_COOKIE)
         return resp
@@ -1317,26 +1310,23 @@ def card_login(request):
         ctx['error'] = 'กรุณากรอกรหัสผู้ใช้และรหัสผ่านให้ครบ'
         return render(request, 'booking/card_login.html', ctx)
 
-    # ── Rate limit — กันเดารหัสผ่าน AD เพราะหน้านี้เปิดสาธารณะ ─────────────────
+    # ── Rate limit ต่อบัญชี — กันเดารหัสผ่าน AD เพราะหน้านี้เปิดสาธารณะ ─────────
     user_key = f'card_login_fail:u:{user_ldap.lower()}'
-    ip_key   = f'card_login_fail:ip:{_client_ip(request)}'
-    if (cache.get(user_key, 0) >= CARD_LOGIN_MAX_ATTEMPTS or
-            cache.get(ip_key, 0) >= CARD_LOGIN_IP_MAX):
+    if cache.get(user_key, 0) >= CARD_LOGIN_MAX_ATTEMPTS:
         ctx['error'] = 'พยายามเข้าสู่ระบบผิดหลายครั้งเกินไป กรุณารอสักครู่แล้วลองใหม่'
         return render(request, 'booking/card_login.html', ctx)
 
     if not _verify_ldap(user_ldap, password):
         # นับเฉพาะครั้งที่ผิดจริง — ใส่ค่าเริ่มพร้อม timeout ก่อนแล้วค่อย incr
-        for key in (user_key, ip_key):
-            cache.add(key, 0, CARD_LOGIN_WINDOW_SEC)
-            try:
-                cache.incr(key)
-            except ValueError:
-                cache.set(key, 1, CARD_LOGIN_WINDOW_SEC)
+        cache.add(user_key, 0, CARD_LOGIN_WINDOW_SEC)
+        try:
+            cache.incr(user_key)
+        except ValueError:
+            cache.set(user_key, 1, CARD_LOGIN_WINDOW_SEC)
         ctx['error'] = 'รหัสผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'
         return render(request, 'booking/card_login.html', ctx)
 
-    # ล็อกอินผ่าน — ล้างเฉพาะตัวนับของบัญชีนี้ ตัวนับ IP ยังเดินต่อ
+    # ล็อกอินผ่าน — ล้างตัวนับของบัญชีนี้
     cache.delete(user_key)
 
     ctx['qr'] = _card_login_qr_value(user_ldap)

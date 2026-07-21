@@ -270,7 +270,7 @@
       <div class="error-box">⚠️ {{ error }}</div>
       {% endif %}
 
-      <form method="post">
+      <form method="post" action="{% url 'card_login' %}">
         {% csrf_token %}
 
         <label class="form-label" for="id_user_ldap">รหัสผู้ใช้</label>
