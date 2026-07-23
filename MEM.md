@@ -36,11 +36,18 @@
 5 ครั้ง/5 นาที · **บทเรียน:** อย่า rate-limit ต่อ IP กับผู้ใช้ที่อยู่หลัง NAT องค์กร
 (เคยเข้าใจผิดว่านักศึกษาล็อกอิน AD ไม่ได้ — จริง ๆ LDAP ปกติ ตรวจ DB พบนักศึกษาผูก LINE สำเร็จ 76 คนใน 7 วัน)
 
-### 2026-07-22 — ⚠️ (ฝั่ง api) `/std-info/`,`/staff-info/` เปิด public + leak `apassword`
+### 2026-07-22 — ⚠️ (ฝั่ง api) `/std-info/`,`/staff-info/` เปิด public + leak `apassword` → ✅ แก้แล้ว 2026-07-23
 ยิง `GET https://api.npu.ac.th/std-info/{รหัสนักศึกษา}/` **โดยไม่ต้องมี auth header** ได้ HTTP 200
 พร้อมชื่อ-นามสกุล-คณะ-สาขา และมี field **`apassword`** (ค่า 4 หลัก plaintext ไม่ใช่ hash)
 ใครรู้รหัสนักศึกษา 12 หลักก็ดูข้อมูลคนนั้นได้ **เป็นงานฝั่ง api (ไม่ใช่ reserv)** — ควรถอด field `apassword`
 และ/หรือใส่ auth · reserv ใช้ endpoint นี้ผ่าน `_fetch_npu_profile()` (แต่ `/card-login/` ตัวใหม่ไม่เรียกแล้ว)
+
+**อัปเดต 2026-07-23 — ฝั่ง api ดำเนินการแล้ว (deploy + verify prod ผ่าน)** ปิดไป 4 เรื่อง:
+ถอด `apassword` ออกจาก response ทุก endpoint · ปิดสิทธิ์เขียน (`DELETE/PUT/PATCH` → 405 · เดิมเปิดสาธารณะและลบข้อมูลจริงได้)
+· ปิด `list` ดึงทั้งตาราง (→ 403) · ปิด BrowsableAPIRenderer
+**เหลืออยู่:** `retrieve` รายคน (`/std-info/{id}/`) ยังไม่ต้อง auth — รู้รหัสยังดูชื่อ-คณะ-สาขาได้อยู่
+ยืนยันแล้วว่า **reserv ไม่กระทบ** — `_fetch_npu_profile()` ใช้แค่ `student_name`/`faculty_name`/`program_name`
+และ log ฝั่ง api หลัง deploy แสดง reserv เรียก `retrieve` ได้ 200 ปกติ (รายละเอียดเต็มอยู่ใน `C:\projects\apiproject\MEM.md` 2026-07-23)
 
 ## การตัดสินใจ
 
