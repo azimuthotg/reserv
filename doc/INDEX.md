@@ -5,7 +5,7 @@
 
 ---
 
-## Timeline การพัฒนา (10 วัน)
+## Timeline การพัฒนา (12 วัน)
 
 | วันที่ | ไฟล์ | งานหลัก |
 |---|---|---|
@@ -20,6 +20,7 @@
 | 6 มิ.ย. 69 | [progress-2026-06-06.md](progress-2026-06-06.md) | สร้าง INDEX.md, Notion Projects Hub, Global skill /update-docs |
 | 7 มิ.ย. 69 | [progress-2026-06-07.md](progress-2026-06-07.md) | เพิ่ม health endpoint `/health/` สำหรับ NMS Agent monitoring |
 | 31 ก.ค. 69 | [progress-2026-07-31.md](progress-2026-07-31.md) | คู่มือ 2 เล่ม (ผู้ใช้ + เจ้าหน้าที่) ภาพจาก production จริง 16:9 |
+| 2 ส.ค. 69 | [progress-2026-08-02.md](progress-2026-08-02.md) | สารบัญคู่มือเป็น TOC field มีเลขหน้า + เริ่มนับหน้า 1 ที่บทที่ 1 |
 
 ---
 
@@ -33,7 +34,7 @@
 | [admin-manual.md](admin-manual.md) | Markdown | คู่มือผู้ดูแลระบบ (ต้นฉบับแก้ไขได้) |
 | [admin-manual.docx](admin-manual.docx) | Word | คู่มือผู้ดูแลระบบฉบับพิมพ์/แจกทีม |
 | [admin-manual-v2.docx](admin-manual-v2.docx) | Word | คู่มือผู้ดูแลระบบ version 2 |
-| [user-manual-2569.docx](user-manual-2569.docx) | Word | **คู่มือผู้ใช้ 2569 (ล่าสุด)** — 15 บท ครอบคลุมมือถือ+เว็บ ภาพจาก production จริง |
+| [user-manual-reserv-2569.docx](user-manual-reserv-2569.docx) | Word | **คู่มือผู้ใช้ 2569 (ล่าสุด)** — 15 บท ครอบคลุมมือถือ+เว็บ ภาพจาก production จริง · สารบัญมีเลขหน้า เริ่มนับหน้า 1 ที่บทที่ 1 |
 | [staff-manual-2569.docx](staff-manual-2569.docx) | Word | **คู่มือเจ้าหน้าที่ 2569 (ล่าสุด)** — 15 บท Staff Portal ฟีเจอร์เต็ม |
 
 ---
@@ -135,11 +136,12 @@ Scripts เหล่านี้ใช้สร้างไฟล์เอกส
 | [capture_user_screenshots.py](capture_user_screenshots.py) | Screenshots หน้าผู้ใช้อัตโนมัติ |
 | [capture_admin_screenshots.py](capture_admin_screenshots.py) | Screenshots Staff Portal อัตโนมัติ |
 | [make_admin_screenshots.py](make_admin_screenshots.py) | Screenshots ผู้ดูแลระบบ (version เก่า) |
-| [manual_style.py](manual_style.py) | สไตล์กลาง .docx ชุด 2569 (ตั้ง `w:cs`/`w:szCs` ให้ภาษาไทยไม่เพี้ยนใน Word) |
-| [make_user_manual_2569.py](make_user_manual_2569.py) | `user-manual-2569.docx` |
+| [manual_style.py](manual_style.py) | สไตล์กลาง .docx ชุด 2569 (ตั้ง `w:cs`/`w:szCs` ให้ภาษาไทยไม่เพี้ยนใน Word · สารบัญเป็น TOC field มีเลขหน้า) |
+| [make_user_manual_2569.py](make_user_manual_2569.py) | `user-manual-2569.docx` (ยังไม่ sync กับไฟล์จริงที่แก้ด้วย Word — ดู progress-2026-08-02) |
 | [make_staff_manual_2569.py](make_staff_manual_2569.py) | `staff-manual-2569.docx` |
 | [compose_mobile_figures.py](compose_mobile_figures.py) | รวมภาพหน้าจอมือถือ (9:16) เป็นภาพประกอบกรอบ 16:9 |
+| [fix_manual_toc.py](fix_manual_toc.py) | แพตช์สารบัญ .docx ที่มีอยู่แล้วให้มีเลขหน้า + เริ่มนับหน้าที่บทที่ 1 |
 
 ---
 
-*อัปเดตล่าสุด: 7 มิถุนายน 2569*
+*อัปเดตล่าสุด: 2 สิงหาคม 2569*

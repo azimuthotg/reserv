@@ -19,6 +19,84 @@ BORDER_CLR = "BFBFBF"
 BODY_PT    = 16
 CONTENT_CM = 16.0       # ความกว้างพื้นที่พิมพ์ = 21 - (3 + 2)
 
+TOC_INSTR  = ' TOC \\o "1-3" \\h \\z \\u '
+TOC_TAB    = 9072       # จุดไข่ปลาชิดขวาที่ 16 ซม. (twips)
+
+
+def el(tag, **attrs):
+    """สร้าง element พร้อม attribute โดยเขียน prefix ด้วย `__` เช่น w__val='1'"""
+    e = OxmlElement(tag)
+    for k, v in attrs.items():
+        e.set(qn(k.replace("__", ":")), v)
+    return e
+
+
+def ensure_toc_styles(doc):
+    """เพิ่ม style toc 1–3 ให้ใช้ฟอนต์ไทยและจุดไข่ปลา
+
+    Word สร้างย่อหน้าสารบัญด้วย style เหล่านี้ทับของเดิมตอนอัปเดต field
+    ถ้าไม่กำหนดเอง ข้อความไทยจะกลับไปใช้ฟอนต์เริ่มต้นของ Word
+    """
+    styles = doc.styles.element
+    existing = {s.get(qn("w:styleId")) for s in styles.findall(qn("w:style"))}
+
+    for level, (indent, size) in enumerate(((0, 16), (567, 16), (1134, 15)), start=1):
+        sid = f"TOC{level}"
+        if sid in existing:
+            continue
+
+        st = el("w:style", w__type="paragraph", w__styleId=sid)
+        st.append(el("w:name", w__val=f"toc {level}"))
+        st.append(el("w:basedOn", w__val="Normal"))
+        st.append(el("w:next", w__val="Normal"))
+        st.append(el("w:uiPriority", w__val="39"))
+
+        pPr = el("w:pPr")
+        tabs = el("w:tabs")
+        tabs.append(el("w:tab", w__val="right", w__leader="dot", w__pos=str(TOC_TAB)))
+        pPr.append(tabs)
+        pPr.append(el("w:spacing", w__after="60", w__line="276", w__lineRule="auto"))
+        if indent:
+            pPr.append(el("w:ind", w__left=str(indent)))
+        st.append(pPr)
+
+        rPr = el("w:rPr")
+        rPr.append(el("w:rFonts", w__ascii=FONT, w__hAnsi=FONT, w__cs=FONT, w__eastAsia=FONT))
+        rPr.append(el("w:color", w__val="000000"))
+        rPr.append(el("w:sz", w__val=str(size * 2)))
+        rPr.append(el("w:szCs", w__val=str(size * 2)))
+        st.append(rPr)
+
+        styles.append(st)
+
+
+def wrap_toc_field(first_p, last_p):
+    """ครอบย่อหน้าตั้งแต่ first_p ถึง last_p ด้วย TOC field ของ Word
+
+    ย่อหน้าที่ครอบไว้กลายเป็น field result ชั่วคราว จึงยังอ่านได้ในโปรแกรมที่ไม่
+    อัปเดต field ส่วน Word จะแทนที่ด้วยสารบัญจริงพร้อมเลขหน้าเมื่อเปิดไฟล์
+    (ตั้ง w:dirty ไว้ ถ้าไม่ขึ้นให้กด Ctrl+A แล้ว F9)
+    """
+    begin = el("w:r")
+    begin.append(el("w:fldChar", w__fldCharType="begin", w__dirty="true"))
+    instr = el("w:r")
+    it = el("w:instrText", xml__space="preserve")
+    it.text = TOC_INSTR
+    instr.append(it)
+    sep = el("w:r")
+    sep.append(el("w:fldChar", w__fldCharType="separate"))
+
+    pPr = first_p._p.find(qn("w:pPr"))
+    for node in (sep, instr, begin):     # แทรกย้อนกลับให้ได้ลำดับ begin → instr → sep
+        if pPr is None:
+            first_p._p.insert(0, node)
+        else:
+            pPr.addnext(node)
+
+    end = el("w:r")
+    end.append(el("w:fldChar", w__fldCharType="end"))
+    last_p._p.append(end)
+
 
 def _thai_run(element, size_pt, bold=False, italic=False):
     """ตั้งค่าฝั่ง Complex Script ให้ run หนึ่งตัว
@@ -221,18 +299,52 @@ class Manual:
         self.doc.add_page_break()
 
     def toc(self, entries):
+        """สารบัญเป็น TOC field ของ Word — เลขหน้าเติมเองตอนเปิดไฟล์
+
+        รายการที่ส่งเข้ามาใช้เป็นข้อความสำรองระหว่างที่ field ยังไม่ถูกอัปเดต
+        จึงต้องเรียงให้ตรงกับหัวข้อจริงในเล่ม แต่ไม่ต้องใส่เลขหน้าเอง
+        """
+        ensure_toc_styles(self.doc)
         self.para("สารบัญ", bold=True, size=22, align=WD_ALIGN_PARAGRAPH.CENTER, after=14)
+
+        paras = []
         for label, title in entries:
             p = self.doc.add_paragraph()
             p.paragraph_format.space_after = Pt(5)
             p.paragraph_format.left_indent = Cm(0.8 if label.count(".") else 0)
             self.run(p, f"{label}  {title}", bold=not label.count("."))
-        self.doc.add_page_break()
+            paras.append(p)
+        if paras:
+            wrap_toc_field(paras[0], paras[-1])
+
+        # section break แทน page break เพื่อให้ปก+สารบัญไม่มีเลขหน้า
+        # และเนื้อหาเริ่มนับหน้าใหม่ที่ 1 (ตั้งค่าใน page_numbers)
+        self.doc.add_section(WD_SECTION.NEW_PAGE)
 
     # ── หมายเลขหน้า ──────────────────────────────────────────────────────────
     def page_numbers(self):
-        footer = self.doc.sections[0].footer
-        p = footer.paragraphs[0]
+        """ใส่เลขหน้าเฉพาะ section เนื้อหา และเริ่มนับที่ 1
+
+        section แรก (ปก + สารบัญ) ไม่มี footer reference จึงไม่มีเลขหน้า
+        """
+        sec = self.doc.sections[-1]
+
+        old = sec._sectPr.find(qn("w:pgNumType"))
+        if old is not None:
+            sec._sectPr.remove(old)
+        anchor = None
+        for tag in ("w:pgSz", "w:pgMar", "w:paperSrc", "w:pgBorders", "w:lnNumType"):
+            found = sec._sectPr.find(qn(tag))
+            if found is not None:
+                anchor = found
+        start = el("w:pgNumType", w__start="1")
+        if anchor is None:
+            sec._sectPr.insert(0, start)
+        else:
+            anchor.addnext(start)
+
+        sec.footer.is_linked_to_previous = False
+        p = sec.footer.paragraphs[0]
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         r = p.add_run()
         r.font.name = FONT
@@ -244,12 +356,12 @@ class Manual:
             ("w:instrText", {"xml:space": "preserve"}, " PAGE "),
             ("w:fldChar", {"w:fldCharType": "end"}, None),
         ):
-            el = OxmlElement(tag)
+            node = OxmlElement(tag)
             for k, v in attrs.items():
-                el.set(qn(k), v)
+                node.set(qn(k), v)
             if text:
-                el.text = text
-            r._r.append(el)
+                node.text = text
+            r._r.append(node)
 
     def save(self, path):
         self.page_numbers()
