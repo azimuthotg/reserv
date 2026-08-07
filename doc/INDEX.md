@@ -21,6 +21,7 @@
 | 7 มิ.ย. 69 | [progress-2026-06-07.md](progress-2026-06-07.md) | เพิ่ม health endpoint `/health/` สำหรับ NMS Agent monitoring |
 | 31 ก.ค. 69 | [progress-2026-07-31.md](progress-2026-07-31.md) | คู่มือ 2 เล่ม (ผู้ใช้ + เจ้าหน้าที่) ภาพจาก production จริง 16:9 |
 | 2 ส.ค. 69 | [progress-2026-08-02.md](progress-2026-08-02.md) | สารบัญคู่มือเป็น TOC field มีเลขหน้า + เริ่มนับหน้า 1 ที่บทที่ 1 |
+| 7 ส.ค. 69 | [progress-2026-08-07.md](progress-2026-08-07.md) | ตรวจเอกสารชุดบุคคลภายนอกเทียบ code + แปลงคู่มือ external เป็นรายงานประกอบการประชุม |
 
 ---
 
@@ -46,6 +47,8 @@
 | [development_report.md](development_report.md) | รายงานการพัฒนาระบบ (ต้นฉบับ) |
 | [report-management-2568.md](report-management-2568.md) | รายงานบริหารจัดการ ปี 2568 (ต้นฉบับ) |
 | [report-management-2568.docx](report-management-2568.docx) | รายงานบริหารจัดการ ปี 2568 (Word) |
+| [external-access-report.docx](external-access-report.docx) | **รายงานประกอบการประชุม (ล่าสุด)** — ระบบบุคคลภายนอกเข้าใช้บริการ + ช่องทาง `/card-login/` ของนักศึกษา-บุคลากร · 6 บท ภาพ 16:9 จาก production · ไม่มีสารบัญ |
+| [door-qr-guide.docx](door-qr-guide.docx) | คู่มือช่องทางขอ QR เข้าประตู สรุป 4 ช่องทาง A–D |
 | [Report Improvement Plan/improvement plan.docx](Report%20Improvement%20Plan/improvement%20plan.docx) | แผนปรับปรุงรายงาน |
 
 ---
@@ -140,8 +143,10 @@ Scripts เหล่านี้ใช้สร้างไฟล์เอกส
 | [make_user_manual_2569.py](make_user_manual_2569.py) | `user-manual-2569.docx` (ยังไม่ sync กับไฟล์จริงที่แก้ด้วย Word — ดู progress-2026-08-02) |
 | [make_staff_manual_2569.py](make_staff_manual_2569.py) | `staff-manual-2569.docx` |
 | [compose_mobile_figures.py](compose_mobile_figures.py) | รวมภาพหน้าจอมือถือ (9:16) เป็นภาพประกอบกรอบ 16:9 |
+| [make_external_report_docx.py](make_external_report_docx.py) | `external-access-report.docx` รายงานประกอบการประชุมเรื่องบุคคลภายนอก + `/card-login/` |
+| [capture_external_shots.py](capture_external_shots.py) | แคปหน้าจอ external จาก production 1920×1080 (ต้องมี `STAFF_USER`/`STAFF_PASS`) |
 | [fix_manual_toc.py](fix_manual_toc.py) | แพตช์สารบัญ .docx ที่มีอยู่แล้วให้มีเลขหน้า + เริ่มนับหน้าที่บทที่ 1 |
 
 ---
 
-*อัปเดตล่าสุด: 2 สิงหาคม 2569*
+*อัปเดตล่าสุด: 7 สิงหาคม 2569*
