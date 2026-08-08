@@ -46,7 +46,11 @@ done_2026-08-07:
 done_2026-08-08:
   - ✅ **ตามใบแจ้งทีม LRS ARC VM Gateway** — เพิ่มห้อง `canva2` "Canva Pro 2" (clone จาก `canva`) · ปิดห้อง `chat-gpt` (`is_active=0` ไม่ลบ เก็บประวัติ 16 รายการ) · เปลี่ยนชื่อ `canva` → "Canva Pro 1" · copy รูป `canva2.png` — แก้ข้อมูลอย่างเดียว ไม่แตะ code (ดู doc/progress-2026-08-08.md)
   - ✅ อัปเดต [doc/line-richmenu-urls.md](doc/line-richmenu-urls.md) ระบุปุ่ม Rich Menu ที่ต้องแก้ + sync room keys ใน CLAUDE.md/AGENTS.md
+  - ✅ **จัดระเบียบห้อง `netflix1_vm` → ชื่อแสดง "Netflix Pro"** — ห้องนี้เปิดใช้จริง 20 การจอง (ล่าสุด 1 ส.ค. 2569) แต่ไม่เคยมีในเอกสารเลย · แก้ `name`/`location`/`facilities`/`rules`/`how_to_use`/`eligible_users` ให้เข้าชุดกับห้องอื่น · เพิ่มลง line-richmenu-urls.md พร้อมเตือนว่า `netflix` ในเอกสารเก่า = Edutainment Zone คนละห้อง (ดู MEM.md)
 next:
+  - **หารูปห้อง Netflix Pro** แล้ววางเป็น `booking/static/booking/images/rooms/netflix1_vm.png` (ตอนนี้ยังไม่มีไฟล์ หน้าแรกแสดงไอคอน 🏢 แทน — ผู้ใช้แจ้ง 2026-08-08 ว่ายังไม่มีรูป ปล่อยไปก่อนได้) · เพิ่มด้วย `git add -f` เพราะ .gitignore ignore `*.png`
+  - **เพิ่ม Canva Pro 2 + Netflix Pro ลงคู่มือผู้ใช้/เจ้าหน้าที่ 2569** — ทั้ง 2 ห้องยังไม่มีในคู่มือเล่มใดเลย (ระวัง: `make_user_manual_2569.py` ยังไม่ sync กับไฟล์ .docx ที่แก้ใน Word — รันทับแล้วงานหาย ดู task ด้านล่าง)
+  - **ขอ URL เว็บ VM Gateway จากทีมพัฒนา** แล้วแก้ `how_to_use` ของห้อง `canva`, `canva2`, `netflix1_vm` ให้ตรงวิธีเข้าใช้จริง (ตอนนี้ Canva ยังเขียนแบบเครื่องจริง ส่วน Netflix เขียนกว้าง ๆ) — ขอไปในหนังสือตอบกลับแล้ว
   - **แจ้งทีม VM Gateway กลับว่าใช้ `booking_name = canva2`** (ใบแจ้งขอให้ตอบกลับเพื่อตั้ง `VMMachine.room_key` แล้วรัน `python manage.py check_booking_mapping`)
   - **deploy รูป `canva2.png` ขึ้น prod** — `git pull` + `python manage.py collectstatic` บนเซิร์ฟเวอร์ (ไม่ต้อง restart service เพราะไม่มีการแก้ code)
   - **แก้ LINE Rich Menu** — ปุ่ม ChatGPT → `?room=canva2` + เปลี่ยนรูปปุ่มเป็น "Canva Pro 2" และรูปปุ่ม Canva เป็น "Canva Pro 1" (ผู้ใช้ทำเอง — รายละเอียดใน doc/line-richmenu-urls.md)

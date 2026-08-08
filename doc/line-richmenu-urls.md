@@ -16,6 +16,7 @@
 | Canva Pro 1 | `https://lib.npu.ac.th/reserv/booking/?room=canva` | ✅ ต้อง | ✅ ต้อง |
 | **Canva Pro 2** 🆕 | `https://lib.npu.ac.th/reserv/booking/?room=canva2` | ✅ ต้อง | ✅ ต้อง |
 | ~~ChatGPT Room~~ 🚫 | ~~`?room=chat-gpt`~~ **ยกเลิก — ห้ามใช้แล้ว** | — | — |
+| **Netflix Pro** | `https://lib.npu.ac.th/reserv/booking/?room=netflix1_vm` | ✅ ต้อง | ✅ ต้อง |
 | โต๊ะประชุมชั้น 1 | `https://lib.npu.ac.th/reserv/booking/?room=meeting_f1` | ✅ ต้อง | ✅ ต้อง |
 | Virtual Card (โปรไฟล์) | `https://lib.npu.ac.th/reserv/card/` | ✅ ต้อง | ✅ ต้อง |
 | ปฏิทินการจอง | `https://lib.npu.ac.th/reserv/calendar/` | ❌ ไม่ต้อง | ❌ ไม่ต้อง |
@@ -63,6 +64,18 @@ LIFF เปิดขึ้น → ตรวจสอบการ Login LINE
 
 **QR code / ป้ายที่ต้องตรวจด้วย:** ป้ายหรือ QR ที่ชี้ไป `https://lib.npu.ac.th/reserv/room/chat-gpt/`
 จะกลายเป็นหน้า 404 — ถ้ามีติดหน้าห้องอยู่ ให้เปลี่ยนเป็น `.../room/canva2/`
+
+### ⚠️ Netflix Pro ยังไม่เคยมีปุ่มใน Rich Menu
+
+ห้อง `netflix1_vm` (ชื่อแสดง **Netflix Pro**) เปิดให้บริการจริงและมีผู้ใช้จองแล้ว 20 รายการ
+(28 พ.ค. – 1 ส.ค. 2569 รวมวันเสาร์-อาทิตย์) **แต่ไม่เคยมีปุ่มใน Rich Menu**
+นักศึกษาที่จองได้คือคนที่กดเข้าหน้าแรกแล้วเลื่อนหาเอง
+
+ถ้าต้องการโปรโมตบริการนี้ ให้เพิ่มปุ่มชี้ไป `?room=netflix1_vm` ตามตารางด้านบน
+
+> ⚠️ **อย่าสับสนกับ `netflix` ตัวเก่า** — เอกสารรุ่นเก่า (`deploy_guide.md`, `admin-manual.md`,
+> `development_report.md`) ที่พูดถึง `booking_name = netflix` หมายถึง **ห้อง Edutainment Zone**
+> ซึ่งเปลี่ยน key เป็น `edutainment` ไปนานแล้ว **คนละห้องกับ `netflix1_vm`**
 
 ---
 
