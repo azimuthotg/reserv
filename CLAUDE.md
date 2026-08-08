@@ -10,6 +10,7 @@ deploy_path: C:\project\reserv (ไม่ใช่ C:\projects\)
 deploy_db: MySQL `reserv_db` ที่ 202.29.55.213
 deploy_notes:
   - ⚠️ production มี venv — คำสั่ง python/pip ทุกตัวต้องเรียก `.\venv\Scripts\python.exe` / `.\venv\Scripts\pip.exe` ห้ามเรียก `python` เปล่า ๆ
+  - deploy ที่ยืนยันว่าใช้ได้จริง (2026-08-08): `cd C:\project\reserv` → `git pull origin master` → `.\venv\Scripts\python.exe manage.py migrate` → `.\venv\Scripts\python.exe manage.py collectstatic --noinput` → `c:\nssm\nssm.exe restart Reserv`
   - restart: c:\nssm\nssm.exe restart Reserv   (ชื่อ service ยืนยันจากเซิร์ฟเวอร์แล้ว 2026-08-08)
   - ⚠️ .env เครื่อง dev ชี้ DB production ตัวเดียวกัน — migrate จากเครื่อง dev ลงฐานจริงทันที (ดู MEM.md)
 progress: 98
