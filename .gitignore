@@ -18,6 +18,13 @@ media/
 .env
 deploy/.env.production
 
+# Certificates / secrets (ห้าม commit เด็ดขาด)
+cert/
+*.pfx
+*.pem
+*.key
+pass.txt
+
 # OS
 .DS_Store
 Thumbs.db
