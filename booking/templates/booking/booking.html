@@ -287,9 +287,11 @@
         document.getElementById('room-location').textContent = '📍 ' + ROOM_DATA.location;
         if (ROOM_DATA.is_online) {
             // บริการออนไลน์: เปิดทุกวันช่วงเดียว + จองด่วนเช้า/บ่ายไม่สื่อความหมาย ซ่อนไว้
-            document.getElementById('room-hours').textContent =
-                '🕐 ทุกวัน ' + ROOM_DATA.open_time + '–' + ROOM_DATA.close_time +
-                '  |  👥 สูงสุด ' + ROOM_DATA.capacity + ' คน';
+            document.getElementById('room-hours').textContent = ROOM_DATA.day_round_enabled
+                ? '🕐 ทุกวัน ' + ROOM_DATA.open_time + '–' + ROOM_DATA.close_time +
+                  '  |  👥 สูงสุด ' + ROOM_DATA.capacity + ' คน'
+                : '🕐 นอกเวลาราชการเท่านั้น 00:00–08:30 และ 17:00–23:59  |  👥 สูงสุด ' +
+                  ROOM_DATA.capacity + ' คน';
             document.getElementById('quick-btns').style.display = 'none';
             document.getElementById('or-divider').textContent = 'เลือกเวลา (สูงสุด 3.5 ชั่วโมง ต่อ 1 รอบบริการ)';
         } else {
@@ -302,6 +304,24 @@
     }
 
     // ── Time dropdown ─────────────────────────────────────────────────────────
+    // ── รอบบริการ (ให้ตรงกับ booking/service_hours.py) ───────────────────────
+    const DAY_START_MIN   = 8 * 60 + 30;   // 08:30
+    const NIGHT_START_MIN = 17 * 60;       // 17:00
+    const LAST_MIN        = 23 * 60 + 59;  // 23:59
+
+    // จองคร่อมรอบไม่ได้ — คืนเวลาสิ้นสุดของรอบที่เวลานี้อยู่
+    function roundEndOf(min) {
+        if (min < DAY_START_MIN)   return DAY_START_MIN;
+        if (min < NIGHT_START_MIN) return NIGHT_START_MIN;
+        return LAST_MIN;
+    }
+
+    // ห้องที่ปิดรอบกลางวัน (เช่น Netflix ที่กลางวันให้บริการที่ Edutainment Zone)
+    function isBlockedMin(min) {
+        return ROOM_DATA && ROOM_DATA.day_round_enabled === false
+            && min >= DAY_START_MIN && min < NIGHT_START_MIN;
+    }
+
     // คืนเวลาเร็วที่สุดที่จองได้วันนี้ (ปัจจุบัน + 15 นาที ปัดขึ้นทีละ 10 นาที)
     function getTodayCutoffMin() {
         const now    = new Date();
@@ -323,7 +343,7 @@
         sel.innerHTML = '<option value="">-- เลือกเวลาเริ่ม --</option>';
         let added = 0;
         for (let min = open; min <= close - 10; min += 10) {
-            if (min >= minStart) {
+            if (min >= minStart && !isBlockedMin(min)) {
                 const opt = document.createElement('option');
                 opt.value = opt.textContent = minToTime(min);
                 sel.appendChild(opt);
@@ -345,7 +365,8 @@
         const sel      = document.getElementById('end_time');
         const dateStr  = document.getElementById('booking_date').value || toYMD(new Date());
         const closeMin = timeToMin(getServiceHours(dateStr).close);
-        const maxEnd   = Math.min(startMin + MAX_DURATION, closeMin);
+        // ห้ามคร่อมรอบ — ตัดที่ขอบรอบของเวลาเริ่มเสมอ
+        const maxEnd   = Math.min(startMin + MAX_DURATION, closeMin, roundEndOf(startMin));
         sel.innerHTML  = '<option value="">-- เลือกเวลาสิ้นสุด --</option>';
         for (let min = startMin + 10; min <= maxEnd; min += 10) {
             const opt = document.createElement('option');

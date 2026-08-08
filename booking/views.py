@@ -372,6 +372,7 @@ def landing_page(request):
             'capacity':     r.capacity,
             'location':     r.location or '',
             'is_online':    r.is_online,
+            'day_round_enabled': r.day_round_enabled,
             'open_time':    r.open_time.strftime('%H:%M'),
             'close_time':   r.close_time.strftime('%H:%M'),
             'weekend_open_time':  (r.open_time if r.is_online else WEEKEND_OPEN_TIME).strftime('%H:%M'),
@@ -447,6 +448,7 @@ def booking_page(request):
             'capacity':   room.capacity,
             'location':   room.location,
             'is_online':  room.is_online,
+            'day_round_enabled': room.day_round_enabled,
             'open_time':  room.open_time.strftime('%H:%M'),
             'close_time': room.close_time.strftime('%H:%M'),
             # บริการออนไลน์ใช้เวลาเดียวกันทุกวัน ไม่ถูกตัดตามเวลาเปิดอาคาร
@@ -798,6 +800,14 @@ def create_booking(request):
 
     # การจองต้องอยู่ในรอบเดียว (เช้ามืด / กลางวัน / กลางคืน) เพราะโควตานับเป็นรายรอบ
     b_round = round_of_range(s_time, e_time)
+    if b_round == ROUND_DAY and not room.day_round_enabled:
+        return JsonResponse({
+            'error': (
+                f'{room.name} เปิดให้จองเฉพาะนอกเวลาราชการ '
+                f'({ROUND_LABELS[ROUND_EARLY]} และ {ROUND_LABELS[ROUND_NIGHT]}) '
+                f'ช่วงกลางวันกรุณาใช้บริการที่จุดบริการในห้องสมุด'
+            ),
+        }, status=400)
     if b_round is None:
         return JsonResponse({
             'error': (

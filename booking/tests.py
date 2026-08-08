@@ -281,6 +281,18 @@ class OnlineRoomRoundTests(TestCase):
         self.assertEqual(resp.status_code, 400, resp.content)
         self.assertIn('วันหยุดทดสอบ', resp.json()['error'])
 
+    def test_day_round_disabled_blocks_daytime_only(self):
+        """ห้องที่ปิดรอบกลางวัน (Netflix) จองเช้ามืด/กลางคืนได้ แต่กลางวันไม่ได้"""
+        self.online.day_round_enabled = False
+        self.online.save(update_fields=['day_round_enabled'])
+
+        self.assertEqual(self._post(self.online, '06:00', '08:00').status_code, 200)
+        self.assertEqual(self._post(self.online, '19:00', '21:00').status_code, 200)
+
+        resp = self._post(self.online, '10:00', '12:00')
+        self.assertEqual(resp.status_code, 400, resp.content)
+        self.assertIn('นอกเวลาราชการ', resp.json()['error'])
+
     def test_onsite_room_night_booking_rejected(self):
         """ห้องจริงยังจองนอกเวลาไม่ได้เหมือนเดิม"""
         resp = self._post(self.onsite, '19:00', '20:00')

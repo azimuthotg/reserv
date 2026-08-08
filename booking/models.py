@@ -29,6 +29,11 @@ class Room(models.Model):
         help_text='บริการออนไลน์ที่ไม่ต้องเข้าอาคาร (เช่น เครื่องเสมือน Canva/Netflix) '
                   'จองได้ทุกวันตามเวลาเปิด-ปิดของห้องนี้ ไม่ถูกจำกัดด้วยเวลาเปิดอาคารหรือวันหยุด'
     )
+    day_round_enabled = models.BooleanField(
+        default=True,
+        help_text='เปิดจองรอบกลางวัน (08:30–17:00) หรือไม่ — ปิดเมื่อทรัพยากรถูกใช้ที่จุดบริการอื่น '
+                  'ในเวลาราชการ เช่น บัญชี Netflix ที่ให้บริการอยู่ที่ Edutainment Zone ช่วงกลางวัน'
+    )
     ha_entity_id     = models.CharField(max_length=200, blank=True)
 
     class Meta:

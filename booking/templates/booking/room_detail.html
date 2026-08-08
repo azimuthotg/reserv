@@ -155,7 +155,11 @@
         {% endif %}
         <div class="chip-row">
             {% if room.is_online %}
+            {% if room.day_round_enabled %}
             <div class="chip"><span class="chip-icon">🕐</span>ทุกวัน {{ room.open_time|time:"H:i" }}–{{ room.close_time|time:"H:i" }} น.</div>
+            {% else %}
+            <div class="chip"><span class="chip-icon">🕐</span>นอกเวลาราชการ 00:00–08:30 · 17:00–23:59</div>
+            {% endif %}
             <div class="chip"><span class="chip-icon">💻</span>บริการออนไลน์ ไม่ต้องเข้าอาคาร</div>
             {% else %}
             <div class="chip"><span class="chip-icon">🕐</span>จ.-ศ. {{ room.open_time|time:"H:i" }}–{{ room.close_time|time:"H:i" }} น.</div>

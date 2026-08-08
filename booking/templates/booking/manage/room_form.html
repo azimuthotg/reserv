@@ -137,6 +137,13 @@
                         </div>
                         {% if form.is_online.help_text %}<div class="form-text">{{ form.is_online.help_text }}</div>{% endif %}
                     </div>
+                    <div class="col-12">
+                        <div class="form-check mt-1">
+                            {{ form.day_round_enabled }}
+                            <label class="form-check-label fw-semibold" style="font-size:13px;">{{ form.day_round_enabled.label }}</label>
+                        </div>
+                        {% if form.day_round_enabled.help_text %}<div class="form-text">{{ form.day_round_enabled.help_text }}</div>{% endif %}
+                    </div>
                 </div>
             </div>
 
