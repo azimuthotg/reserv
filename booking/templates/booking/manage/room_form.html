@@ -123,6 +123,13 @@
                             <label class="form-check-label fw-semibold" style="font-size:13px;">{{ form.is_active.label }}</label>
                         </div>
                     </div>
+                    <div class="col-12">
+                        <div class="form-check mt-1">
+                            {{ form.allow_overlap }}
+                            <label class="form-check-label fw-semibold" style="font-size:13px;">{{ form.allow_overlap.label }}</label>
+                        </div>
+                        {% if form.allow_overlap.help_text %}<div class="form-text">{{ form.allow_overlap.help_text }}</div>{% endif %}
+                    </div>
                 </div>
             </div>
 

@@ -51,7 +51,10 @@ done_2026-08-08:
   - ✅ **แก้เอกสาร deploy ให้ตรงของจริง** — CLAUDE.md/AGENTS.md เคยเขียน Nginx + พอร์ต 8000 + `nssm install reserv-booking "python -m waitress..."` + `load_rooms` ซึ่ง**ผิดทั้งหมด** · ของจริงคือ IIS+ARR → WhiteNoise, `deploy/waitress_serve.py` พอร์ต 8003, path `C:\project\reserv`, ไม่มี command `load_rooms` แล้ว · **ชื่อ NSSM service จริง = `Reserv`** (ผู้ใช้ยืนยันจากเซิร์ฟเวอร์) แก้ครบทั้ง 4 ไฟล์
   - ✅ **deploy prod + เทสจริงผ่าน** — `git pull` + `collectstatic` (1 ไฟล์: canva2.png) ไม่ต้อง restart · ตรวจบน production: `/room/canva2/` 200 พร้อมรูป · `/room/chat-gpt/` 404 · ปฏิทินสาธารณะแสดง 6 ห้องชื่อใหม่ครบ · static `canva2.png` 200 (803 KB)
   - ✅ **จัดระเบียบห้อง `netflix1_vm` → ชื่อแสดง "Netflix Pro"** — ห้องนี้เปิดใช้จริง 20 การจอง (ล่าสุด 1 ส.ค. 2569) แต่ไม่เคยมีในเอกสารเลย · แก้ `name`/`location`/`facilities`/`rules`/`how_to_use`/`eligible_users` ให้เข้าชุดกับห้องอื่น · เพิ่มลง line-richmenu-urls.md พร้อมเตือนว่า `netflix` ในเอกสารเก่า = Edutainment Zone คนละห้อง (ดู MEM.md)
+  - ✅ **กติกาห้ามจองทับเวลาข้ามห้อง (ตามใบแจ้งทีม VM รอบ 2)** — เพิ่มฟิลด์ `Room.allow_overlap` (migration `0013`) + guard ใน `create_booking()` ภายใน transaction เดียวกับ conflict check · ติ๊กยกเว้นเฉพาะ `meeting_f1` · ไม่ hardcode booking_name · test 23/23 ผ่าน (เพิ่มใหม่ 6 เคส) — **รอ deploy prod (มี migration → ต้อง restart)**
 next:
+  - **deploy กติกา overlap ขึ้น prod** — `git pull` + `nssm restart Reserv` (migration `0013` apply ลงฐานจริงจากเครื่อง dev แล้ว ไม่ต้องรัน migrate ซ้ำบนเซิร์ฟเวอร์) แล้วเทสจริง 1 เคส
+  - **แจ้งทีม VM Gateway ว่าเพิ่มกติกา overlap แล้ว** — [doc/reply-vm-overlap-2026-08-08.md](doc/reply-vm-overlap-2026-08-08.md)
   - **หารูปห้อง Netflix Pro** แล้ววางเป็น `booking/static/booking/images/rooms/netflix1_vm.png` (ตอนนี้ยังไม่มีไฟล์ หน้าแรกแสดงไอคอน 🏢 แทน — ผู้ใช้แจ้ง 2026-08-08 ว่ายังไม่มีรูป ปล่อยไปก่อนได้) · เพิ่มด้วย `git add -f` เพราะ .gitignore ignore `*.png`
   - **เพิ่ม Canva Pro 2 + Netflix Pro ลงคู่มือผู้ใช้/เจ้าหน้าที่ 2569** — ทั้ง 2 ห้องยังไม่มีในคู่มือเล่มใดเลย (ระวัง: `make_user_manual_2569.py` ยังไม่ sync กับไฟล์ .docx ที่แก้ใน Word — รันทับแล้วงานหาย ดู task ด้านล่าง)
   - **ขอ URL เว็บ VM Gateway จากทีมพัฒนา** แล้วแก้ `how_to_use` ของห้อง `canva`, `canva2`, `netflix1_vm` ให้ตรงวิธีเข้าใช้จริง (ตอนนี้ Canva ยังเขียนแบบเครื่องจริง ส่วน Netflix เขียนกว้าง ๆ) — ขอไปในหนังสือตอบกลับแล้ว
@@ -239,6 +242,15 @@ key รูปแบบ `npu_user_v2:<LINE userId>` เพื่อไม่ใ�
 ส่วนเสาร์-อาทิตย์ใช้ `09:00–17:00` จาก `booking/service_hours.py`
 ทุก booking ต้องตรวจช่วงเวลาอีกครั้งฝั่ง backend ด้วย `room_service_hours()`
 
+**Overlap policy:** ผู้ใช้คนเดียว **ห้ามมีการจองที่ช่วงเวลาทับซ้อนกันข้ามห้อง ในวันเดียวกัน**
+(คนเดียวอยู่สองที่ไม่ได้ ห้องที่เหลือจะถูกล็อกทิ้ง) ตรวจใน `create_booking()`
+ภายใน `transaction.atomic()` เดียวกับ conflict check โดยใช้ `select_for_update()`
+- ใช้เงื่อนไข "ทับจริง" (`start < other_end AND other_start < end`) — ต่อกันพอดีเช่น 10:00-11:00 กับ 11:00-12:00 **จองได้**
+- ห้องที่ `Room.allow_overlap=True` ยกเว้น **ทั้งขาใหม่และขาเดิม** (พื้นที่กลุ่ม/พื้นที่เปิด)
+  ปัจจุบันติ๊กไว้เฉพาะ `meeting_f1` — **ห้าม hardcode booking_name ใน code** เปลี่ยนผ่าน `/manage/rooms/`
+- กติกา "จองได้ห้องละ 1 ครั้งต่อวัน" เดิมยังอยู่ — 2 กติกานี้ทำงานคนละหน้าที่
+- ขอตามใบแจ้งทีม LRS ARC VM Gateway 2026-08-08 (ดู MEM.md)
+
 **Advance booking policy:** จองล่วงหน้าได้ไม่เกิน `7` วันเปิดบริการ โดยข้าม `HolidayDate`
 ที่ active รวมถึงเสาร์-อาทิตย์ที่สำนักประกาศปิดผ่านรายการวันหยุด
 backend ใช้ `MAX_ADVANCE_DAYS` และ `max_advance_service_date()` เป็นค่ากลาง
@@ -264,7 +276,7 @@ helper ปัจจุบันอยู่ใน `booking/views.py` และ�
 
 ## Models
 
-- **Room** — ห้องบริการ, `booking_name` เป็น unique key ใช้ใน URL
+- **Room** — ห้องบริการ, `booking_name` เป็น unique key ใช้ใน URL · `allow_overlap` = ยอมให้คนเดียวจองทับเวลากับห้องอื่นได้ (ดู Overlap policy)
 - **LineUser** — cache ผู้ใช้ที่ผูก LINE กับ LDAP แล้ว (source of truth อยู่ที่ api.npu.ac.th)
 - **Booking** — การจอง, status: `confirmed` / `cancelled`
 - **RoomDevice** — อุปกรณ์ Home Assistant `room` ว่างได้ = อุปกรณ์ส่วนกลางที่ไม่สังกัดห้องจอง (จับกลุ่มด้วย `group_name`)

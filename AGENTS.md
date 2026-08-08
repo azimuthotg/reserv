@@ -160,6 +160,15 @@ key รูปแบบ `npu_user_v2:<LINE userId>` เพื่อไม่ใ�
 ส่วนเสาร์-อาทิตย์ใช้ `09:00–17:00` จาก `booking/service_hours.py`
 ทุก booking ต้องตรวจช่วงเวลาอีกครั้งฝั่ง backend ด้วย `room_service_hours()`
 
+**Overlap policy:** ผู้ใช้คนเดียว **ห้ามมีการจองที่ช่วงเวลาทับซ้อนกันข้ามห้อง ในวันเดียวกัน**
+(คนเดียวอยู่สองที่ไม่ได้ ห้องที่เหลือจะถูกล็อกทิ้ง) ตรวจใน `create_booking()`
+ภายใน `transaction.atomic()` เดียวกับ conflict check โดยใช้ `select_for_update()`
+- ใช้เงื่อนไข "ทับจริง" (`start < other_end AND other_start < end`) — ต่อกันพอดีเช่น 10:00-11:00 กับ 11:00-12:00 **จองได้**
+- ห้องที่ `Room.allow_overlap=True` ยกเว้น **ทั้งขาใหม่และขาเดิม** (พื้นที่กลุ่ม/พื้นที่เปิด)
+  ปัจจุบันติ๊กไว้เฉพาะ `meeting_f1` — **ห้าม hardcode booking_name ใน code** เปลี่ยนผ่าน `/manage/rooms/`
+- กติกา "จองได้ห้องละ 1 ครั้งต่อวัน" เดิมยังอยู่ — 2 กติกานี้ทำงานคนละหน้าที่
+- ขอตามใบแจ้งทีม LRS ARC VM Gateway 2026-08-08 (ดู MEM.md)
+
 **Advance booking policy:** จองล่วงหน้าได้ไม่เกิน `7` วันเปิดบริการ โดยข้าม `HolidayDate`
 ที่ active รวมถึงเสาร์-อาทิตย์ที่สำนักประกาศปิดผ่านรายการวันหยุด
 backend ใช้ `MAX_ADVANCE_DAYS` และ `max_advance_service_date()` เป็นค่ากลาง
@@ -185,7 +194,7 @@ helper ปัจจุบันอยู่ใน `booking/views.py` และ�
 
 ## Models
 
-- **Room** — ห้องบริการ, `booking_name` เป็น unique key ใช้ใน URL
+- **Room** — ห้องบริการ, `booking_name` เป็น unique key ใช้ใน URL · `allow_overlap` = ยอมให้คนเดียวจองทับเวลากับห้องอื่นได้ (ดู Overlap policy)
 - **LineUser** — cache ผู้ใช้ที่ผูก LINE กับ LDAP แล้ว (source of truth อยู่ที่ api.npu.ac.th)
 - **Booking** — การจอง, status: `confirmed` / `cancelled`
 - **RoomDevice** — อุปกรณ์ Home Assistant `room` ว่างได้ = อุปกรณ์ส่วนกลางที่ไม่สังกัดห้องจอง (จับกลุ่มด้วย `group_name`)

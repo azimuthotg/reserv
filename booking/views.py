@@ -816,6 +816,31 @@ def create_booking(request):
                 'error': f'คุณจองห้อง {room.name} ในวันนี้ไปแล้ว จองได้ห้องละ 1 ครั้งต่อวัน',
             }, status=409)
 
+        # ผู้ใช้คนเดียวห้ามถือ 2 ห้องพร้อมกัน — คนเดียวอยู่สองที่ไม่ได้ ห้องที่เหลือจะถูกล็อกทิ้ง
+        # ห้องที่ allow_overlap=True (พื้นที่กลุ่ม เช่น โต๊ะประชุม) ยกเว้นทั้งขาใหม่และขาเดิม
+        if not room.allow_overlap:
+            # กรอง room ที่ยกเว้นด้วย id เพื่อไม่ให้ SELECT ... FOR UPDATE ต้อง join
+            # แล้วไปล็อกแถวในตาราง booking_room ไปด้วย
+            exempt_room_ids = list(
+                Room.objects.filter(allow_overlap=True).values_list('id', flat=True)
+            )
+            overlap = Booking.objects.select_for_update().filter(
+                line_user      = lu,
+                booking_date   = b_date,
+                status         = 'confirmed',
+                start_time__lt = e_time,   # ต่อกันพอดีไม่ถือว่าทับ
+                end_time__gt   = s_time,
+            ).exclude(room_id__in=exempt_room_ids).first()
+
+            if overlap is not None:
+                return JsonResponse({
+                    'error': (
+                        f'คุณมีการจอง {overlap.room.name} เวลา '
+                        f'{overlap.start_time:%H:%M}–{overlap.end_time:%H:%M} อยู่แล้วในวันเดียวกัน '
+                        f'ไม่สามารถจองซ้อนช่วงเวลาเดียวกันได้ กรุณาเลือกช่วงเวลาอื่น'
+                    ),
+                }, status=409)
+
         booking = Booking.objects.create(
             room         = room,
             line_user    = lu,

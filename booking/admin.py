@@ -30,8 +30,9 @@ class HolidayDateAdmin(admin.ModelAdmin):
 
 @admin.register(Room)
 class RoomAdmin(admin.ModelAdmin):
-    list_display  = ('name', 'booking_name', 'capacity', 'location', 'open_time', 'close_time', 'is_active')
-    list_editable = ('is_active',)
+    list_display  = ('name', 'booking_name', 'capacity', 'location', 'open_time', 'close_time',
+                     'is_active', 'allow_overlap')
+    list_editable = ('is_active', 'allow_overlap')
     search_fields = ('name', 'booking_name')
 
 

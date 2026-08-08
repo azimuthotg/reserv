@@ -73,10 +73,11 @@ class BookingRoomPerDayLimitTests(TestCase):
         )
 
     def test_second_booking_different_room_same_day_allowed(self):
+        """ห้องอื่นในวันเดียวกันจองได้ ตราบใดที่ไม่ทับเวลากัน (ดู BookingUserOverlapTests)"""
         resp1 = self._post(self.user.line_user_id, self.room_a, self.b_date, '09:00', '10:00')
         self.assertEqual(resp1.status_code, 200, resp1.content)
 
-        resp2 = self._post(self.user.line_user_id, self.room_b, self.b_date, '09:00', '10:00')
+        resp2 = self._post(self.user.line_user_id, self.room_b, self.b_date, '11:00', '12:00')
         self.assertEqual(resp2.status_code, 200, resp2.content)
 
     def test_second_booking_same_room_different_day_allowed(self):
@@ -101,6 +102,102 @@ class BookingRoomPerDayLimitTests(TestCase):
 
         resp2 = self._post(self.other_user.line_user_id, self.room_a, self.b_date, '11:00', '12:00')
         self.assertEqual(resp2.status_code, 200, resp2.content)
+
+
+class BookingUserOverlapTests(TestCase):
+    """ผู้ใช้คนเดียวห้ามถือ 2 ห้องพร้อมกัน — ยกเว้นห้องที่ allow_overlap=True"""
+
+    def setUp(self):
+        self.room_a = Room.objects.create(
+            name='ห้องทดสอบ A', booking_name='ovl-room-a',
+            location='ชั้น 1', capacity=10,
+            open_time='08:30', close_time='16:30',
+        )
+        self.room_b = Room.objects.create(
+            name='ห้องทดสอบ B', booking_name='ovl-room-b',
+            location='ชั้น 1', capacity=10,
+            open_time='08:30', close_time='16:30',
+        )
+        self.shared = Room.objects.create(
+            name='โต๊ะประชุมทดสอบ', booking_name='ovl-shared',
+            location='ชั้น 1', capacity=13,
+            open_time='08:30', close_time='16:30',
+            allow_overlap=True,
+        )
+        self.user = LineUser.objects.create(
+            line_user_id='U_ovl_001', display_name='Tester',
+            user_ldap='ovl-tester', user_type='นักศึกษา',
+            full_name='Overlap Tester', faculty='คณะทดสอบ', is_active=True,
+        )
+        self.b_date = _next_weekday(date.today())
+        self.client = Client()
+
+    def _post(self, room, start, end):
+        return self.client.post(
+            reverse('create_booking'),
+            data=json.dumps({
+                'userId': self.user.line_user_id,
+                'room': room.booking_name,
+                'booking_date': self.b_date.strftime('%Y-%m-%d'),
+                'start_time': start,
+                'end_time': end,
+                'group_name': 'กลุ่มทดสอบ',
+                'attendees': 'ผู้ทดสอบ',
+            }),
+            content_type='application/json',
+        )
+
+    def test_overlapping_booking_across_rooms_blocked(self):
+        self.assertEqual(self._post(self.room_a, '09:00', '10:00').status_code, 200)
+
+        resp = self._post(self.room_b, '09:30', '10:30')
+        self.assertEqual(resp.status_code, 409, resp.content)
+        error = resp.json()['error']
+        self.assertIn('ห้องทดสอบ A', error)      # บอกว่าชนกับรายการไหน
+        self.assertIn('09:00', error)
+        self.assertEqual(Booking.objects.filter(room=self.room_b).count(), 0)
+
+    def test_back_to_back_booking_allowed(self):
+        """ต่อกันพอดี (10:00-11:00 กับ 11:00-12:00) ไม่ถือว่าทับ"""
+        self.assertEqual(self._post(self.room_a, '10:00', '11:00').status_code, 200)
+        self.assertEqual(self._post(self.room_b, '11:00', '12:00').status_code, 200)
+
+    def test_allow_overlap_room_as_new_booking_is_exempt(self):
+        """จองห้องปกติไว้ก่อน แล้วจองโต๊ะประชุมทับได้"""
+        self.assertEqual(self._post(self.room_a, '13:00', '15:00').status_code, 200)
+        self.assertEqual(self._post(self.shared, '13:30', '14:30').status_code, 200)
+
+    def test_allow_overlap_room_as_existing_booking_is_exempt(self):
+        """จองโต๊ะประชุมไว้ก่อน แล้วจองห้องปกติทับได้"""
+        self.assertEqual(self._post(self.shared, '13:00', '15:00').status_code, 200)
+        self.assertEqual(self._post(self.room_a, '13:30', '14:30').status_code, 200)
+
+    def test_cancelled_booking_does_not_block_overlap(self):
+        self.assertEqual(self._post(self.room_a, '09:00', '10:00').status_code, 200)
+        Booking.objects.filter(room=self.room_a).update(status='cancelled')
+
+        self.assertEqual(self._post(self.room_b, '09:30', '10:30').status_code, 200)
+
+    def test_other_user_overlap_not_affected(self):
+        other = LineUser.objects.create(
+            line_user_id='U_ovl_002', display_name='Tester2',
+            user_ldap='ovl-tester2', user_type='นักศึกษา',
+            full_name='Overlap Tester 2', faculty='คณะทดสอบ', is_active=True,
+        )
+        self.assertEqual(self._post(self.room_a, '09:00', '10:00').status_code, 200)
+
+        resp = self.client.post(
+            reverse('create_booking'),
+            data=json.dumps({
+                'userId': other.line_user_id,
+                'room': self.room_b.booking_name,
+                'booking_date': self.b_date.strftime('%Y-%m-%d'),
+                'start_time': '09:00', 'end_time': '10:00',
+                'group_name': 'กลุ่มทดสอบ', 'attendees': 'ผู้ทดสอบ',
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
 
 
 class ManageAnalyticsTests(TestCase):

@@ -19,6 +19,11 @@ class Room(models.Model):
     open_time        = models.TimeField()
     close_time       = models.TimeField()
     is_active        = models.BooleanField(default=True)
+    allow_overlap    = models.BooleanField(
+        default=False,
+        help_text='ยอมให้ผู้ใช้คนเดียวจองห้องนี้ทับเวลากับห้องอื่นได้ '
+                  '(สำหรับพื้นที่กลุ่ม/พื้นที่เปิด เช่น โต๊ะประชุม)'
+    )
     ha_entity_id     = models.CharField(max_length=200, blank=True)
 
     class Meta:

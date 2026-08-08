@@ -48,7 +48,7 @@ class RoomForm(forms.ModelForm):
             'capacity', 'min_attendees', 'max_booking_hours',
             'open_time', 'close_time',
             'eligible_users', 'how_to_use', 'facilities', 'rules',
-            'is_active', 'ha_entity_id',
+            'is_active', 'allow_overlap', 'ha_entity_id',
         ]
         widgets = {
             'name':              forms.TextInput(attrs={'class': 'form-control'}),
@@ -69,6 +69,7 @@ class RoomForm(forms.ModelForm):
             'rules':             forms.Textarea(attrs={'class': 'form-control', 'rows': 4,
                                      'placeholder': 'ห้ามนำอาหารและเครื่องดื่มเข้าห้อง\nต้องคืนกุญแจหลังใช้งาน'}),
             'is_active':         forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'allow_overlap':     forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'ha_entity_id':      forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Phase 2: IoT entity ID'}),
         }
         labels = {
@@ -86,6 +87,7 @@ class RoomForm(forms.ModelForm):
             'facilities':        'อุปกรณ์ / สิ่งอำนวยความสะดวก',
             'rules':             'กฎระเบียบการใช้ห้อง',
             'is_active':         'เปิดใช้งาน',
+            'allow_overlap':     'ยอมให้จองทับเวลากับห้องอื่นได้ (พื้นที่กลุ่ม/พื้นที่เปิด)',
             'ha_entity_id':      'Home Assistant Entity ID',
         }
 
