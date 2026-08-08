@@ -154,8 +154,13 @@
         <p style="font-size:14px;color:#666;margin-top:10px;margin-bottom:0;line-height:1.6;">{{ room.description }}</p>
         {% endif %}
         <div class="chip-row">
+            {% if room.is_online %}
+            <div class="chip"><span class="chip-icon">🕐</span>ทุกวัน {{ room.open_time|time:"H:i" }}–{{ room.close_time|time:"H:i" }} น.</div>
+            <div class="chip"><span class="chip-icon">💻</span>บริการออนไลน์ ไม่ต้องเข้าอาคาร</div>
+            {% else %}
             <div class="chip"><span class="chip-icon">🕐</span>จ.-ศ. {{ room.open_time|time:"H:i" }}–{{ room.close_time|time:"H:i" }} น.</div>
             <div class="chip"><span class="chip-icon">🕐</span>ส.-อา. {{ weekend_open_time|time:"H:i" }}–{{ weekend_close_time|time:"H:i" }} น.</div>
+            {% endif %}
             <div class="chip"><span class="chip-icon">👥</span>รองรับ {{ room.capacity }} คน</div>
             {% if room.min_attendees > 1 %}
             <div class="chip"><span class="chip-icon">👤</span>ขั้นต่ำ {{ room.min_attendees }} คน</div>

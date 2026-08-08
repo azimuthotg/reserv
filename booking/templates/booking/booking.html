@@ -142,7 +142,7 @@
         <!-- Quick Booking -->
         <div class="section-card">
             <div class="section-title">จองด่วน</div>
-            <div class="quick-btns">
+            <div class="quick-btns" id="quick-btns">
                 <div class="btn-quick" id="btn-morning" onclick="selectQuick('morning')">
                     <div class="q-label">🌅 จองเช้า</div>
                     <div class="q-time" id="morning-time">—</div>
@@ -153,7 +153,7 @@
                 </div>
             </div>
 
-            <div class="or-divider">หรือเลือกเวลาเอง (สูงสุด 3.5 ชั่วโมง)</div>
+            <div class="or-divider" id="or-divider">หรือเลือกเวลาเอง (สูงสุด 3.5 ชั่วโมง)</div>
 
             <div class="row g-2">
                 <div class="col-6">
@@ -213,6 +213,10 @@
         return String(Math.floor(m / 60)).padStart(2,'0') + ':' + String(m % 60).padStart(2,'0');
     }
     function getServiceHours(dateStr) {
+        // บริการออนไลน์ (เครื่องเสมือน) เปิดเวลาเดียวกันทุกวัน ไม่ผูกกับเวลาเปิดอาคาร
+        if (ROOM_DATA.is_online) {
+            return { open: ROOM_DATA.open_time, close: ROOM_DATA.close_time };
+        }
         const date = new Date(`${dateStr}T00:00:00`);
         const isWeekend = date.getDay() === 0 || date.getDay() === 6;
         return {
@@ -281,10 +285,19 @@
         }
         document.getElementById('room-name').textContent     = ROOM_DATA.name;
         document.getElementById('room-location').textContent = '📍 ' + ROOM_DATA.location;
-        document.getElementById('room-hours').textContent    =
-            '🕐 จ.-ศ. ' + ROOM_DATA.open_time + '–' + ROOM_DATA.close_time +
-            '  |  ส.-อา. ' + ROOM_DATA.weekend_open_time + '–' + ROOM_DATA.weekend_close_time +
-            '  |  👥 สูงสุด ' + ROOM_DATA.capacity + ' คน';
+        if (ROOM_DATA.is_online) {
+            // บริการออนไลน์: เปิดทุกวันช่วงเดียว + จองด่วนเช้า/บ่ายไม่สื่อความหมาย ซ่อนไว้
+            document.getElementById('room-hours').textContent =
+                '🕐 ทุกวัน ' + ROOM_DATA.open_time + '–' + ROOM_DATA.close_time +
+                '  |  👥 สูงสุด ' + ROOM_DATA.capacity + ' คน';
+            document.getElementById('quick-btns').style.display = 'none';
+            document.getElementById('or-divider').textContent = 'เลือกเวลา (สูงสุด 3.5 ชั่วโมง ต่อ 1 รอบบริการ)';
+        } else {
+            document.getElementById('room-hours').textContent =
+                '🕐 จ.-ศ. ' + ROOM_DATA.open_time + '–' + ROOM_DATA.close_time +
+                '  |  ส.-อา. ' + ROOM_DATA.weekend_open_time + '–' + ROOM_DATA.weekend_close_time +
+                '  |  👥 สูงสุด ' + ROOM_DATA.capacity + ' คน';
+        }
         return true;
     }
 

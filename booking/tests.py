@@ -200,6 +200,94 @@ class BookingUserOverlapTests(TestCase):
         self.assertEqual(resp.status_code, 200, resp.content)
 
 
+class OnlineRoomRoundTests(TestCase):
+    """บริการออนไลน์ (is_online) จองได้ 3 รอบ/วัน — เช้ามืด / กลางวัน / กลางคืน"""
+
+    def setUp(self):
+        self.online = Room.objects.create(
+            name='Canva ทดสอบ', booking_name='rnd-online',
+            location='ออนไลน์', capacity=2,
+            open_time='00:00', close_time='23:59',
+            is_online=True,
+        )
+        self.onsite = Room.objects.create(
+            name='ห้องจริงทดสอบ', booking_name='rnd-onsite',
+            location='ชั้น 1', capacity=10,
+            open_time='08:30', close_time='16:30',
+        )
+        self.user = LineUser.objects.create(
+            line_user_id='U_rnd_001', display_name='Tester',
+            user_ldap='rnd-tester', user_type='นักศึกษา',
+            full_name='Round Tester', faculty='คณะทดสอบ', is_active=True,
+        )
+        self.b_date = _next_weekday(date.today())
+        self.client = Client()
+
+    def _post(self, room, start, end, b_date=None):
+        return self.client.post(
+            reverse('create_booking'),
+            data=json.dumps({
+                'userId': self.user.line_user_id,
+                'room': room.booking_name,
+                'booking_date': (b_date or self.b_date).strftime('%Y-%m-%d'),
+                'start_time': start,
+                'end_time': end,
+                'group_name': 'กลุ่มทดสอบ',
+                'attendees': 'ผู้ทดสอบ',
+            }),
+            content_type='application/json',
+        )
+
+    def test_three_rounds_same_day_allowed(self):
+        """เช้ามืด + กลางวัน + กลางคืน = 3 สิทธิ์แยกกัน"""
+        self.assertEqual(self._post(self.online, '05:00', '08:00').status_code, 200)
+        self.assertEqual(self._post(self.online, '10:00', '12:00').status_code, 200)
+        self.assertEqual(self._post(self.online, '19:00', '21:00').status_code, 200)
+        self.assertEqual(Booking.objects.filter(room=self.online, status='confirmed').count(), 3)
+
+    def test_second_booking_same_round_blocked(self):
+        self.assertEqual(self._post(self.online, '18:00', '19:00').status_code, 200)
+
+        resp = self._post(self.online, '21:00', '22:00')
+        self.assertEqual(resp.status_code, 409, resp.content)
+        self.assertIn('1 ครั้งต่อรอบ', resp.json()['error'])
+
+    def test_booking_across_rounds_rejected(self):
+        """16:00-18:30 คร่อมรอบกลางวันกับกลางคืน — นับสิทธิ์ไม่ได้ จึงปฏิเสธ"""
+        resp = self._post(self.online, '16:00', '18:30')
+        self.assertEqual(resp.status_code, 400, resp.content)
+        self.assertIn('คร่อมรอบ', resp.json()['error'])
+
+    def test_round_boundary_belongs_to_earlier_round(self):
+        """06:00-08:30 อยู่ในรอบเช้ามืด ส่วน 08:30-10:00 อยู่รอบกลางวัน — จองได้ทั้งคู่"""
+        self.assertEqual(self._post(self.online, '06:00', '08:30').status_code, 200)
+        self.assertEqual(self._post(self.online, '08:30', '10:00').status_code, 200)
+
+    def test_online_room_bookable_on_weekend(self):
+        """เสาร์-อาทิตย์ไม่ถูกตัดเวลาตามอาคาร (ปกติระบบบังคับ 09:00-17:00)"""
+        saturday = self.b_date
+        while saturday.weekday() != 5:
+            saturday += timedelta(days=1)
+
+        self.assertEqual(self._post(self.online, '20:00', '22:00', saturday).status_code, 200)
+
+    def test_online_room_bookable_on_holiday(self):
+        from .models import HolidayDate
+        HolidayDate.objects.create(date=self.b_date, description='วันหยุดทดสอบ', is_active=True)
+
+        self.assertEqual(self._post(self.online, '19:00', '20:00').status_code, 200)
+
+        resp = self._post(self.onsite, '10:00', '11:00')
+        self.assertEqual(resp.status_code, 400, resp.content)
+        self.assertIn('วันหยุดทดสอบ', resp.json()['error'])
+
+    def test_onsite_room_night_booking_rejected(self):
+        """ห้องจริงยังจองนอกเวลาไม่ได้เหมือนเดิม"""
+        resp = self._post(self.onsite, '19:00', '20:00')
+        self.assertEqual(resp.status_code, 400, resp.content)
+        self.assertIn('ช่วงเปิดบริการ', resp.json()['error'])
+
+
 class ManageAnalyticsTests(TestCase):
     """หน้าวิเคราะห์การจอง — no-show, ยกเลิกกระชั้นชิด, KPI พื้นฐาน"""
 

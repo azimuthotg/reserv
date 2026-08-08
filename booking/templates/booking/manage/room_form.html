@@ -130,6 +130,13 @@
                         </div>
                         {% if form.allow_overlap.help_text %}<div class="form-text">{{ form.allow_overlap.help_text }}</div>{% endif %}
                     </div>
+                    <div class="col-12">
+                        <div class="form-check mt-1">
+                            {{ form.is_online }}
+                            <label class="form-check-label fw-semibold" style="font-size:13px;">{{ form.is_online.label }}</label>
+                        </div>
+                        {% if form.is_online.help_text %}<div class="form-text">{{ form.is_online.help_text }}</div>{% endif %}
+                    </div>
                 </div>
             </div>
 

@@ -19,10 +19,16 @@ from django.views.decorators.http import require_http_methods
 
 from .models import Booking, BookingLog, HolidayDate, LineUser, Room, RoomClosure, RoomDevice
 from .service_hours import (
+    ROUND_DAY,
+    ROUND_EARLY,
+    ROUND_LABELS,
+    ROUND_NIGHT,
     WEEKEND_CLOSE_TIME,
     WEEKEND_OPEN_TIME,
     max_advance_service_date,
     room_service_hours,
+    round_of_range,
+    round_start_filter,
 )
 
 NPU_API_BASE       = 'https://api.npu.ac.th'
@@ -365,10 +371,11 @@ def landing_page(request):
             'booking_name': r.booking_name,
             'capacity':     r.capacity,
             'location':     r.location or '',
+            'is_online':    r.is_online,
             'open_time':    r.open_time.strftime('%H:%M'),
             'close_time':   r.close_time.strftime('%H:%M'),
-            'weekend_open_time':  WEEKEND_OPEN_TIME.strftime('%H:%M'),
-            'weekend_close_time': WEEKEND_CLOSE_TIME.strftime('%H:%M'),
+            'weekend_open_time':  (r.open_time if r.is_online else WEEKEND_OPEN_TIME).strftime('%H:%M'),
+            'weekend_close_time': (r.close_time if r.is_online else WEEKEND_CLOSE_TIME).strftime('%H:%M'),
         }
         for r in rooms
     ])
@@ -439,10 +446,12 @@ def booking_page(request):
             'booking_name': room.booking_name,
             'capacity':   room.capacity,
             'location':   room.location,
+            'is_online':  room.is_online,
             'open_time':  room.open_time.strftime('%H:%M'),
             'close_time': room.close_time.strftime('%H:%M'),
-            'weekend_open_time':  WEEKEND_OPEN_TIME.strftime('%H:%M'),
-            'weekend_close_time': WEEKEND_CLOSE_TIME.strftime('%H:%M'),
+            # บริการออนไลน์ใช้เวลาเดียวกันทุกวัน ไม่ถูกตัดตามเวลาเปิดอาคาร
+            'weekend_open_time':  (room.open_time if room.is_online else WEEKEND_OPEN_TIME).strftime('%H:%M'),
+            'weekend_close_time': (room.close_time if room.is_online else WEEKEND_CLOSE_TIME).strftime('%H:%M'),
         }
 
     # ส่งวันหยุดที่เกี่ยวข้องและวันสุดท้ายที่จองได้จาก policy เดียวกับ backend
@@ -455,7 +464,11 @@ def booking_page(request):
         date__lte=max_booking_date,
     )
     # คืน dict date → description เพื่อแสดงชื่อวันหยุดทันที
-    holidays_map = {h.date.strftime('%Y-%m-%d'): h.description for h in holiday_qs}
+    # บริการออนไลน์ไม่ปิดตามวันหยุดอาคาร จึงไม่ต้องส่งวันหยุดไปปิด date picker
+    if room is not None and room.is_online:
+        holidays_map = {}
+    else:
+        holidays_map = {h.date.strftime('%Y-%m-%d'): h.description for h in holiday_qs}
 
     context = {
         'liff_id':         settings.LINE_LIFF_ID,
@@ -755,10 +768,15 @@ def create_booking(request):
         if s_time < cutoff:
             return JsonResponse({'error': 'กรุณาจองล่วงหน้าอย่างน้อย 15 นาที เพื่อให้ระบบแจ้งเตือนทำงานได้ถูกต้อง'}, status=400)
 
+    try:
+        room = Room.objects.get(booking_name=room_key, is_active=True)
+    except Room.DoesNotExist:
+        return JsonResponse({'error': 'ไม่พบข้อมูลห้อง'}, status=404)
+
     holidays = _holiday_dates_set()
 
-    # ตรวจว่าวันที่จองเป็นวันหยุดหรือไม่
-    if b_date in holidays:
+    # ตรวจว่าวันที่จองเป็นวันหยุดหรือไม่ — บริการออนไลน์ไม่ผูกกับวันหยุดอาคาร
+    if b_date in holidays and not room.is_online:
         holiday = HolidayDate.objects.get(date=b_date)
         date_th = f'{b_date.day} {_MONTHS_TH[b_date.month]} {b_date.year + 543}'
         return JsonResponse({'error': f'ไม่สามารถจองวัน {date_th} ได้ เนื่องจาก: {holiday.description}'}, status=400)
@@ -769,17 +787,22 @@ def create_booking(request):
     if b_date > max_booking_date:
         return JsonResponse({'error': f'จองล่วงหน้าได้ไม่เกิน {MAX_ADVANCE_DAYS} วันเปิดบริการ'}, status=400)
 
-    try:
-        room = Room.objects.get(booking_name=room_key, is_active=True)
-    except Room.DoesNotExist:
-        return JsonResponse({'error': 'ไม่พบข้อมูลห้อง'}, status=404)
-
     service_open, service_close = room_service_hours(room, b_date)
     if s_time < service_open or e_time > service_close:
         return JsonResponse({
             'error': (
                 'เวลาจองต้องอยู่ในช่วงเปิดบริการ '
                 f'{service_open.strftime("%H:%M")}–{service_close.strftime("%H:%M")} น.'
+            ),
+        }, status=400)
+
+    # การจองต้องอยู่ในรอบเดียว (เช้ามืด / กลางวัน / กลางคืน) เพราะโควตานับเป็นรายรอบ
+    b_round = round_of_range(s_time, e_time)
+    if b_round is None:
+        return JsonResponse({
+            'error': (
+                'จองคร่อมรอบบริการไม่ได้ กรุณาเลือกช่วงเวลาที่อยู่ในรอบเดียวกัน — '
+                f'{ROUND_LABELS[ROUND_EARLY]} · {ROUND_LABELS[ROUND_DAY]} · {ROUND_LABELS[ROUND_NIGHT]}'
             ),
         }, status=400)
 
@@ -804,17 +827,23 @@ def create_booking(request):
         if conflict:
             return JsonResponse({'error': 'ช่วงเวลานี้มีการจองแล้ว กรุณาเลือกเวลาอื่น'}, status=409)
 
+        # โควตา 1 สิทธิ์ต่อห้อง ต่อรอบ — ห้องจริงเปิดเฉพาะรอบกลางวัน พฤติกรรมจึงเท่าเดิม
+        # ส่วนบริการออนไลน์แยกสิทธิ์ได้ 3 รอบต่อวัน
         already_booked = Booking.objects.select_for_update().filter(
             room         = room,
             booking_date = b_date,
             status       = 'confirmed',
             line_user    = lu,
+            **round_start_filter(b_round),
         ).exists()
 
         if already_booked:
-            return JsonResponse({
-                'error': f'คุณจองห้อง {room.name} ในวันนี้ไปแล้ว จองได้ห้องละ 1 ครั้งต่อวัน',
-            }, status=409)
+            if room.is_online:
+                msg = (f'คุณจอง {room.name} รอบ{ROUND_LABELS[b_round]} ในวันนี้ไปแล้ว '
+                       f'จองได้ห้องละ 1 ครั้งต่อรอบ')
+            else:
+                msg = f'คุณจองห้อง {room.name} ในวันนี้ไปแล้ว จองได้ห้องละ 1 ครั้งต่อวัน'
+            return JsonResponse({'error': msg}, status=409)
 
         # ผู้ใช้คนเดียวห้ามถือ 2 ห้องพร้อมกัน — คนเดียวอยู่สองที่ไม่ได้ ห้องที่เหลือจะถูกล็อกทิ้ง
         # ห้องที่ allow_overlap=True (พื้นที่กลุ่ม เช่น โต๊ะประชุม) ยกเว้นทั้งขาใหม่และขาเดิม

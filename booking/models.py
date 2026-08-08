@@ -24,6 +24,11 @@ class Room(models.Model):
         help_text='ยอมให้ผู้ใช้คนเดียวจองห้องนี้ทับเวลากับห้องอื่นได้ '
                   '(สำหรับพื้นที่กลุ่ม/พื้นที่เปิด เช่น โต๊ะประชุม)'
     )
+    is_online        = models.BooleanField(
+        default=False,
+        help_text='บริการออนไลน์ที่ไม่ต้องเข้าอาคาร (เช่น เครื่องเสมือน Canva/Netflix) '
+                  'จองได้ทุกวันตามเวลาเปิด-ปิดของห้องนี้ ไม่ถูกจำกัดด้วยเวลาเปิดอาคารหรือวันหยุด'
+    )
     ha_entity_id     = models.CharField(max_length=200, blank=True)
 
     class Meta:
