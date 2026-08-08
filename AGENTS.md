@@ -253,9 +253,9 @@ python manage.py createsuperuser
 python manage.py collectstatic
 
 # 4. NSSM service (production จริงอยู่ที่ C:\project\reserv — ไม่ใช่ C:\projects\)
-c:\nssm\nssm.exe install reserv "C:\project\reserv\venv\Scripts\python.exe" "C:\project\reserv\deploy\waitress_serve.py"
-c:\nssm\nssm.exe set reserv AppDirectory "C:\project\reserv"
-c:\nssm\nssm.exe start reserv
+c:\nssm\nssm.exe install Reserv "C:\project\reserv\venv\Scripts\python.exe" "C:\project\reserv\deploy\waitress_serve.py"
+c:\nssm\nssm.exe set Reserv AppDirectory "C:\project\reserv"
+c:\nssm\nssm.exe start Reserv
 ```
 
 **เมื่อ pull code ใหม่ขึ้น production:** หากมีการแก้ Python code ต้อง restart service
@@ -265,11 +265,10 @@ c:\nssm\nssm.exe start reserv
 cd C:\project\reserv
 git pull origin master
 .\venv\Scripts\python.exe manage.py collectstatic --noinput
-c:\nssm\nssm.exe restart reserv
+c:\nssm\nssm.exe restart Reserv
 ```
 
-> ⚠️ **ชื่อ service:** `doc/deploy_guide.md` และคำสั่ง NSSM จริงใช้ **`reserv`** แต่บล็อก PROJECT-STATUS
-> ใน CLAUDE.md เขียนว่า `reserv-booking` — ยืนยันด้วย `Get-Service *reserv*` บนเซิร์ฟเวอร์แล้วแก้ให้ตรงกัน
+> **ชื่อ NSSM service คือ `Reserv`** (ยืนยันบนเซิร์ฟเวอร์ 2026-08-08 — เอกสารเก่าที่เขียน `reserv-booking` ผิด)
 
 **Reverse proxy คือ IIS + ARR ไม่ใช่ Nginx** — `web.config` rewrite `^reserv/(.*)` → `127.0.0.1:8003`
 static ทั้งหมด serve ด้วย **WhiteNoise** ผ่าน Waitress **ห้ามตั้ง rule แยกให้ `/reserv/static/`**

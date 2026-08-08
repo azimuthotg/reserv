@@ -15,7 +15,7 @@
 เลยถูก apply ไปด้วย — มันสั่ง `Room.objects.all().update(open_time=08:30, close_time=16:30)` **ทุกห้อง**
 ผลตรงกับเวลาบริการวันธรรมดาใน CLAUDE.md อยู่แล้วจึงไม่เสียหาย แต่**กู้ค่าเดิมไม่ได้**
 **ผลพลอยได้:** ตอน deploy ฟีเจอร์ที่มี migration จากเครื่องนี้ **ไม่ต้องรัน migrate บนเซิร์ฟเวอร์**
-เพราะฐานถูก migrate ไปแล้ว — แค่ `git pull` + `nssm restart reserv-booking`
+เพราะฐานถูก migrate ไปแล้ว — แค่ `git pull` + `nssm restart Reserv`
 **หมายเหตุ:** PROJECT-STATUS เดิมเขียน `deploy_db` เป็น `202.29.55.217` (api.npu.ac.th) ซึ่งไม่ตรงกับ `.env` จริง — แก้เป็น `.213` แล้ว 2026-07-17
 
 ### 2026-07-09 — ฟอนต์ไทยหายตอน export PDF
@@ -124,8 +124,9 @@ flip gate (ประตูทางเข้า) ไม่สังกัดห�
     (เอกพจน์ ไม่ใช่ `C:\projects\`) และ **ไม่มี management command `load_rooms`** ในโปรเจกต์แล้ว
   - `doc/deploy_guide.md` เป็นฉบับที่ถูกต้องมาตลอด แต่ไม่มีใครอ่านเพราะ CLAUDE.md มีหัวข้อ Deploy ของตัวเอง
     → แก้ให้ CLAUDE.md ชี้มาที่ deploy_guide.md เป็นเอกสารหลัก
-  - ⚠️ **ยังค้าง:** ชื่อ NSSM service จริงคือ `reserv` (deploy_guide) หรือ `reserv-booking` (PROJECT-STATUS)
-    ยังไม่ยืนยัน — ต้องรัน `Get-Service *reserv*` บนเซิร์ฟเวอร์
+  - ✅ **ชื่อ NSSM service จริงคือ `Reserv`** (ผู้ใช้ยืนยันจากเซิร์ฟเวอร์ 2026-08-08)
+    ที่เขียนว่า `reserv-booking` ใน CLAUDE.md/MEM.md มาตลอด **ผิด** — แก้ให้ตรงกันทุกไฟล์แล้ว
+    (`c:\nssm\nssm.exe restart Reserv`)
 - ✅ **จัดระเบียบห้อง `netflix1_vm` (ผู้ใช้ทักว่าเอกสารไม่เคยพูดถึงห้องนี้เลย — จริง)**
   - ห้องนี้**เปิดใช้จริงและมีคนจองต่อเนื่อง** 20 รายการ (28 พ.ค. – 1 ส.ค. 2569) รวมเสาร์-อาทิตย์ 4 รายการ
     ที่จองถึง 17:00 น. → ยืนยันว่า `service_hours.py` (ส.-อา. 09:00–17:00) ทำงานถูกต้องบนของจริง

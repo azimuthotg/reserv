@@ -9,7 +9,7 @@ deploy_method: NSSM + Waitress (deploy/waitress_serve.py พอร์ต 8003) �
 deploy_path: C:\project\reserv (ไม่ใช่ C:\projects\)
 deploy_db: MySQL `reserv_db` ที่ 202.29.55.213
 deploy_notes:
-  - restart: c:\nssm\nssm.exe restart reserv  (⚠️ ชื่อ service ยังไม่ยืนยัน — deploy_guide ใช้ `reserv` เคยเขียนไว้ว่า `reserv-booking`)
+  - restart: c:\nssm\nssm.exe restart Reserv   (ชื่อ service ยืนยันจากเซิร์ฟเวอร์แล้ว 2026-08-08)
   - ⚠️ .env เครื่อง dev ชี้ DB production ตัวเดียวกัน — migrate จากเครื่อง dev ลงฐานจริงทันที (ดู MEM.md)
 progress: 98
 phase: ระบบใช้งานจริง (production) ครบ 4 phase แล้ว — external access ปิดครบวงจร (deploy+e2e+ทีมประตูเทส QR ผ่านทั้งรายวันและถาวร) · เหลือเฉพาะงาน enhancement (analytics export, วันหยุดอัตโนมัติ)
@@ -48,15 +48,14 @@ done_2026-08-08:
   - ✅ **ตามใบแจ้งทีม LRS ARC VM Gateway** — เพิ่มห้อง `canva2` "Canva Pro 2" (clone จาก `canva`) · ปิดห้อง `chat-gpt` (`is_active=0` ไม่ลบ เก็บประวัติ 16 รายการ) · เปลี่ยนชื่อ `canva` → "Canva Pro 1" · copy รูป `canva2.png` — แก้ข้อมูลอย่างเดียว ไม่แตะ code (ดู doc/progress-2026-08-08.md)
   - ✅ อัปเดต [doc/line-richmenu-urls.md](doc/line-richmenu-urls.md) ระบุปุ่ม Rich Menu ที่ต้องแก้ + sync room keys ใน CLAUDE.md/AGENTS.md
   - ✅ **เคลียร์เอกสารทั้งโฟลเดอร์ `doc/` ให้เหลือเฉพาะที่ตรงกับสถานะปัจจุบัน** — ย้ายคู่มือ/รายงาน/สื่อ/handoff รุ่นเก่า 37 ไฟล์ไป `doc/archive/{manuals-old,reports-old,promo,handoff}` พร้อม [doc/archive/README.md](doc/archive/README.md) ที่ list "กับดัก" ของเอกสารเก่าไว้ · เขียน [doc/INDEX.md](doc/INDEX.md) ใหม่ทั้งไฟล์ · ปิด task handoff/INDEX ที่ค้าง
-  - ✅ **แก้เอกสาร deploy ให้ตรงของจริง** — CLAUDE.md/AGENTS.md เคยเขียน Nginx + พอร์ต 8000 + `nssm install reserv-booking "python -m waitress..."` + `load_rooms` ซึ่ง**ผิดทั้งหมด** · ของจริงคือ IIS+ARR → WhiteNoise, `deploy/waitress_serve.py` พอร์ต 8003, path `C:\project\reserv`, ไม่มี command `load_rooms` แล้ว
+  - ✅ **แก้เอกสาร deploy ให้ตรงของจริง** — CLAUDE.md/AGENTS.md เคยเขียน Nginx + พอร์ต 8000 + `nssm install reserv-booking "python -m waitress..."` + `load_rooms` ซึ่ง**ผิดทั้งหมด** · ของจริงคือ IIS+ARR → WhiteNoise, `deploy/waitress_serve.py` พอร์ต 8003, path `C:\project\reserv`, ไม่มี command `load_rooms` แล้ว · **ชื่อ NSSM service จริง = `Reserv`** (ผู้ใช้ยืนยันจากเซิร์ฟเวอร์) แก้ครบทั้ง 4 ไฟล์
+  - ✅ **deploy prod + เทสจริงผ่าน** — `git pull` + `collectstatic` (1 ไฟล์: canva2.png) ไม่ต้อง restart · ตรวจบน production: `/room/canva2/` 200 พร้อมรูป · `/room/chat-gpt/` 404 · ปฏิทินสาธารณะแสดง 6 ห้องชื่อใหม่ครบ · static `canva2.png` 200 (803 KB)
   - ✅ **จัดระเบียบห้อง `netflix1_vm` → ชื่อแสดง "Netflix Pro"** — ห้องนี้เปิดใช้จริง 20 การจอง (ล่าสุด 1 ส.ค. 2569) แต่ไม่เคยมีในเอกสารเลย · แก้ `name`/`location`/`facilities`/`rules`/`how_to_use`/`eligible_users` ให้เข้าชุดกับห้องอื่น · เพิ่มลง line-richmenu-urls.md พร้อมเตือนว่า `netflix` ในเอกสารเก่า = Edutainment Zone คนละห้อง (ดู MEM.md)
 next:
-  - **ยืนยันชื่อ NSSM service จริงบนเซิร์ฟเวอร์** ด้วย `Get-Service *reserv*` แล้วแก้ให้ตรงกันทั้ง PROJECT-STATUS, CLAUDE.md, AGENTS.md, doc/deploy_guide.md (ตอนนี้เอกสารขัดกันเอง: `reserv` vs `reserv-booking`)
   - **หารูปห้อง Netflix Pro** แล้ววางเป็น `booking/static/booking/images/rooms/netflix1_vm.png` (ตอนนี้ยังไม่มีไฟล์ หน้าแรกแสดงไอคอน 🏢 แทน — ผู้ใช้แจ้ง 2026-08-08 ว่ายังไม่มีรูป ปล่อยไปก่อนได้) · เพิ่มด้วย `git add -f` เพราะ .gitignore ignore `*.png`
   - **เพิ่ม Canva Pro 2 + Netflix Pro ลงคู่มือผู้ใช้/เจ้าหน้าที่ 2569** — ทั้ง 2 ห้องยังไม่มีในคู่มือเล่มใดเลย (ระวัง: `make_user_manual_2569.py` ยังไม่ sync กับไฟล์ .docx ที่แก้ใน Word — รันทับแล้วงานหาย ดู task ด้านล่าง)
   - **ขอ URL เว็บ VM Gateway จากทีมพัฒนา** แล้วแก้ `how_to_use` ของห้อง `canva`, `canva2`, `netflix1_vm` ให้ตรงวิธีเข้าใช้จริง (ตอนนี้ Canva ยังเขียนแบบเครื่องจริง ส่วน Netflix เขียนกว้าง ๆ) — ขอไปในหนังสือตอบกลับแล้ว
   - **แจ้งทีม VM Gateway กลับว่าใช้ `booking_name = canva2`** (ใบแจ้งขอให้ตอบกลับเพื่อตั้ง `VMMachine.room_key` แล้วรัน `python manage.py check_booking_mapping`)
-  - **deploy รูป `canva2.png` ขึ้น prod** — `git pull` + `python manage.py collectstatic` บนเซิร์ฟเวอร์ (ไม่ต้อง restart service เพราะไม่มีการแก้ code)
   - **แก้ LINE Rich Menu** — ปุ่ม ChatGPT → `?room=canva2` + เปลี่ยนรูปปุ่มเป็น "Canva Pro 2" และรูปปุ่ม Canva เป็น "Canva Pro 1" (ผู้ใช้ทำเอง — รายละเอียดใน doc/line-richmenu-urls.md)
   - **คุยกติกาการจองนอกเวลาทำการ** — ในเวลาทำการยึด "1 คน 1 ครั้งต่อบริการต่อวัน" ตามเดิม ส่วนนอกเวลาจะเปลี่ยน ยังไม่สรุป (ดู MEM.md 2026-08-08)
   - แคปภาพหน้าแก้ไขสมาชิกถาวร `/manage/external/<id>/edit/` ด้วย `STAFF_USER=... STAFF_PASS=... python3 doc/capture_external_shots.py` แล้ว generate รายงานซ้ำให้ครบ 7 ภาพ
@@ -333,9 +332,9 @@ python manage.py createsuperuser
 python manage.py collectstatic
 
 # 4. NSSM service (production จริงอยู่ที่ C:\project\reserv — ไม่ใช่ C:\projects\)
-c:\nssm\nssm.exe install reserv "C:\project\reserv\venv\Scripts\python.exe" "C:\project\reserv\deploy\waitress_serve.py"
-c:\nssm\nssm.exe set reserv AppDirectory "C:\project\reserv"
-c:\nssm\nssm.exe start reserv
+c:\nssm\nssm.exe install Reserv "C:\project\reserv\venv\Scripts\python.exe" "C:\project\reserv\deploy\waitress_serve.py"
+c:\nssm\nssm.exe set Reserv AppDirectory "C:\project\reserv"
+c:\nssm\nssm.exe start Reserv
 ```
 
 **เมื่อ pull code ใหม่ขึ้น production:** หากมีการแก้ Python code ต้อง restart service
@@ -345,11 +344,10 @@ c:\nssm\nssm.exe start reserv
 cd C:\project\reserv
 git pull origin master
 .\venv\Scripts\python.exe manage.py collectstatic --noinput
-c:\nssm\nssm.exe restart reserv
+c:\nssm\nssm.exe restart Reserv
 ```
 
-> ⚠️ **ชื่อ service:** `doc/deploy_guide.md` และคำสั่ง NSSM จริงใช้ **`reserv`** แต่บล็อก PROJECT-STATUS
-> ด้านบนเขียนว่า `reserv-booking` — ยืนยันด้วย `Get-Service *reserv*` บนเซิร์ฟเวอร์แล้วแก้ให้ตรงกัน
+> **ชื่อ NSSM service คือ `Reserv`** (ยืนยันบนเซิร์ฟเวอร์ 2026-08-08 — เอกสารเก่าที่เขียน `reserv-booking` ผิด)
 
 **Reverse proxy คือ IIS + ARR ไม่ใช่ Nginx** — `web.config` rewrite `^reserv/(.*)` → `127.0.0.1:8003`
 static ทั้งหมด serve ด้วย **WhiteNoise** ผ่าน Waitress **ห้ามตั้ง rule แยกให้ `/reserv/static/`**

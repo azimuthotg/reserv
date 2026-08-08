@@ -79,9 +79,9 @@ booking_name ที่ใช้งานจริง (ณ 8 ส.ค. 2569): `min
 ### 5. NSSM Service
 
 ```powershell
-c:\nssm\nssm.exe install reserv "C:\project\reserv\venv\Scripts\python.exe" "C:\project\reserv\deploy\waitress_serve.py"
-c:\nssm\nssm.exe set reserv AppDirectory "C:\project\reserv"
-c:\nssm\nssm.exe start reserv
+c:\nssm\nssm.exe install Reserv "C:\project\reserv\venv\Scripts\python.exe" "C:\project\reserv\deploy\waitress_serve.py"
+c:\nssm\nssm.exe set Reserv AppDirectory "C:\project\reserv"
+c:\nssm\nssm.exe start Reserv
 ```
 
 ### 6. IIS web.config
@@ -126,7 +126,7 @@ git pull origin master
 pip install -r requirements.txt   # ถ้ามี package ใหม่
 python manage.py migrate           # ถ้ามี migration ใหม่
 python manage.py collectstatic --noinput
-c:\nssm\nssm.exe restart reserv
+c:\nssm\nssm.exe restart Reserv
 ```
 
 ---
@@ -141,9 +141,9 @@ c:\nssm\nssm.exe restart reserv
 
 **วิธีแก้:**
 ```powershell
-sc.exe queryex reserv          # ดู PID
+sc.exe queryex Reserv          # ดู PID
 taskkill /F /PID <PID>         # kill process
-c:\nssm\nssm.exe start reserv
+c:\nssm\nssm.exe start Reserv
 ```
 
 > ⚠️ PowerShell: ใช้ `sc.exe` ไม่ใช่ `sc` (sc ใน PowerShell = Set-Content)
@@ -213,7 +213,7 @@ LINE_LIFF_ID=1653777241-BP070q31
 
 **วิธีแก้:** LINE Developers Console → LIFF → แก้ Endpoint URL เป็น:
 ```
-https://lib.npu.ac.th/reserv/booking/
+https://lib.npu.ac.th/reserv/
 ```
 
 ---
@@ -224,17 +224,17 @@ https://lib.npu.ac.th/reserv/booking/
 
 **วิธีตรวจ:**
 ```powershell
-c:\nssm\nssm.exe get reserv Application      # ควรเป็น ...venv\Scripts\python.exe
-c:\nssm\nssm.exe get reserv AppParameters    # ควรเป็น deploy\waitress_serve.py
-c:\nssm\nssm.exe get reserv AppDirectory     # ควรเป็น C:\project\reserv
+c:\nssm\nssm.exe get Reserv Application      # ควรเป็น ...venv\Scripts\python.exe
+c:\nssm\nssm.exe get Reserv AppParameters    # ควรเป็น deploy\waitress_serve.py
+c:\nssm\nssm.exe get Reserv AppDirectory     # ควรเป็น C:\project\reserv
 ```
 
 **วิธีแก้:**
 ```powershell
-c:\nssm\nssm.exe set reserv Application "C:\project\reserv\venv\Scripts\python.exe"
-c:\nssm\nssm.exe set reserv AppParameters "C:\project\reserv\deploy\waitress_serve.py"
-c:\nssm\nssm.exe set reserv AppDirectory "C:\project\reserv"
-c:\nssm\nssm.exe restart reserv
+c:\nssm\nssm.exe set Reserv Application "C:\project\reserv\venv\Scripts\python.exe"
+c:\nssm\nssm.exe set Reserv AppParameters "C:\project\reserv\deploy\waitress_serve.py"
+c:\nssm\nssm.exe set Reserv AppDirectory "C:\project\reserv"
+c:\nssm\nssm.exe restart Reserv
 ```
 
 ---
