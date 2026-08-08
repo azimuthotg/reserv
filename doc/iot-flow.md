@@ -96,7 +96,7 @@ POST /api/device-toggle/ { userId, room_key, entity_id }
 [Task Scheduler — 07:30 ทุกวัน]
     ↓ morning_iot_report.py
 
-    วนทุกห้องที่ is_active = True
+    วนทุกห้องที่ is_active = True + กลุ่มอุปกรณ์ส่วนกลาง (RoomDevice ที่ room = NULL)
         ↓ วนทุกอุปกรณ์ใน RoomDevice
         ↓ Django → HA REST API (GET /api/states/{entity_id})
         ↓ รับสถานะ: on / off / unknown / HA offline
@@ -109,10 +109,10 @@ POST /api/device-toggle/ { userId, room_key, entity_id }
     │                                     │
     │ Online: N  Offline: N  ไม่ทราบ: N  │
     │                                     │
-    │ ✅ ห้อง Mini Theater                │
-    │   🟢 Smart Plug 1: Online           │
-    │ ⚠️ ห้อง Canva Studio               │
-    │   🔴 Smart Plug 2: Offline          │
+    │ ✅ ห้อง MINI THEATER                │
+    │   🟢 ระบบแสงสว่าง: Online           │
+    │ ⚠️ อุปกรณ์ส่วนกลาง                  │
+    │   🔴 flip gate2: Offline            │
     └─────────────────────────────────────┘
         ↓
     LINE push → LINE Group ID (IOT_ADMIN_LINE_ID)
@@ -125,7 +125,8 @@ POST /api/device-toggle/ { userId, room_key, entity_id }
 
 ```
 [เจ้าหน้าที่] เปิด /manage/iot-monitor/ (Desktop)
-    ↓ แสดงสถานะอุปกรณ์ทุกห้อง real-time
+    ↓ แสดงสถานะอุปกรณ์ทุกห้อง + กลุ่มอุปกรณ์ส่วนกลาง real-time
+    ↓ (การ์ดทั้งหมดมาจาก helper กลางตัวเดียว `_iot_cards()` ใน manage_views.py)
     ↓ ดึงจาก HA REST API (/api/states/{entity_id})
 
     ├── กด "Refresh" → /manage/iot-monitor/refresh/
@@ -154,3 +155,18 @@ POST /api/device-toggle/ { userId, room_key, entity_id }
 
 **Authentication:** `Authorization: Bearer {HA_TOKEN}` ทุก request
 **Network:** Wi-Fi ภายในห้องสมุด (Django → HA → Sonoff อยู่ใน LAN เดียวกัน)
+
+---
+
+## อุปกรณ์ส่วนกลาง (RoomDevice ที่ `room = NULL`)
+
+อุปกรณ์ที่ไม่สังกัดห้องจอง เช่น **flip gate ทางเข้า 3 ตัว** จับกลุ่มด้วย `group_name`
+แสดงเป็นการ์ดแยกบนหน้า `/manage/iot-monitor/` ให้เจ้าหน้าที่กดเปิด-ปิดได้
+
+- **ไม่ปรากฏในระบบจองใด ๆ** — `room_status()`, `device_toggle()` และ auto-off ใน `send_reminders`
+  filter ด้วย `room=booking.room` ที่เป็นห้องจริงเสมอ อุปกรณ์กลุ่มจึงไม่เข้าเงื่อนไข
+- **ตารางเวลาให้ Home Assistant automation คุมทั้งหมด** ฝั่ง Django ไม่มี logic เรื่องเวลา
+  (flip gate: HA เปิด 07:20 ปิด 17:00 ต่างจากห้องจองที่ automation `Close ALL` ปิด 16:30)
+- เพิ่ม-ลบอุปกรณ์กลุ่มผ่าน Django Admin (`/admin/`) เพราะไม่มีหน้าห้องให้จัดการ
+
+เพิ่มเมื่อ 2026-07-17 (migration `0012`) — ดู `doc/progress-2026-07-17.md`

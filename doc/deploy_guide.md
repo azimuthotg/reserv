@@ -63,14 +63,18 @@ python manage.py createsuperuser
 
 | Field | ตัวอย่าง |
 |---|---|
-| Name | Netflix Zone |
-| **Booking name** | `netflix` ← ต้องตรงกับ URL param |
+| Name | MINI THEATER |
+| **Booking name** | `mini` ← ต้องตรงกับ URL param |
 | Location | ชั้น 3 สำนักวิทยบริการ |
 | Capacity | 12 |
 | Open time | 08:30 |
 | Close time | 16:30 |
 
-booking_name ที่ใช้ใน Flex Message: `netflix`, `mini`, `canva`, `chat-gpt`, `meeting_f1`
+booking_name ที่ใช้งานจริง (ณ 8 ส.ค. 2569): `mini`, `edutainment`, `canva`, `canva2`, `netflix1_vm`, `meeting_f1`
+(`chat-gpt` ปิดแล้ว `is_active=0`)
+
+> ⚠️ **`canva`, `canva2`, `netflix1_vm` ผูกกับระบบ LRS ARC VM Gateway** — ห้ามแก้ `booking_name`
+> โดยไม่แจ้งทีมพัฒนา Gateway ก่อน ไม่งั้นนักศึกษาที่จองจะเข้าเครื่องไม่ได้ทันที
 
 ### 5. NSSM Service
 
@@ -108,7 +112,8 @@ iisreset /restart
 
 ### 7. LINE Developers Console
 
-- LIFF → Endpoint URL: `https://lib.npu.ac.th/reserv/booking/`
+- LIFF → Endpoint URL: `https://lib.npu.ac.th/reserv/`
+  (ต้องเป็น root ของแอป ไม่ใช่ `/booking/` เพราะ Rich Menu ยิงได้หลายหน้า)
 
 ---
 
@@ -237,8 +242,8 @@ c:\nssm\nssm.exe restart reserv
 ## Architecture
 
 ```
-LINE OA (Flex Message)
-  → ลิงก์ https://lib.npu.ac.th/reserv/booking/?booking_name=netflix
+LINE OA (Rich Menu / Flex Message)
+  → ลิงก์ https://lib.npu.ac.th/reserv/booking/?room=mini
       ↓
     IIS ARR (lib.npu.ac.th)
       → web.config rewrite ^reserv/(.*) → 127.0.0.1:8003
@@ -260,7 +265,7 @@ LINE OA (Flex Message)
 
 | URL | หน้าที่ |
 |---|---|
-| `/reserv/booking/?booking_name=<room>` | LIFF booking form |
+| `/reserv/booking/?room=<booking_name>` | LIFF booking form (รองรับ `?booking_name=` แบบเก่าด้วย) |
 | `/reserv/booking/success/?id=<id>` | หน้าจองสำเร็จ |
 | `/reserv/api/check-user/` | ตรวจ LINE userId กับ NPU API |
 | `/reserv/api/booking/` | สร้างการจอง |

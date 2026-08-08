@@ -38,7 +38,7 @@ Migration จาก Google Apps Script + Google Sheets → Django + MySQL
 | Frontend | Django Template + Bootstrap 5.3 + FullCalendar v6 |
 | LIFF | LINE Front-end Framework v2 (SDK 2.15+) |
 | Process Manager | NSSM + Waitress (Windows Server) |
-| Reverse Proxy | Nginx → https://lib.npu.ac.th/reserv/ |
+| Reverse Proxy | IIS + ARR → https://lib.npu.ac.th/reserv/ (static ผ่าน WhiteNoise) |
 
 ---
 
@@ -50,7 +50,6 @@ python3 manage.py runserver 0.0.0.0:8001
 
 # Database
 python3 manage.py migrate
-python3 manage.py load_rooms        # โหลดข้อมูล 5 ห้องเริ่มต้น
 python3 manage.py createsuperuser
 
 # Checks
@@ -58,7 +57,7 @@ python3 manage.py check
 python3 manage.py makemigrations booking
 
 # Production (Windows)
-python -m waitress --port=8000 --threads=4 reserv.wsgi:application
+python deploy/waitress_serve.py      # อ่าน WAITRESS_HOST/PORT/THREADS จาก .env
 ```
 
 ---
@@ -248,29 +247,33 @@ pip install -r requirements.txt
 
 # 2. Database
 python manage.py migrate
-python manage.py load_rooms
 python manage.py createsuperuser
 
 # 3. Static files
 python manage.py collectstatic
 
-# 4. NSSM service
-nssm install reserv-booking "python" "-m waitress --port=8000 --threads=4 reserv.wsgi:application"
-nssm set reserv-booking AppDirectory "C:\path\to\reserv"
-nssm start reserv-booking
+# 4. NSSM service (production จริงอยู่ที่ C:\project\reserv — ไม่ใช่ C:\projects\)
+c:\nssm\nssm.exe install reserv "C:\project\reserv\venv\Scripts\python.exe" "C:\project\reserv\deploy\waitress_serve.py"
+c:\nssm\nssm.exe set reserv AppDirectory "C:\project\reserv"
+c:\nssm\nssm.exe start reserv
 ```
 
-**เมื่อ pull code ใหม่ขึ้น production:** หากมีการแก้ Python code ต้องรัน
-`nssm restart reserv-booking` ก่อนทดสอบ เพื่อให้ Waitress โหลด code ชุดใหม่
+**เมื่อ pull code ใหม่ขึ้น production:** หากมีการแก้ Python code ต้อง restart service
+ก่อนทดสอบ เพื่อให้ Waitress โหลด code ชุดใหม่ — ถ้าแก้แต่ข้อมูล/static ไม่ต้อง restart
 
-**Nginx config สำคัญ:**
-```nginx
-location /reserv/ {
-    proxy_pass http://127.0.0.1:8000/;
-    proxy_set_header X-Forwarded-Proto https;
-    proxy_set_header Host $host;
-}
+```powershell
+cd C:\project\reserv
+git pull origin master
+.\venv\Scripts\python.exe manage.py collectstatic --noinput
+c:\nssm\nssm.exe restart reserv
 ```
+
+> ⚠️ **ชื่อ service:** `doc/deploy_guide.md` และคำสั่ง NSSM จริงใช้ **`reserv`** แต่บล็อก PROJECT-STATUS
+> ใน CLAUDE.md เขียนว่า `reserv-booking` — ยืนยันด้วย `Get-Service *reserv*` บนเซิร์ฟเวอร์แล้วแก้ให้ตรงกัน
+
+**Reverse proxy คือ IIS + ARR ไม่ใช่ Nginx** — `web.config` rewrite `^reserv/(.*)` → `127.0.0.1:8003`
+static ทั้งหมด serve ด้วย **WhiteNoise** ผ่าน Waitress **ห้ามตั้ง rule แยกให้ `/reserv/static/`**
+(เคยทำแล้ว admin CSS หาย — ดู [doc/deploy_guide.md](doc/deploy_guide.md))
 
 ---
 

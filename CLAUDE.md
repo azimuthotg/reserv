@@ -5,10 +5,11 @@ deployment: production
 deploy_url: https://lib.npu.ac.th/reserv/
 deploy_server: 110.78.83.102 (lib.npu.ac.th)
 deploy_os: Windows Server 2019
-deploy_method: NSSM + Waitress (service reserv-booking) ผ่าน gateway IIS+ARR
+deploy_method: NSSM + Waitress (deploy/waitress_serve.py พอร์ต 8003) ผ่าน gateway IIS+ARR · static ผ่าน WhiteNoise
+deploy_path: C:\project\reserv (ไม่ใช่ C:\projects\)
 deploy_db: MySQL `reserv_db` ที่ 202.29.55.213
 deploy_notes:
-  - restart: nssm restart reserv-booking
+  - restart: c:\nssm\nssm.exe restart reserv  (⚠️ ชื่อ service ยังไม่ยืนยัน — deploy_guide ใช้ `reserv` เคยเขียนไว้ว่า `reserv-booking`)
   - ⚠️ .env เครื่อง dev ชี้ DB production ตัวเดียวกัน — migrate จากเครื่อง dev ลงฐานจริงทันที (ดู MEM.md)
 progress: 98
 phase: ระบบใช้งานจริง (production) ครบ 4 phase แล้ว — external access ปิดครบวงจร (deploy+e2e+ทีมประตูเทส QR ผ่านทั้งรายวันและถาวร) · เหลือเฉพาะงาน enhancement (analytics export, วันหยุดอัตโนมัติ)
@@ -46,8 +47,11 @@ done_2026-08-07:
 done_2026-08-08:
   - ✅ **ตามใบแจ้งทีม LRS ARC VM Gateway** — เพิ่มห้อง `canva2` "Canva Pro 2" (clone จาก `canva`) · ปิดห้อง `chat-gpt` (`is_active=0` ไม่ลบ เก็บประวัติ 16 รายการ) · เปลี่ยนชื่อ `canva` → "Canva Pro 1" · copy รูป `canva2.png` — แก้ข้อมูลอย่างเดียว ไม่แตะ code (ดู doc/progress-2026-08-08.md)
   - ✅ อัปเดต [doc/line-richmenu-urls.md](doc/line-richmenu-urls.md) ระบุปุ่ม Rich Menu ที่ต้องแก้ + sync room keys ใน CLAUDE.md/AGENTS.md
+  - ✅ **เคลียร์เอกสารทั้งโฟลเดอร์ `doc/` ให้เหลือเฉพาะที่ตรงกับสถานะปัจจุบัน** — ย้ายคู่มือ/รายงาน/สื่อ/handoff รุ่นเก่า 37 ไฟล์ไป `doc/archive/{manuals-old,reports-old,promo,handoff}` พร้อม [doc/archive/README.md](doc/archive/README.md) ที่ list "กับดัก" ของเอกสารเก่าไว้ · เขียน [doc/INDEX.md](doc/INDEX.md) ใหม่ทั้งไฟล์ · ปิด task handoff/INDEX ที่ค้าง
+  - ✅ **แก้เอกสาร deploy ให้ตรงของจริง** — CLAUDE.md/AGENTS.md เคยเขียน Nginx + พอร์ต 8000 + `nssm install reserv-booking "python -m waitress..."` + `load_rooms` ซึ่ง**ผิดทั้งหมด** · ของจริงคือ IIS+ARR → WhiteNoise, `deploy/waitress_serve.py` พอร์ต 8003, path `C:\project\reserv`, ไม่มี command `load_rooms` แล้ว
   - ✅ **จัดระเบียบห้อง `netflix1_vm` → ชื่อแสดง "Netflix Pro"** — ห้องนี้เปิดใช้จริง 20 การจอง (ล่าสุด 1 ส.ค. 2569) แต่ไม่เคยมีในเอกสารเลย · แก้ `name`/`location`/`facilities`/`rules`/`how_to_use`/`eligible_users` ให้เข้าชุดกับห้องอื่น · เพิ่มลง line-richmenu-urls.md พร้อมเตือนว่า `netflix` ในเอกสารเก่า = Edutainment Zone คนละห้อง (ดู MEM.md)
 next:
+  - **ยืนยันชื่อ NSSM service จริงบนเซิร์ฟเวอร์** ด้วย `Get-Service *reserv*` แล้วแก้ให้ตรงกันทั้ง PROJECT-STATUS, CLAUDE.md, AGENTS.md, doc/deploy_guide.md (ตอนนี้เอกสารขัดกันเอง: `reserv` vs `reserv-booking`)
   - **หารูปห้อง Netflix Pro** แล้ววางเป็น `booking/static/booking/images/rooms/netflix1_vm.png` (ตอนนี้ยังไม่มีไฟล์ หน้าแรกแสดงไอคอน 🏢 แทน — ผู้ใช้แจ้ง 2026-08-08 ว่ายังไม่มีรูป ปล่อยไปก่อนได้) · เพิ่มด้วย `git add -f` เพราะ .gitignore ignore `*.png`
   - **เพิ่ม Canva Pro 2 + Netflix Pro ลงคู่มือผู้ใช้/เจ้าหน้าที่ 2569** — ทั้ง 2 ห้องยังไม่มีในคู่มือเล่มใดเลย (ระวัง: `make_user_manual_2569.py` ยังไม่ sync กับไฟล์ .docx ที่แก้ใน Word — รันทับแล้วงานหาย ดู task ด้านล่าง)
   - **ขอ URL เว็บ VM Gateway จากทีมพัฒนา** แล้วแก้ `how_to_use` ของห้อง `canva`, `canva2`, `netflix1_vm` ให้ตรงวิธีเข้าใช้จริง (ตอนนี้ Canva ยังเขียนแบบเครื่องจริง ส่วน Netflix เขียนกว้าง ๆ) — ขอไปในหนังสือตอบกลับแล้ว
@@ -56,11 +60,8 @@ next:
   - **แก้ LINE Rich Menu** — ปุ่ม ChatGPT → `?room=canva2` + เปลี่ยนรูปปุ่มเป็น "Canva Pro 2" และรูปปุ่ม Canva เป็น "Canva Pro 1" (ผู้ใช้ทำเอง — รายละเอียดใน doc/line-richmenu-urls.md)
   - **คุยกติกาการจองนอกเวลาทำการ** — ในเวลาทำการยึด "1 คน 1 ครั้งต่อบริการต่อวัน" ตามเดิม ส่วนนอกเวลาจะเปลี่ยน ยังไม่สรุป (ดู MEM.md 2026-08-08)
   - แคปภาพหน้าแก้ไขสมาชิกถาวร `/manage/external/<id>/edit/` ด้วย `STAFF_USER=... STAFF_PASS=... python3 doc/capture_external_shots.py` แล้ว generate รายงานซ้ำให้ครบ 7 ภาพ
-  - ถ้าใช้ PDF ในที่ประชุม ต้อง export ใหม่จาก [doc/external-access-report.docx](doc/external-access-report.docx) — `doc/external-access-manual.pdf` ที่มีอยู่เป็นเนื้อหาก่อนแปลงเป็นรายงาน ยังไม่มีบทที่ 5
   - sync คู่มือ 2569 ทั้ง 2 เล่มเรื่องช่องทางลงทะเบียนสมาชิกถาวร — staff บท 10 เขียน "เจ้าหน้าที่กรอกให้" · user บท 14 เขียน "ติดต่อเจ้าหน้าที่" ทั้งที่ให้ URL `/external/permanent/` ไว้ในตารางเดียวกัน ต้องตัดสินก่อนว่าจะประกาศ self-service ไหม
-  - เคลียร์สถานะค้างใน handoff 3 ไฟล์ (`external-member-operations-handoff.md` ยังเขียน "ถาวร = รอ deploy", "ทีมประตู ⚠️ ยังไม่ได้แจ้ง")
   - เพิ่ม `/external/permanent/`, `/card-login/`, `/manage/external/*` ในตาราง URL ของ CLAUDE.md + AGENTS.md (ตอนนี้มีแค่ `/external/`)
-  - เพิ่มเอกสาร external (รายงาน external-access-report, door-qr-guide, handoff 3 ไฟล์) ลง doc/INDEX.md + เติม timeline ที่ขาด
   - แพตช์สารบัญ [doc/staff-manual-2569.docx](doc/staff-manual-2569.docx) ด้วย `python3 doc/fix_manual_toc.py doc/staff-manual-2569.docx` แล้วเปิดด้วย Word 1 ครั้ง (ยังไม่มีเลขหน้าสารบัญ)
   - sync `doc/make_user_manual_2569.py` ให้ตรงไฟล์จริง (ปก v2.0 มีนาคม 2569 + ชื่อไฟล์ `user-manual-reserv-2569.docx`) — ตอนนี้ถ้ารันสคริปต์ทับ งานที่แก้ใน Word จะหาย
   - แคปหน้า `/room-control/` ตอนมีอุปกรณ์จริง — ต้องทำช่วง 08:30–16:30 ขณะมี booking active (server ตรวจเวลาจริง เลื่อนนาฬิกาเบราว์เซอร์ไม่ช่วย) แล้วรัน `doc/compose_mobile_figures.py` + `doc/make_user_manual_2569.py` ซ้ำ
@@ -117,7 +118,7 @@ Migration จาก Google Apps Script + Google Sheets → Django + MySQL
 | Frontend | Django Template + Bootstrap 5.3 + FullCalendar v6 |
 | LIFF | LINE Front-end Framework v2 (SDK 2.15+) |
 | Process Manager | NSSM + Waitress (Windows Server) |
-| Reverse Proxy | Nginx → https://lib.npu.ac.th/reserv/ |
+| Reverse Proxy | IIS + ARR → https://lib.npu.ac.th/reserv/ (static ผ่าน WhiteNoise) |
 
 ---
 
@@ -129,7 +130,6 @@ python3 manage.py runserver 0.0.0.0:8001
 
 # Database
 python3 manage.py migrate
-python3 manage.py load_rooms        # โหลดข้อมูล 5 ห้องเริ่มต้น
 python3 manage.py createsuperuser
 
 # Checks
@@ -137,7 +137,7 @@ python3 manage.py check
 python3 manage.py makemigrations booking
 
 # Production (Windows)
-python -m waitress --port=8000 --threads=4 reserv.wsgi:application
+python deploy/waitress_serve.py      # อ่าน WAITRESS_HOST/PORT/THREADS จาก .env
 ```
 
 ---
@@ -327,29 +327,33 @@ pip install -r requirements.txt
 
 # 2. Database
 python manage.py migrate
-python manage.py load_rooms
 python manage.py createsuperuser
 
 # 3. Static files
 python manage.py collectstatic
 
-# 4. NSSM service
-nssm install reserv-booking "python" "-m waitress --port=8000 --threads=4 reserv.wsgi:application"
-nssm set reserv-booking AppDirectory "C:\path\to\reserv"
-nssm start reserv-booking
+# 4. NSSM service (production จริงอยู่ที่ C:\project\reserv — ไม่ใช่ C:\projects\)
+c:\nssm\nssm.exe install reserv "C:\project\reserv\venv\Scripts\python.exe" "C:\project\reserv\deploy\waitress_serve.py"
+c:\nssm\nssm.exe set reserv AppDirectory "C:\project\reserv"
+c:\nssm\nssm.exe start reserv
 ```
 
-**เมื่อ pull code ใหม่ขึ้น production:** หากมีการแก้ Python code ต้องรัน
-`nssm restart reserv-booking` ก่อนทดสอบ เพื่อให้ Waitress โหลด code ชุดใหม่
+**เมื่อ pull code ใหม่ขึ้น production:** หากมีการแก้ Python code ต้อง restart service
+ก่อนทดสอบ เพื่อให้ Waitress โหลด code ชุดใหม่ — ถ้าแก้แต่ข้อมูล/static ไม่ต้อง restart
 
-**Nginx config สำคัญ:**
-```nginx
-location /reserv/ {
-    proxy_pass http://127.0.0.1:8000/;
-    proxy_set_header X-Forwarded-Proto https;
-    proxy_set_header Host $host;
-}
+```powershell
+cd C:\project\reserv
+git pull origin master
+.\venv\Scripts\python.exe manage.py collectstatic --noinput
+c:\nssm\nssm.exe restart reserv
 ```
+
+> ⚠️ **ชื่อ service:** `doc/deploy_guide.md` และคำสั่ง NSSM จริงใช้ **`reserv`** แต่บล็อก PROJECT-STATUS
+> ด้านบนเขียนว่า `reserv-booking` — ยืนยันด้วย `Get-Service *reserv*` บนเซิร์ฟเวอร์แล้วแก้ให้ตรงกัน
+
+**Reverse proxy คือ IIS + ARR ไม่ใช่ Nginx** — `web.config` rewrite `^reserv/(.*)` → `127.0.0.1:8003`
+static ทั้งหมด serve ด้วย **WhiteNoise** ผ่าน Waitress **ห้ามตั้ง rule แยกให้ `/reserv/static/`**
+(เคยทำแล้ว admin CSS หาย — ดู [doc/deploy_guide.md](doc/deploy_guide.md))
 
 ---
 
