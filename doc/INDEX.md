@@ -60,6 +60,7 @@
 | [fix_manual_toc.py](fix_manual_toc.py) | แพตช์สารบัญ .docx ที่มีอยู่แล้วให้มีเลขหน้า โดยไม่ต้องสร้างใหม่ |
 | [compose_mobile_figures.py](compose_mobile_figures.py) | รวมภาพมือถือ 9:16 เป็นภาพประกอบกรอบ 16:9 |
 | [capture_external_shots.py](capture_external_shots.py) | แคปหน้าจอ external จาก production 1920×1080 (ต้องมี `STAFF_USER`/`STAFF_PASS`) |
+| [check_booking_form.py](check_booking_form.py) | ตรวจกติกาเวลาในฟอร์มจอง LIFF บน production (Playwright headed — ล็อกอิน LINE เองครั้งแรก · อ่านอย่างเดียว) |
 
 ---
 

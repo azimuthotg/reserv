@@ -77,6 +77,25 @@
 และกรอง room ที่ยกเว้นด้วย **id list** แทน `room__allow_overlap=False` เพื่อไม่ให้ `FOR UPDATE` ต้อง join
 แล้วไปล็อกแถวในตาราง `booking_room` ด้วย
 
+### 2026-08-08 — ใช้ Playwright เป็นหลักในการเปิด/แคปหน้าเว็บ (ผู้ใช้สั่งให้บันทึกไว้)
+เครื่องมือเบราว์เซอร์ในตัวใช้กับหน้า **LIFF ไม่ได้** — `/reserv/booking/` เด้งไป `access.line.me`
+แล้วเครื่องมือปฏิเสธหน้าล็อกอิน ("This site is not allowed due to safety restrictions")
+ส่วนหน้า public ที่เรนเดอร์ฝั่ง server (`/room/<key>/`, `/calendar/`) ใช้เครื่องมือในตัวได้ปกติและเร็วกว่า
+
+**วิธีที่ใช้จริง:** headed Playwright ใน WSL (`DISPLAY=:0` WSLg) เปิดหน้าต่างจริงให้ผู้ใช้ล็อกอิน LINE เอง
+สคริปต์รอจนฟอร์มพร้อมแล้วค่อยอ่านค่าจาก DOM — สคริปต์ตัวอย่าง `doc/check_booking_form.py`
+(แนวเดียวกับ `doc/capture_external_shots.py` ที่ใช้ทำคู่มือ 2569)
+
+**กับดัก 3 ข้อที่เสียเวลาไปแล้ว:**
+1. ต้องเรียก wsl ผ่าน **PowerShell** — Git Bash แปลง `/mnt/c/...` เป็น path วินโดวส์ แล้วหาไฟล์ไม่เจอ
+2. playwright 1.58 มองหา `chromium-1208` แต่เครื่องมี `chromium-1217` → ส่ง
+   `executable_path=/home/admin_e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome`
+   **ไม่ต้องดาวน์โหลดเบราว์เซอร์ใหม่**
+3. ช่องวันที่เป็น flatpickr readonly — set `.value` + dispatch change **ไม่ rebuild dropdown**
+   ผลที่อ่านได้จะเป็นของ "วันนี้" และติด cutoff 15 นาที ทำให้ตีความผิด
+   ต้องเรียก `buildStartOptions(dateStr)` / `buildEndOptions(timeToMin('HH:MM'))` ของหน้าเว็บตรง ๆ
+   (รอบแรกเจอ slot แค่ 21:50–23:40 ทั้ง 3 ห้อง แล้วเกือบสรุปว่าพัง — จริง ๆ คือมันอ่านของวันนี้ตอน 21:35)
+
 ### 2026-08-08 — ข้อเท็จจริงของ 3 บริการ VM (ผู้ใช้ยืนยัน — ใช้เป็นฐานตัดสินใจต่อไป)
 | บริการ | ตัวจริง | ให้บริการยังไง |
 |---|---|---|
