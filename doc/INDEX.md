@@ -43,7 +43,7 @@
 | [staff-manual-2569.docx](staff-manual-2569.docx) | **คู่มือเจ้าหน้าที่ 2569** — 15 บท Staff Portal ฟีเจอร์เต็ม |
 | [external-access-report.docx](external-access-report.docx) · [.pdf](external-access-report.pdf) | **รายงานประกอบการประชุม** — ระบบบุคคลภายนอก + ช่องทาง `/card-login/` (6 บท) |
 | [door-qr-guide.docx](door-qr-guide.docx) · [.pdf](door-qr-guide.pdf) | คู่มือช่องทางขอ QR เข้าประตู สรุป 4 ช่องทาง A–D |
-| [reply-vm-gateway-2026-08-08.md](reply-vm-gateway-2026-08-08.md) | หนังสือตอบกลับทีม VM Gateway — ยืนยัน `booking_name = canva2` |
+| [reply-vm-summary-2026-08-08.md](reply-vm-summary-2026-08-08.md) | **หนังสือถึงทีม VM Gateway (ฉบับรวม 8 ส.ค. 69)** — Canva Pro 2 · กติกาห้ามจองทับเวลา · เปิดจองนอกเวลา + สิ่งที่ขอให้เขาดำเนินการ |
 
 > ⚠️ คู่มือทั้ง 2 เล่ม **ยังไม่มี Canva Pro 2 และ Netflix Pro** — เป็นงานค้างใน PROJECT-STATUS
 
