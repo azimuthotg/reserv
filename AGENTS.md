@@ -280,15 +280,17 @@ filter ด้วย `room=booking.room` ที่เป็นห้องจร�
 ## Deploy (Windows Server)
 
 ```bash
+# ⚠️ production มี venv — ห้ามเรียก `python` / `pip` เปล่า ๆ (จะได้ ImportError: Couldn't import Django)
+
 # 1. ติดตั้ง dependencies
-pip install -r requirements.txt
+.\venv\Scripts\pip.exe install -r requirements.txt
 
 # 2. Database
-python manage.py migrate
-python manage.py createsuperuser
+.\venv\Scripts\python.exe manage.py migrate
+.\venv\Scripts\python.exe manage.py createsuperuser
 
 # 3. Static files
-python manage.py collectstatic
+.\venv\Scripts\python.exe manage.py collectstatic --noinput
 
 # 4. NSSM service (production จริงอยู่ที่ C:\project\reserv — ไม่ใช่ C:\projects\)
 c:\nssm\nssm.exe install Reserv "C:\project\reserv\venv\Scripts\python.exe" "C:\project\reserv\deploy\waitress_serve.py"

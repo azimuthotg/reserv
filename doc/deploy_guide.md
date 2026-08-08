@@ -52,9 +52,9 @@ LINE_CHANNEL_ACCESS_TOKEN=...
 ### 3. Database และ Static
 
 ```powershell
-python manage.py migrate
-python manage.py collectstatic --noinput
-python manage.py createsuperuser
+.\venv\Scripts\python.exe manage.py migrate
+.\venv\Scripts\python.exe manage.py collectstatic --noinput
+.\venv\Scripts\python.exe manage.py createsuperuser
 ```
 
 ### 4. เพิ่มข้อมูลห้องผ่าน Admin
@@ -121,11 +121,10 @@ iisreset /restart
 
 ```powershell
 cd C:\project\reserv
-venv\Scripts\activate
 git pull origin master
-pip install -r requirements.txt   # ถ้ามี package ใหม่
-python manage.py migrate           # ถ้ามี migration ใหม่
-python manage.py collectstatic --noinput
+.\venv\Scripts\pip.exe install -r requirements.txt   # ถ้ามี package ใหม่
+.\venv\Scripts\python.exe manage.py migrate              # ถ้ามี migration ใหม่
+.\venv\Scripts\python.exe manage.py collectstatic --noinput
 c:\nssm\nssm.exe restart Reserv
 ```
 
@@ -154,11 +153,16 @@ c:\nssm\nssm.exe start Reserv
 
 **อาการ:** รัน `python manage.py` แล้วได้ error นี้
 
-**สาเหตุ:** ยังไม่ได้ activate venv
+**สาเหตุ:** เรียก `python` ของเครื่องแทน python ใน venv
 
-**วิธีแก้:**
+**วิธีแก้ (แนะนำ — ไม่ต้อง activate):**
 ```powershell
-venv\Scripts\activate
+.\venv\Scripts\python.exe manage.py <command>
+```
+
+**หรือ activate ก่อนก็ได้:**
+```powershell
+.\venv\Scripts\Activate.ps1
 python manage.py <command>
 ```
 
