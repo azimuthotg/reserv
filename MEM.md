@@ -51,6 +51,14 @@
 
 ## การตัดสินใจ
 
+### 2026-08-08 — กติกา "1 คน 1 ครั้งต่อวัน" ผูกกับ **บริการ** ไม่ใช่ **คน** (ยืนยันตอนเปิด Canva Pro 2)
+ตอนเพิ่มห้อง `canva2` พบว่า guard ใน `create_booking()` ([views.py:807](booking/views.py:807)) เช็ค
+`(room, date, line_user)` = **รายห้อง** → คนเดียวจอง Canva Pro 1 และ Canva Pro 2 วันเดียวกันได้
+**ผู้ใช้ตัดสินใจ: ปล่อยไว้แบบนี้** — เหตุผล "1 คน 1 บริการ ถ้ามี 2 บริการก็ไม่ถือว่าผิดกติกา"
+ขอบเขตที่ยืนยัน: **เฉพาะช่วงเวลาทำการ**
+**⚠️ ค้างไว้คุยทีหลัง:** กติกาการจอง**นอกเวลาทำการ**จะเปลี่ยน (ยังไม่สรุปว่าเปลี่ยนอย่างไร)
+เมื่อจะทำเรื่องนอกเวลาทำการ ต้องกลับมาทบทวน guard ตัวนี้ก่อน ว่ายังใช้กติกาเดิมได้ไหม
+
 ### 2026-07-22 — QR เข้าประตูของ "คนใน" คือ user_ldap เปล่า ๆ (ทำให้ทำหน้า login นอก LINE ได้)
 หน้า `/card/` (LIFF) วาด QR จาก `userData.userLdap` ตรง ๆ ([card.html:488](booking/templates/booking/card.html))
 — **ไม่มี token/วันหมดอายุ/อะไรที่ผูกกับ LINE** เลข `user_ldap` = รหัสนักศึกษา (12 หลัก) หรือเลขบัตร ปชช. บุคลากร (13 หลัก)
@@ -89,6 +97,22 @@ flip gate (ประตูทางเข้า) ไม่สังกัดห�
 (default 100/วัน ขยายด้วย `python manage.py seed_access_codes --count N` ฝั่ง api)
 
 ## บันทึกงานที่ทำ (changelog)
+
+### 2026-08-08
+- ✅ **ดำเนินการตามใบแจ้งของทีม LRS ARC VM Gateway** ([C:\projects\vm\doc\request_booking_system.md](C:\projects\vm\doc\request_booking_system.md)) — **แก้ข้อมูลอย่างเดียว ไม่แตะ code**
+  - เพิ่มห้อง `canva2` "Canva Pro 2" (clone ทุกฟิลด์จาก `canva` ตามที่ผู้ใช้สั่ง — รวม `rules`/`how_to_use` เดิมทั้งดุ้น)
+  - ปิดห้อง `chat-gpt` → `is_active=0` (**ไม่ลบ** — `Booking.room` เป็น `PROTECT` และต้องเก็บประวัติ 16 รายการ)
+  - เปลี่ยนชื่อห้อง `canva`: "Canva Pro" → **"Canva Pro 1"** (แก้ `name` เท่านั้น ห้ามแตะ `booking_name` — เป็นกุญแจเชื่อมกับ VM Gateway)
+  - copy `canva.png` → `canva2.png` ใน `booking/static/booking/images/rooms/` (หน้าแรกอ่านรูปจาก `<booking_name>.png`)
+  - ตรวจก่อนทำ: ไม่มี booking ล่วงหน้าของ `chat-gpt` และ `canva` เลย (ล่วงหน้ามีแค่ mini 15 + edutainment 3) ตรงกับที่ทีม VM แจ้ง
+- 📌 **`booking_name` ของห้องที่ผูก VM = สัญญาระหว่างระบบ** (`canva`, `canva2`, `netflix1_vm`) — ถ้าจะแก้ ต้องแจ้งทีม VM ก่อนเสมอ
+  ไม่งั้นนักศึกษาที่จองจะเจอ "ยังไม่มีการกำหนด VM สำหรับห้องนี้"
+- 🔍 **เจอระหว่างตรวจ (ยังไม่แก้ อยู่นอกขอบเขตงานนี้):**
+  - `Room.max_booking_hours` **ไม่มีผลบังคับจริง** — เป็นแค่ตัวเลขโชว์บนหน้ารายละเอียดห้อง
+    ตัวจำกัดจริงคือค่า hardcode 210 นาที (3.5 ชม.) ที่ [views.py:746](booking/views.py:746) และ `MAX_DURATION` ใน booking.html
+  - `rules` ของห้อง canva เขียน "ใช้ได้สูงสุด 3 ชั้วโมง" (สะกดผิด + ไม่ตรงกับ `max_booking_hours=2`) — copy ต่อไปยัง canva2 ตามที่ผู้ใช้สั่ง
+  - `how_to_use` ของทั้ง canva/canva2 ยังเป็นขั้นตอนใช้ "เครื่องจริง" ไม่ใช่ flow VM Gateway
+  - `CLAUDE.md` หัวข้อ Deploy อ้าง `python manage.py load_rooms` ซึ่ง **ไม่มี command นี้แล้ว** ในโปรเจกต์
 
 ### 2026-07-22
 - ✅ **หน้า `/card-login/` — ล็อกอิน AD บนเว็บ ออก QR เข้าประตู ไม่ต้องเป็นเพื่อน LINE OA** (deploy + เทส prod ผ่านทั้งนักศึกษา+บุคลากร)

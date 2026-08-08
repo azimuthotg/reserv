@@ -18,10 +18,10 @@ done_2026-07-10:
   - ✅ สมาชิกถาวรไม่บังคับเลขบัตร (รองรับ VVIP เช่น นายกสภาฯ) — เว้นว่างได้ api gen รหัสอ้างอิง `V`+12 หลัก, แก้ 2 ฝั่ง (reserv form/redirect/แสดงผล + api permanent_register/regex), test ผ่าน reserv 13/13 + api 10/10
 done_2026-07-13:
   - ✅ ส่งตัวอย่าง JSON response ของ `/v2/external/check/` ให้ทีมประตูแล้ว
-  - ✅ ทำคู่มือแจ้งเจ้าหน้าที่ — ระบบบุคคลภายนอกเข้าใช้บริการ: [doc/external-access-manual.docx](doc/external-access-manual.docx)
+  - ✅ ทำคู่มือแจ้งเจ้าหน้าที่ — ระบบบุคคลภายนอกเข้าใช้บริการ: [doc/external-access-report.docx](doc/external-access-report.docx)
 done_2026-07-16:
   - ✅ บุคคลภายนอกรายวัน (`/external/`) ไม่บังคับเลขบัตร — บังคับแค่ชื่อ-สกุล, แก้ 2 ฝั่ง (reserv `external_access()`+template / api `/v2/external/issue/` gen ref-id `V` เมื่อไม่ส่งเลขบัตร), test reserv 17/17 + api 22/22 — push แล้วทั้ง 2 repo (reserv `336d4e2`, apiproject `2ad5701`)
-  - ✅ อัปเดตคู่มือแจ้งเจ้าหน้าที่เป็น v1.1 ให้ตรงพฤติกรรมใหม่ [doc/external-access-manual.docx](doc/external-access-manual.docx)
+  - ✅ อัปเดตคู่มือแจ้งเจ้าหน้าที่เป็น v1.1 ให้ตรงพฤติกรรมใหม่ [doc/external-access-report.docx](doc/external-access-report.docx)
   - ✅ deploy prod ทั้ง 2 repo (apiproject → reserv + restart) + เทส prod ผ่าน — รายวันกรอกแค่ชื่อ-สกุลได้ QR สมบูรณ์
   - ✅ **ทีมประตูเทส QR จริงผ่านแล้วทั้ง 2 แบบ (รายวัน + ถาวร)** — ปิดงาน external access ครบวงจร (task ค้างตั้งแต่ 2026-07-12)
 done_2026-07-17:
@@ -32,10 +32,33 @@ done_2026-07-22:
   - ✅ **หน้า `/card-login/` — ล็อกอิน AD บนเว็บ → ออก QR เข้าประตู โดยไม่ต้องเป็นเพื่อน LINE OA** (deploy + เทส prod ผ่านทั้งนักศึกษา+บุคลากร) — สำหรับผู้มาใช้พื้นที่อย่างเดียว ไม่รับข่าวสาร · QR = user_ldap ตัวเดียวกับ /card/ ประตูสแกนเหมือนกัน · จองห้องไม่ได้ (ต้องผ่าน LIFF) · "จดจำ 90 วัน" ผ่าน signed cookie แยกจาก session · rate limit ต่อบัญชี · ไม่มี migration/ไม่แตะ api · push ชุด `7f4f908`→`c044203` → origin/master (ดู MEM.md 2026-07-22)
   - ✅ คู่มือช่องทางขอ QR เข้าประตู (สรุป 4 ช่องทาง A-D) [doc/door-qr-guide.docx](doc/door-qr-guide.docx)
 done_2026-07-31:
-  - ✅ **คู่มือการใช้งาน 2 เล่ม** — [doc/user-manual-2569.docx](doc/user-manual-2569.docx) (ผู้ใช้ 15 บท ครอบคลุมมือถือ+เว็บ) และ [doc/staff-manual-2569.docx](doc/staff-manual-2569.docx) (เจ้าหน้าที่ 15 บท ฟีเจอร์เต็ม) · ภาพหน้าจอจาก production จริง 55 ภาพ 16:9 · สร้างซ้ำได้ด้วย `doc/make_*_2569.py` (ดู doc/progress-2026-07-31.md)
+  - ✅ **คู่มือการใช้งาน 2 เล่ม** — [doc/user-manual-reserv-2569.docx](doc/user-manual-reserv-2569.docx) (ผู้ใช้ 15 บท ครอบคลุมมือถือ+เว็บ) และ [doc/staff-manual-2569.docx](doc/staff-manual-2569.docx) (เจ้าหน้าที่ 15 บท ฟีเจอร์เต็ม) · ภาพหน้าจอจาก production จริง 55 ภาพ 16:9 · สร้างซ้ำได้ด้วย `doc/make_*_2569.py` (ดู doc/progress-2026-07-31.md)
   - ✅ แคปหน้าจอมือถือได้โดยไม่ต้องมีเครื่องจริง — Playwright emulate iPhone 390×844 บนเว็บ production · หน้า LIFF ใช้ headed browser ผ่าน WSLg ให้ผู้ใช้ login LINE เอง
   - ✅ สร้าง booking ทดสอบ `#445`/`#446` เพื่อเก็บภาพหน้าจองสำเร็จ/Check-in **แล้วยกเลิกทั้ง 2 รายการ** (ยืนยันสถานะที่ /manage/bookings/ แล้ว)
+done_2026-08-02:
+  - ✅ **สารบัญคู่มือมีเลขหน้าแล้ว** — `manual_style.py` เปลี่ยนสารบัญจากข้อความธรรมดาเป็น TOC field ของ Word (`\o "1-3" \h \z \u` + style `toc 1–3` ฟอนต์ไทย + จุดไข่ปลา) และแบ่ง section ให้ปก+สารบัญไม่มีเลขหน้า ส่วนบทที่ 1 เริ่มนับหน้า 1 · เพิ่ม `doc/fix_manual_toc.py` แพตช์ไฟล์ .docx ที่แก้ด้วย Word ไปแล้วโดยไม่ต้องสร้างใหม่ · [doc/user-manual-reserv-2569.docx](doc/user-manual-reserv-2569.docx) แพตช์+ตรึงเลขหน้าด้วย Word แล้ว 24 หน้า (ดู doc/progress-2026-08-02.md)
+done_2026-08-07:
+  - ✅ **ตรวจเอกสารชุดบุคคลภายนอกทั้งหมดเทียบ code** — พบ 4 กลุ่มปัญหา: (1) คู่มือบอกผู้ใช้เว้นเลขบัตรได้ที่หน้า public แต่ `external_permanent()` บังคับ 13 หลัก (2) สถานะ "รอทีมประตูทดสอบ" ค้าง (3) ไม่มีหัวข้อหน้าแก้ไขสมาชิก (4) คู่มือ 2569 กับคู่มือ external ตอบไม่ตรงกันเรื่องใครลงทะเบียนสมาชิกถาวร
+  - ✅ **แก้เนื้อหาคู่มือ external ให้ตรง code** — QR ประตูใช้งานได้ปกติ (ทีมประตูเทสผ่าน 16 ก.ค. แจ้งเรียบร้อยแล้ว) · VIP เว้นเลขบัตรได้เฉพาะหน้าเจ้าหน้าที่ (หน้า public บังคับ 13 หลัก) · เพิ่มหัวข้อแก้ไขข้อมูลสมาชิก · FAQ ใหม่
+  - ✅ **แปลงเป็นรายงานประกอบการประชุม** — `doc/external-access-manual.docx` → [doc/external-access-report.docx](doc/external-access-report.docx) (สคริปต์ `make_external_manual_docx.py` → `make_external_report_docx.py`) · ตัดสารบัญออก ปกเป็นชื่อรายงาน · เพิ่ม **บทที่ 5 ช่องทาง `/card-login/` ของนักศึกษา-บุคลากร** (ขั้นตอน + ข้อมูลเก็บที่ไหน + ขอบเขต/ความเสี่ยง) และตารางสรุป 4 ช่องทางขอ QR ในบทที่ 1
+  - ✅ **เปลี่ยนรูปแบบตามที่ผู้ใช้กำหนด** — ย้ายไปใช้ `manual_style.py` ชุดเดียวกับคู่มือ 2569: ดำล้วน · body 16 pt · หัวตารางเทาจัดกลาง · ไม่มีกล่องคำแนะนำ/คำเตือน · ภาพ 16:9 จาก production 6 ภาพ (ขาดหน้าแก้ไขสมาชิก รอแคป)
+  - ✅ เพิ่ม `doc/capture_external_shots.py` — แคปหน้าจอ external 1920×1080 จาก prod (อ่านอย่างเดียว) ใช้ `STAFF_USER`/`STAFF_PASS`
+done_2026-08-08:
+  - ✅ **ตามใบแจ้งทีม LRS ARC VM Gateway** — เพิ่มห้อง `canva2` "Canva Pro 2" (clone จาก `canva`) · ปิดห้อง `chat-gpt` (`is_active=0` ไม่ลบ เก็บประวัติ 16 รายการ) · เปลี่ยนชื่อ `canva` → "Canva Pro 1" · copy รูป `canva2.png` — แก้ข้อมูลอย่างเดียว ไม่แตะ code (ดู doc/progress-2026-08-08.md)
+  - ✅ อัปเดต [doc/line-richmenu-urls.md](doc/line-richmenu-urls.md) ระบุปุ่ม Rich Menu ที่ต้องแก้ + sync room keys ใน CLAUDE.md/AGENTS.md
 next:
+  - **แจ้งทีม VM Gateway กลับว่าใช้ `booking_name = canva2`** (ใบแจ้งขอให้ตอบกลับเพื่อตั้ง `VMMachine.room_key` แล้วรัน `python manage.py check_booking_mapping`)
+  - **deploy รูป `canva2.png` ขึ้น prod** — `git pull` + `python manage.py collectstatic` บนเซิร์ฟเวอร์ (ไม่ต้อง restart service เพราะไม่มีการแก้ code)
+  - **แก้ LINE Rich Menu** — ปุ่ม ChatGPT → `?room=canva2` + เปลี่ยนรูปปุ่มเป็น "Canva Pro 2" และรูปปุ่ม Canva เป็น "Canva Pro 1" (ผู้ใช้ทำเอง — รายละเอียดใน doc/line-richmenu-urls.md)
+  - **คุยกติกาการจองนอกเวลาทำการ** — ในเวลาทำการยึด "1 คน 1 ครั้งต่อบริการต่อวัน" ตามเดิม ส่วนนอกเวลาจะเปลี่ยน ยังไม่สรุป (ดู MEM.md 2026-08-08)
+  - แคปภาพหน้าแก้ไขสมาชิกถาวร `/manage/external/<id>/edit/` ด้วย `STAFF_USER=... STAFF_PASS=... python3 doc/capture_external_shots.py` แล้ว generate รายงานซ้ำให้ครบ 7 ภาพ
+  - ถ้าใช้ PDF ในที่ประชุม ต้อง export ใหม่จาก [doc/external-access-report.docx](doc/external-access-report.docx) — `doc/external-access-manual.pdf` ที่มีอยู่เป็นเนื้อหาก่อนแปลงเป็นรายงาน ยังไม่มีบทที่ 5
+  - sync คู่มือ 2569 ทั้ง 2 เล่มเรื่องช่องทางลงทะเบียนสมาชิกถาวร — staff บท 10 เขียน "เจ้าหน้าที่กรอกให้" · user บท 14 เขียน "ติดต่อเจ้าหน้าที่" ทั้งที่ให้ URL `/external/permanent/` ไว้ในตารางเดียวกัน ต้องตัดสินก่อนว่าจะประกาศ self-service ไหม
+  - เคลียร์สถานะค้างใน handoff 3 ไฟล์ (`external-member-operations-handoff.md` ยังเขียน "ถาวร = รอ deploy", "ทีมประตู ⚠️ ยังไม่ได้แจ้ง")
+  - เพิ่ม `/external/permanent/`, `/card-login/`, `/manage/external/*` ในตาราง URL ของ CLAUDE.md + AGENTS.md (ตอนนี้มีแค่ `/external/`)
+  - เพิ่มเอกสาร external (รายงาน external-access-report, door-qr-guide, handoff 3 ไฟล์) ลง doc/INDEX.md + เติม timeline ที่ขาด
+  - แพตช์สารบัญ [doc/staff-manual-2569.docx](doc/staff-manual-2569.docx) ด้วย `python3 doc/fix_manual_toc.py doc/staff-manual-2569.docx` แล้วเปิดด้วย Word 1 ครั้ง (ยังไม่มีเลขหน้าสารบัญ)
+  - sync `doc/make_user_manual_2569.py` ให้ตรงไฟล์จริง (ปก v2.0 มีนาคม 2569 + ชื่อไฟล์ `user-manual-reserv-2569.docx`) — ตอนนี้ถ้ารันสคริปต์ทับ งานที่แก้ใน Word จะหาย
   - แคปหน้า `/room-control/` ตอนมีอุปกรณ์จริง — ต้องทำช่วง 08:30–16:30 ขณะมี booking active (server ตรวจเวลาจริง เลื่อนนาฬิกาเบราว์เซอร์ไม่ช่วย) แล้วรัน `doc/compose_mobile_figures.py` + `doc/make_user_manual_2569.py` ซ้ำ
   - เพิ่ม test ให้หน้า `/card-login/` (deploy+เทสมือผ่านแล้ว แต่ยังไม่มีเคสใน tests.py — เทสผ่าน test client สคริปต์ชั่วคราวเท่านั้น)
   - เพิ่ม test ให้หน้าแก้ไขสมาชิกถาวร `/manage/external/<id>/edit/` (deploy+เทสมือผ่านแล้ว แต่ยังไม่มีเคส)
@@ -45,8 +68,9 @@ next:
 risks:
   - `/std-info/`,`/staff-info/` (v1) ฝั่ง api ยังไม่ต้อง auth — ใครรู้รหัสนักศึกษายิงดูชื่อ-คณะได้ (leak `apassword` + ดึงทั้งตาราง + สิทธิ์เขียน ปิดแล้ว 2026-07-23 ดู MEM.md — เป็นงานฝั่ง api)
   - รายวันไม่บังคับเลขบัตร → ระงับสิทธิ์/โควตารายคนใช้ไม่ได้ + pool 100 รหัส/วันอาจหมดเร็ว (ดู MEM.md — มีแผนถอย)
+  - `booking_name` ของห้องที่ผูก VM Gateway (`canva`, `canva2`, `netflix1_vm`) เป็นสัญญาข้ามระบบ — แก้โดยไม่แจ้งทีม VM = นักศึกษาเข้าเครื่องไม่ได้ทันที (ดู MEM.md)
   - .env เครื่อง dev ชี้ DB production ตัวเดียวกัน ไม่มีฐานทดสอบแยก → migrate/สคริปต์เขียนข้อมูลลงฐานจริงทันที (ดู MEM.md)
-updated: 2026-07-31
+updated: 2026-08-08
 -->
 
 # CLAUDE.md
@@ -154,7 +178,8 @@ api.npu.ac.th         MySQL reserv_db
 | `/admin/` | `/reserv/admin/` | Django Admin |
 | `/health/` | `/reserv/health/` | Health check (NMS monitoring) — public, JSON `{status, db, db_ms}`, 200/503 |
 
-room keys: `mini`, `edutainment`, `canva`, `chat-gpt`, `meeting_f1`
+room keys: `mini`, `edutainment`, `canva`, `canva2`, `meeting_f1`, `netflix1_vm`
+(`chat-gpt` ปิดแล้ว `is_active=0` ตั้งแต่ 2026-08-08 — เก็บไว้เพื่อรักษาประวัติการจอง 16 รายการ)
 
 ---
 

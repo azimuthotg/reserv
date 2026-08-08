@@ -103,7 +103,8 @@ api.npu.ac.th         MySQL reserv_db
 | `/admin/` | `/reserv/admin/` | Django Admin |
 | `/health/` | `/reserv/health/` | Health check (NMS monitoring) — public, JSON `{status, db, db_ms}`, 200/503 |
 
-room keys: `mini`, `edutainment`, `canva`, `chat-gpt`, `meeting_f1`
+room keys: `mini`, `edutainment`, `canva`, `canva2`, `meeting_f1`, `netflix1_vm`
+(`chat-gpt` ปิดแล้ว `is_active=0` ตั้งแต่ 2026-08-08 — เก็บไว้เพื่อรักษาประวัติการจอง 16 รายการ)
 
 ---
 
