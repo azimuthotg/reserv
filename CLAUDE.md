@@ -13,8 +13,8 @@ deploy_notes:
   - deploy ที่ยืนยันว่าใช้ได้จริง (2026-08-08): `cd C:\project\reserv` → `git pull origin master` → `.\venv\Scripts\python.exe manage.py migrate` → `.\venv\Scripts\python.exe manage.py collectstatic --noinput` → `c:\nssm\nssm.exe restart Reserv`
   - restart: c:\nssm\nssm.exe restart Reserv   (ชื่อ service ยืนยันจากเซิร์ฟเวอร์แล้ว 2026-08-08)
   - ⚠️ .env เครื่อง dev ชี้ DB production ตัวเดียวกัน — migrate จากเครื่อง dev ลงฐานจริงทันที (ดู MEM.md)
-progress: 98
-phase: ระบบใช้งานจริง (production) ครบ 4 phase แล้ว — external access ปิดครบวงจร · บริการ VM 3 ห้อง (Canva Pro 1/2, ChatGPT) เปิดจอง 24 ชม. · เหลือปุ่มเข้าใช้งาน VM (รอ URL จริงจากทีม DNS) + งาน enhancement
+progress: 99
+phase: ระบบใช้งานจริง (production) ครบ 4 phase แล้ว — external access ปิดครบวงจร · บริการ VM 3 ห้อง (Canva Pro 1/2, ChatGPT) เปิดจอง 24 ชม. mapping ฝั่ง Gateway ครบ · วันหยุดอัตโนมัติแบบเจ้าหน้าที่อนุมัติใช้งานจริงแล้ว · เหลือปุ่มเข้าใช้งาน VM (รอ URL จริงจากทีม DNS) + งาน enhancement
 done_2026-07-10:
   - ✅ push ค้างทั้ง 2 repo (reserv+apiproject) ขึ้น GitHub สำเร็จ (แก้จากฝั่ง Windows แทน WSL token ที่หมดอายุ)
   - ✅ deploy prod ทั้ง reserv+apiproject (git pull+restart, ไม่มี migration) เรียบร้อย เทส prod ผ่าน
@@ -81,18 +81,18 @@ done_2026-08-09:
   - ✅ **แก้ `doc/capture_external_shots.py` ให้รันได้จริง** — playwright 1.58 ใน WSL มองหา chromium revision 1208 แต่ที่ติดตั้งคือ 1217 → `launch()` ล้มทุกครั้ง · เพิ่ม `chromium_path()` หา binary เองจาก `~/.cache/ms-playwright` + `--no-sandbox` · แก้ข้อความท้ายสคริปต์ที่ยังอ้างชื่อไฟล์เก่า `make_external_manual_docx.py` · ทดสอบเปิดเบราว์เซอร์ + เข้าหน้า login ผ่านแล้ว
 next:
   - **[รอ URL สุดท้าย — ผู้ใช้สั่งยังไม่ลงมือ] เปลี่ยนปุ่มของห้อง VM 3 ห้อง (`canva`, `canva2`, `chat-gpt`) จาก "ควบคุมอุปกรณ์ไฟฟ้า" เป็นปุ่ม "เข้าใช้งาน" ที่เปิดแท็บใหม่ไปหน้า login ของ VM Gateway** — URL ทดสอบ `http://202.29.55.180:8888/vm/login` · **รอทีม DNS ทำ https + domain ก่อนค่อยแก้จริง** · แก้ `how_to_use` ของ 3 ห้องให้ตรงวิธีเข้าใช้จริงในรอบเดียวกัน (ตอนนี้ Canva ยังเขียนว่า "เปิดเครื่องคอมพิวเตอร์ที่ให้บริการ")
-  - **deploy รูป `chat-gpt.png` ใหม่ขึ้น prod** — `git pull` + `collectstatic --noinput` (ไม่ต้อง restart — static อย่างเดียว)
-  - **แก้ LINE Rich Menu** — ปุ่ม ChatGPT → `?room=canva2` + เปลี่ยนรูปปุ่มเป็น "Canva Pro 2" และรูปปุ่ม Canva เป็น "Canva Pro 1" (ผู้ใช้ทำเอง — รายละเอียดใน doc/line-richmenu-urls.md)
+  - **deploy การเรียงหน้า `/manage/holidays/` แบบไทม์ไลน์** (commit `cb557c5` ยังไม่ได้ deploy — deploy รอบล่าสุดของผู้ใช้เกิดก่อน commit นี้) — `git pull` + `nssm restart Reserv`
+  - **แก้ LINE Rich Menu** — ⚠️ คำสั่งเดิม (8 ส.ค.) ที่ให้ชี้ปุ่ม ChatGPT ไป `?room=canva2` **ยกเลิกแล้ว** · ตอนนี้ต้องทำแค่ **เพิ่มปุ่มใหม่ให้ Canva Pro 2** (`?room=canva2`) + เปลี่ยนรูปปุ่ม Canva เป็น "Canva Pro 1" · ปุ่ม ChatGPT เดิมใช้ได้ตามปกติ · ถ้าเคยเพิ่มปุ่ม Netflix Pro ไว้ให้ถอดออก (ผู้ใช้ทำเอง — ดู doc/line-richmenu-urls.md)
   - **[รอผู้ใช้รัน — ต้องใช้รหัส staff] แคปภาพหน้าแก้ไขสมาชิกถาวรให้รายงาน external ครบ 7 ภาพ** — สคริปต์พร้อมและทดสอบเปิดเบราว์เซอร์ผ่านแล้ว เหลือแค่ใส่รหัส: `wsl -d Ubuntu -u admin_e -- env STAFF_USER=xxx STAFF_PASS=yyy python3 /mnt/c/projects/reserv/doc/capture_external_shots.py` แล้วรัน `python doc/make_external_report_docx.py`
+  - **เจ้าหน้าที่ตรวจวันหยุดฉบับร่างที่เหลือ 10 วัน** ที่หน้า `/manage/holidays/` แล้วกดเปิดใช้เฉพาะวันที่สำนักฯ ปิดจริง (เปิดใช้ไปแล้ว 7 วัน · วันหยุดถัดไป 12 ส.ค. 2569)
   - export PDF/Excel จากหน้า analytics — ค้างเป็น task (spawn แล้ว 2026-07-09) รอทำเมื่อมีความต้องการจริง (ดู MEM.md: embed ฟอนต์ TH Sarabun New กันตัวอักษรหาย)
-  - 🔴 **deploy วันหยุดอัตโนมัติขึ้น prod** — `git pull` + **`nssm restart Reserv`** (migration `0016` apply ลงฐานจริงจากเครื่อง dev แล้ว) · ข้อมูลวันหยุดอยู่ในฐานแล้วแต่**หน้าเจ้าหน้าที่ยังไม่มีปุ่ม/แถบเตือนจนกว่าจะ restart**
-  - **ตั้ง Task Scheduler ให้รัน `deploy/sync_holidays.bat` เดือนละครั้ง** (ผู้ใช้เคาะ 2026-08-09 — ทุก 30 วันเพื่อทันวันหยุดพิเศษที่ ครม. ประกาศกลางปี) · คำสั่ง `schtasks` อยู่ใน [doc/deploy_guide.md](doc/deploy_guide.md) · เช็คด้วยว่า `send_reminders`/`morning_iot_report` ตั้งไว้ยังไง จะได้วางให้เข้าชุดกัน
-  - **เจ้าหน้าที่ตรวจวันหยุดฉบับร่าง 34 วัน** ที่หน้า `/manage/holidays/` แล้วกดเปิดใช้เฉพาะวันที่สำนักฯ ปิดจริง (ตอนนี้เปิดใช้แล้วเฉพาะ 12 ส.ค. 2569)
+  - **[ไม่บังคับ — ผู้ใช้เลือกใช้ปุ่มกดเองแทน] ตั้ง Task Scheduler รัน `deploy/sync_holidays.bat` เดือนละครั้ง** · คำสั่ง `schtasks` เตรียมไว้ใน [doc/deploy_guide.md](doc/deploy_guide.md) แล้ว · **ข้อควรรู้: แถบเตือนบนแดชบอร์ดจะทำงานก็ต่อเมื่อมีฉบับร่างในระบบ** ถ้าไม่มีใครกดปุ่มดึงเลย ช่องโหว่แบบ 12 ส.ค. จะกลับมาได้ (ตอนนี้ข้อมูลครอบถึง ส.ค. 2570 จึงยังปลอดภัย)
 risks:
   - `/std-info/`,`/staff-info/` (v1) ฝั่ง api ยังไม่ต้อง auth — ใครรู้รหัสนักศึกษายิงดูชื่อ-คณะได้ (leak `apassword` + ดึงทั้งตาราง + สิทธิ์เขียน ปิดแล้ว 2026-07-23 ดู MEM.md — เป็นงานฝั่ง api)
   - รายวันไม่บังคับเลขบัตร → ระงับสิทธิ์/โควตารายคนใช้ไม่ได้ + pool 100 รหัส/วันอาจหมดเร็ว (ดู MEM.md — มีแผนถอย)
   - `booking_name` ของห้องที่ผูก VM Gateway (`canva`, `canva2`, `chat-gpt`) เป็นสัญญาข้ามระบบ — แก้โดยไม่แจ้งทีม VM = นักศึกษาเข้าเครื่องไม่ได้ทันที (ดู MEM.md)
   - .env เครื่อง dev ชี้ DB production ตัวเดียวกัน ไม่มีฐานทดสอบแยก → migrate/สคริปต์เขียนข้อมูลลงฐานจริงทันที (ดู MEM.md)
+  - ตารางวันหยุดเคยค้างไม่อัปเดต 2 เดือนจนนักศึกษาจองวันหยุดได้ — ตอนนี้มีแถบเตือน แต่เตือนได้เฉพาะเมื่อมีฉบับร่างในระบบ ถ้าไม่มีใครกดดึงเลยช่องโหว่จะกลับมา (ดู MEM.md)
 updated: 2026-08-09
 -->
 

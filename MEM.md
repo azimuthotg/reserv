@@ -362,6 +362,12 @@ flip gate (ประตูทางเข้า) ไม่สังกัดห�
 - ✅ **เติมตาราง URL ใน CLAUDE.md + AGENTS.md** (`/external/permanent/`, `/card-login/`, `/manage/external/*`)
 - ✅ **ขยายขนาด QR ทุกช่องทาง + deploy prod แล้ว** — 180→279 px บนจอ 375 · ตรวจบน production ผ่าน
   (static 200, วาดจริงได้ขนาดถูก, ไม่มี console error) · รายละเอียดและกับดัก qrcodejs อยู่ในส่วน "ปัญหา & วิธีแก้"
+- ✅ **สลับบริการ VM: ปิด Netflix Pro → เปิด ChatGPT** ตามใบแจ้งทีม VM รอบ 3 + เขียนเนื้อหาห้องใหม่ทั้งชุด
+  + รูปห้อง `chat-gpt.png` ใหม่ (1440×810) — deploy + ตรวจ prod ผ่าน
+- ✅ **แก้เพดานเวลาจองที่แสดงผิดทุกห้อง** (2/3 ชม. → 3.5 ชม.) รวมเป็นค่ากลางใน `service_hours.py`
+  + ถอด `max_booking_hours` ออกจาก `RoomForm` · **Canva Pro 1/2 ความจุ 2 → 1 คน**
+- ✅ **วันหยุดอัตโนมัติ** — `holiday_feed.py` + `sync_holidays` + ปุ่มในหน้าเจ้าหน้าที่ + แถบเตือนแดชบอร์ด
+  + หน้า `/manage/holidays/` เรียงแบบไทม์ไลน์และไฮไลต์วันหยุดถัดไป · **test 56/56 ผ่าน**
 - 🧹 ล้างรายการ `next:` ที่ล้าสมัย — deploy overlap ขึ้น prod / แจ้งทีม VM เรื่อง overlap แยกฉบับ /
   ขอ URL Gateway / แจ้ง `booking_name=canva2` **ทั้ง 4 รายการทำเสร็จไปแล้วตั้งแต่ 8 ส.ค. แต่ค้างอยู่ในทะเบียน**
 
