@@ -24,6 +24,14 @@
     </div>
 </div>
 
+{% if next_active and next_active.date.year != year %}
+<div class="alert alert-light border py-2" style="font-size:13px;">
+    วันหยุดถัดไปคือ <strong>{{ next_active.date|th_date_long }}</strong>
+    ({{ next_active.description }}) — อีก {{ next_active.days_left }} วัน ·
+    อยู่ในปี {{ next_active.date.year }} กดแท็บปีนั้นเพื่อดู
+</div>
+{% endif %}
+
 {% if pending_count %}
 <div class="alert alert-warning py-2" style="font-size:13px;">
     <strong>มีวันหยุดฉบับร่างรอตรวจ {{ pending_count }} วัน</strong> —
@@ -47,8 +55,23 @@
             </thead>
             <tbody>
                 {% for h in holidays %}
+                {% if forloop.counter0 == upcoming_count and upcoming_count %}
                 <tr>
-                    <td style="white-space:nowrap;font-weight:600;">{{ h.date|th_date_long }}</td>
+                    <td colspan="5" style="background:#fafafa;color:#999;font-size:12px;
+                        text-align:center;padding:6px;border-top:2px solid #e8e8e8;">
+                        ── ผ่านมาแล้ว ──
+                    </td>
+                </tr>
+                {% endif %}
+                <tr {% if h.is_next %}style="background:#fff8e1;box-shadow:inset 3px 0 0 #f59e0b;"{% elif forloop.counter0 >= upcoming_count %}style="opacity:.55;"{% endif %}>
+                    <td style="white-space:nowrap;font-weight:600;">
+                        {{ h.date|th_date_long }}
+                        {% if h.is_next %}
+                        <div style="font-size:11px;font-weight:600;color:#b45309;">
+                            หยุดถัดไป · อีก {{ h.days_left }} วัน
+                        </div>
+                        {% endif %}
+                    </td>
                     <td style="color:#888;">{{ h.date|th_weekday }}</td>
                     <td>
                         {{ h.description }}

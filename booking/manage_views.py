@@ -434,11 +434,32 @@ def manage_booking_cancel(request, pk):
 
 @staff_required
 def manage_holidays(request):
-    year = int(request.GET.get('year', date.today().year))
-    holidays = HolidayDate.objects.filter(date__year=year).order_by('date')
-    years = list(range(date.today().year, date.today().year + 3))
+    """เรียงแบบ "ไทม์ไลน์รอบวันนี้" — ที่ยังไม่ถึงอยู่บน (ใกล้สุดก่อน)
+    ที่ผ่านมาแล้วอยู่ล่าง (เพิ่งผ่านก่อน) เพราะเจ้าหน้าที่ต้องจัดการเฉพาะของที่ยังไม่ถึง
+    """
+    today = date.today()
+    year = int(request.GET.get('year', today.year))
+    qs = HolidayDate.objects.filter(date__year=year)
+
+    upcoming = list(qs.filter(date__gte=today).order_by('date'))
+    past     = list(qs.filter(date__lt=today).order_by('-date'))
+
+    # ไฮไลต์ "วันหยุดถัดไปที่จะปิดจริง" = รายการที่เปิดใช้แล้วและใกล้ที่สุด
+    # (ฉบับร่างไม่นับ เพราะยังไม่บล็อกการจอง) — หาข้ามปีด้วย เผื่อเปิดดูเดือน ธ.ค.
+    # แล้ววันหยุดถัดไปอยู่ต้นปีหน้า จะได้บอกได้ว่าต้องไปดูแท็บไหน
+    next_active = (HolidayDate.objects.filter(is_active=True, date__gte=today)
+                   .order_by('date').first())
+    if next_active:
+        next_active.days_left = (next_active.date - today).days
+    for h in upcoming:
+        h.days_left = (h.date - today).days
+        h.is_next = next_active is not None and h.pk == next_active.pk
+
+    years = list(range(today.year, today.year + 3))
     return render(request, 'booking/manage/holidays.html', {
-        'holidays': holidays,
+        'holidays':       upcoming + past,
+        'upcoming_count': len(upcoming),
+        'next_active':    next_active,
         'year':     year,
         'years':    years,
         # ฉบับร่างที่ระบบดึงมาและยังไม่ถึงวัน — ต้องให้เจ้าหน้าที่ตรวจก่อนจึงมีผล
@@ -452,6 +473,9 @@ def manage_holidays(request):
 @require_POST
 def manage_holidays_sync(request):
     """ดึงวันหยุดจากปฏิทินสาธารณะเข้ามาเป็นฉบับร่าง (ไม่เปิดใช้ให้เอง)
+
+    ดึง **ทั้งปีของแท็บที่เปิดดูอยู่** (ผู้ใช้ยืนยันว่าต้องการแบบนี้ 2026-08-09)
+    ส่วน command `sync_holidays` ที่ตั้งเวลารันใช้หน้าต่างกลิ้ง 12 เดือนแทน
 
     ปฏิทินสาธารณะไม่ตรงกับวันหยุดของสำนักฯ 100% (มีวันที่ไม่ใช่วันหยุดราชการปนมา
     และขาดบางวัน) เจ้าหน้าที่จึงต้องเป็นคนกดเปิดใช้เอง — ดู booking/holiday_feed.py

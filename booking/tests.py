@@ -761,3 +761,65 @@ class HolidaySyncTests(TestCase):
             resp = self.client.get(reverse('manage_dashboard'))
         self.assertContains(resp, 'ยังไม่ได้ตรวจ')
         self.assertContains(resp, 'วันหยุดทดสอบ')
+
+
+class ManageHolidaysPageTests(TestCase):
+    """หน้า /manage/holidays/ — เรียงแบบไทม์ไลน์รอบวันนี้ และไฮไลต์วันหยุดถัดไป"""
+
+    def setUp(self):
+        User.objects.create_user(username='admin2', password='pass12345',
+                                 is_staff=True, is_superuser=True)
+        self.client = Client()
+        self.client.login(username='admin2', password='pass12345')
+        self.today = date.today()
+
+    def _mk(self, delta_days, desc, is_active=True, source=HolidayDate.SOURCE_MANUAL):
+        return HolidayDate.objects.create(
+            date=self.today + timedelta(days=delta_days), description=desc,
+            is_active=is_active, source=source)
+
+    def _page(self):
+        return self.client.get(reverse('manage_holidays'), {'year': self.today.year})
+
+    def test_upcoming_on_top_past_below(self):
+        self._mk(-20, 'ผ่านมานาน')
+        self._mk(-2, 'เพิ่งผ่าน')
+        self._mk(5, 'ใกล้ถึง')
+        self._mk(40, 'อีกนาน')
+        rows = list(self._page().context['holidays'])
+        self.assertEqual([h.description for h in rows],
+                         ['ใกล้ถึง', 'อีกนาน', 'เพิ่งผ่าน', 'ผ่านมานาน'])
+
+    def test_upcoming_count_marks_the_divider(self):
+        self._mk(-1, 'ผ่าน')
+        self._mk(3, 'ยังไม่ถึง')
+        resp = self._page()
+        self.assertEqual(resp.context['upcoming_count'], 1)
+        self.assertContains(resp, 'ผ่านมาแล้ว ──')
+
+    def test_next_active_is_highlighted_not_the_draft(self):
+        """ฉบับร่างที่ใกล้กว่าไม่ใช่ 'วันหยุดถัดไป' เพราะยังไม่บล็อกการจอง"""
+        draft = self._mk(2, 'ฉบับร่างใกล้กว่า', is_active=False,
+                         source=HolidayDate.SOURCE_AUTO)
+        real = self._mk(9, 'ปิดจริง', is_active=True)
+        resp = self._page()
+        self.assertEqual(resp.context['next_active'].pk, real.pk)
+        flags = {h.pk: h.is_next for h in resp.context['holidays'] if hasattr(h, 'is_next')}
+        self.assertTrue(flags[real.pk])
+        self.assertFalse(flags[draft.pk])
+        self.assertContains(resp, 'หยุดถัดไป · อีก 9 วัน')
+
+    def test_no_upcoming_shows_no_divider(self):
+        self._mk(-3, 'ผ่านมาแล้ว')
+        resp = self._page()
+        self.assertEqual(resp.context['upcoming_count'], 0)
+        self.assertNotContains(resp, 'ผ่านมาแล้ว ──')
+
+    def test_next_holiday_in_another_year_is_announced(self):
+        """เปิดดูปีนี้แต่วันหยุดถัดไปอยู่ปีหน้า ต้องบอกให้ไปดูแท็บปีนั้น"""
+        far = HolidayDate.objects.create(
+            date=date(self.today.year + 1, 1, 1), description='วันขึ้นปีใหม่',
+            is_active=True, source=HolidayDate.SOURCE_MANUAL)
+        resp = self._page()
+        self.assertEqual(resp.context['next_active'].pk, far.pk)
+        self.assertContains(resp, 'กดแท็บปีนั้นเพื่อดู')
