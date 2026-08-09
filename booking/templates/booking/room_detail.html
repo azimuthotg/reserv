@@ -32,7 +32,10 @@
 
         /* ── Room image ── */
         .room-hero {
-            width: 100%; height: 220px; overflow: hidden;
+            /* 16:9 เท่าไฟล์รูปห้อง และจำกัดกว้างเท่าคอลัมน์เนื้อหา (560px) — เดิมสูงคงที่ 220px
+               เต็มความกว้างจอ ทำให้บนเดสก์ท็อปเห็นภาพแค่ 40% และชื่อบริการบนรูปถูกตัดหาย */
+            width: 100%; max-width: 560px; margin: 0 auto;
+            aspect-ratio: 16 / 9; overflow: hidden;
             background: #e0e0e0; position: relative;
         }
         .room-hero img {
@@ -43,7 +46,8 @@
             display: flex; align-items: center; justify-content: center;
             font-size: 64px; opacity: .25;
         }
-        .accent-bar { height: 5px; }
+        /* กว้างเท่ารูป hero ที่จำกัดไว้ 560px ไม่งั้นบนเดสก์ท็อปแถบสีจะยาวเกินรูป */
+        .accent-bar { height: 5px; max-width: 560px; margin: 0 auto; }
 
         /* ── Body ── */
         .body-wrap { max-width: 560px; margin: 0 auto; padding: 16px; }

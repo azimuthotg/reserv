@@ -81,7 +81,10 @@
             display: flex; flex-direction: column;
         }
         .room-img {
-            width: 100%; height: 150px; overflow: hidden;
+            /* กล่องภาพเป็น 16:9 เท่ากับไฟล์รูปห้อง (1920x1080) เพื่อไม่ให้ object-fit:cover
+               ตัดเนื้อหาทิ้ง — เดิมสูงคงที่ 150px ทำให้บนจอกว้างเห็นแค่แถบกลาง 48% ของภาพ
+               และตัวหนังสือชื่อบริการที่อยู่ส่วนบนของรูปหายไปทั้งบรรทัด */
+            width: 100%; aspect-ratio: 16 / 9; overflow: hidden;
             background: #f0f2f5; position: relative;
         }
         .room-img img {
