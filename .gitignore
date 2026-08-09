@@ -37,3 +37,6 @@ Thumbs.db
 *.PNG
 *.png
 *.jpg
+
+# Tool output/cache (ไม่ใช่ของโปรเจกต์)
+graphify-out/
