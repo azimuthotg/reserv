@@ -1,4 +1,4 @@
-{% load th_filters %}
+{% load th_filters static %}
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -90,13 +90,10 @@
 
 {% if result %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="{% static 'booking/js/qr.js' %}"></script>
 <script>
-    new QRCode(document.getElementById('qrcode'), {
-        text: "{{ result.access_code|escapejs }}",
-        width: 200,
-        height: 200,
-        correctLevel: QRCode.CorrectLevel.M
-    });
+    // reserve 96 = container 24 + .card-box 40 + .qr-wrap 32
+    NPUQr.render(document.getElementById('qrcode'), "{{ result.access_code|escapejs }}", { reserve: 96 });
 </script>
 {% endif %}
 </body>

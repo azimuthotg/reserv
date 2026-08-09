@@ -1,10 +1,11 @@
-<!DOCTYPE html>
+{% load static %}<!DOCTYPE html>
 <html lang="th">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QR เข้าประตู — สำนักวิทยบริการ มนพ.</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="{% static 'booking/js/qr.js' %}"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -238,14 +239,8 @@
 
 <script>
   // เนื้อใน QR เป็น user_ldap ตัวเดียวกับหน้า /card/ ประตูจึงสแกนได้เหมือนกัน
-  new QRCode(document.getElementById('qr-canvas'), {
-    text: "{{ qr|escapejs }}",
-    width: 180,
-    height: 180,
-    colorDark: '#0d1f3c',
-    colorLight: '#ffffff',
-    correctLevel: QRCode.CorrectLevel.M,
-  });
+  // reserve 88 = body 20 + .card-qr 40 + .qr-box 28
+  NPUQr.render(document.getElementById('qr-canvas'), "{{ qr|escapejs }}", { reserve: 88 });
 </script>
 
 {% else %}

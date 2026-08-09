@@ -1,5 +1,5 @@
 {% extends "booking/manage/base.html" %}
-{% load th_filters %}
+{% load th_filters static %}
 {% block title %}บัตรสมาชิกถาวร{% endblock %}
 {% block page_title %}บัตรสมาชิกถาวร{% endblock %}
 
@@ -97,11 +97,11 @@
 {% block extra_js %}
 {% if member.status == 'active' and member.permanent_code %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="{% static 'booking/js/qr.js' %}"></script>
 <script>
-    new QRCode(document.getElementById('qrcode'), {
-        text: "{{ member.permanent_code|escapejs }}",
-        width: 160, height: 160, correctLevel: QRCode.CorrectLevel.M
-    });
+    // หน้า staff อยู่ในเลย์เอาต์ที่มี sidebar — จำกัดไม่ให้ใหญ่เท่าหน้าของผู้ใช้
+    NPUQr.render(document.getElementById('qrcode'), "{{ member.permanent_code|escapejs }}",
+                 { reserve: 120, max: 240 });
 </script>
 {% endif %}
 {% endblock %}

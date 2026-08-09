@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+{% load static %}<!DOCTYPE html>
 <html lang="th">
 <head>
   <meta charset="UTF-8">
@@ -6,6 +6,7 @@
   <title>บัตรสมาชิกดิจิทัล — ห้องสมุด มนพ.</title>
   <script src="https://static.line-scdn.net/liff/edge/versions/2.15.0/sdk.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="{% static 'booking/js/qr.js' %}"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -416,16 +417,8 @@
   }
 
   function renderQR(barcode) {
-    const canvas = document.getElementById('qr-canvas');
-    canvas.innerHTML = '';
-    new QRCode(canvas, {
-      text: barcode,
-      width: 180,
-      height: 180,
-      colorDark: '#0d1f3c',
-      colorLight: '#ffffff',
-      correctLevel: QRCode.CorrectLevel.M,
-    });
+    // reserve 88 = body 20 + .card-qr 40 + .qr-box 28
+    NPUQr.render(document.getElementById('qr-canvas'), barcode, { reserve: 88 });
     document.getElementById('barcode-num').textContent = barcode;
   }
 
