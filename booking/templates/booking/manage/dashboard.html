@@ -4,6 +4,26 @@
 {% block page_title %}Dashboard{% endblock %}
 
 {% block content %}
+{% if pending_holidays %}
+<div class="alert alert-danger py-2 mb-3" style="font-size:13px;">
+    <div class="fw-semibold mb-1">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        มีวันหยุดใกล้ถึงที่ยังไม่ได้ตรวจ {{ pending_holidays|length }} วัน — ตอนนี้ระบบ<u>ยังเปิดให้จอง</u>วันเหล่านี้อยู่
+    </div>
+    <ul class="mb-2" style="padding-left:20px;">
+        {% for h in pending_holidays %}
+        <li>
+            <strong>{{ h.date|th_date_long }}</strong> — {{ h.description }}
+            {% if h.booking_count %}
+            <span class="badge bg-danger">มีการจองแล้ว {{ h.booking_count }} รายการ</span>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    <a href="{% url 'manage_holidays' %}" class="btn btn-sm btn-danger">ตรวจและเปิดใช้วันหยุด</a>
+</div>
+{% endif %}
+
 <!-- Stats -->
 <div class="row g-3 mb-4">
     <div class="col-6 col-md-3">

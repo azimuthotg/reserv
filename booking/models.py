@@ -146,9 +146,19 @@ class RoomClosure(models.Model):
 
 
 class HolidayDate(models.Model):
+    SOURCE_MANUAL = 'manual'
+    SOURCE_AUTO   = 'auto'
+    SOURCE_CHOICES = [
+        (SOURCE_MANUAL, 'เจ้าหน้าที่เพิ่มเอง'),
+        (SOURCE_AUTO,   'ดึงจากปฏิทินวันหยุดอัตโนมัติ'),
+    ]
+
     date        = models.DateField(unique=True, verbose_name='วันที่')
     description = models.CharField(max_length=200, verbose_name='เหตุผล/ชื่อวันหยุด')
     is_active   = models.BooleanField(default=True, verbose_name='เปิดใช้งาน')
+    # แยกแถวที่ระบบดึงมาเอง ออกจากแถวที่เจ้าหน้าที่กรอก — sync รอบถัดไปจะไม่แตะของที่คนแก้
+    source      = models.CharField(max_length=10, choices=SOURCE_CHOICES,
+                                   default=SOURCE_MANUAL, verbose_name='ที่มา')
 
     class Meta:
         ordering     = ['date']

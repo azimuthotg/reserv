@@ -69,6 +69,7 @@ urlpatterns = [
     # Holidays
     path('manage/holidays/',                    manage_views.manage_holidays,       name='manage_holidays'),
     path('manage/holidays/add/',                manage_views.manage_holiday_add,    name='manage_holiday_add'),
+    path('manage/holidays/sync/',               manage_views.manage_holidays_sync,  name='manage_holidays_sync'),
     path('manage/holidays/<int:pk>/edit/',      manage_views.manage_holiday_edit,   name='manage_holiday_edit'),
     path('manage/holidays/<int:pk>/delete/',    manage_views.manage_holiday_delete, name='manage_holiday_delete'),
     path('manage/holidays/<int:pk>/toggle/',    manage_views.manage_holiday_toggle, name='manage_holiday_toggle'),

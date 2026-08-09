@@ -6,7 +6,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import Booking, BookingLog, LineUser, Room
+from .models import Booking, BookingLog, HolidayDate, LineUser, Room
 
 
 def _next_weekday(from_date):
@@ -578,3 +578,173 @@ class ManageExternalEditTests(TestCase):
             resp = self.client.get(self.url)
         self.assertRedirects(resp, reverse('manage_external_list'),
                              fetch_redirect_response=False)
+
+
+ICS_SAMPLE = """BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+DTSTART;VALUE=DATE:20260812
+DTEND;VALUE=DATE:20260813
+SUMMARY:วันเฉลิมพระชนมพรรษาสมเด็จพระนางเจ้าสิริกิติ์ พระบรมราชินีนาถ
+ พระบรมราชชนนีพันปีหลวง
+END:VEVENT
+BEGIN:VEVENT
+DTSTART;VALUE=DATE:20260214
+DTEND;VALUE=DATE:20260215
+SUMMARY:วันวาเลนไทน์
+END:VEVENT
+BEGIN:VEVENT
+DTSTART;VALUE=DATE:20260413
+DTEND;VALUE=DATE:20260416
+SUMMARY:วันสงกรานต์
+END:VEVENT
+BEGIN:VEVENT
+DTSTART;VALUE=DATE:20270101
+DTEND;VALUE=DATE:20270102
+SUMMARY:วันขึ้นปีใหม่
+END:VEVENT
+END:VCALENDAR
+"""
+
+
+class HolidayFeedParseTests(TestCase):
+    """แกะ iCal — ฟีดจริงมีบรรทัดพับ, event หลายวัน และวันที่ไม่ใช่วันหยุดราชการปนมา"""
+
+    def test_folded_summary_is_joined(self):
+        from .holiday_feed import parse_ics
+
+        events = dict(parse_ics(ICS_SAMPLE))
+        self.assertIn('พระบรมราชชนนีพันปีหลวง', events[date(2026, 8, 12)])
+        self.assertNotIn('\n', events[date(2026, 8, 12)])
+
+    def test_multi_day_event_expands_to_each_day(self):
+        from .holiday_feed import parse_ics
+
+        days = [d for d, _ in parse_ics(ICS_SAMPLE)]
+        for day in (13, 14, 15):
+            self.assertIn(date(2026, 4, day), days)
+        self.assertNotIn(date(2026, 4, 16), days)   # DTEND ของ iCal ไม่นับวันสุดท้าย
+
+    def test_observances_are_filtered_out(self):
+        from unittest.mock import Mock, patch
+
+        from .holiday_feed import fetch_holidays
+
+        fake = Mock(status_code=200, content=ICS_SAMPLE.encode('utf-8'))
+        with patch('booking.holiday_feed.requests.get', return_value=fake):
+            got = dict(fetch_holidays(year=2026))
+        self.assertIn(date(2026, 8, 12), got)
+        self.assertNotIn(date(2026, 2, 14), got)     # วาเลนไทน์ ไม่ใช่วันหยุดราชการ
+
+    def test_year_filter(self):
+        from unittest.mock import Mock, patch
+
+        from .holiday_feed import fetch_holidays
+
+        fake = Mock(status_code=200, content=ICS_SAMPLE.encode('utf-8'))
+        with patch('booking.holiday_feed.requests.get', return_value=fake):
+            got = dict(fetch_holidays(year=2027))
+        self.assertEqual(list(got), [date(2027, 1, 1)])
+
+    def test_http_error_raises(self):
+        from unittest.mock import Mock, patch
+
+        from .holiday_feed import HolidayFeedError, fetch_holidays
+
+        with patch('booking.holiday_feed.requests.get', return_value=Mock(status_code=503)):
+            with self.assertRaises(HolidayFeedError):
+                fetch_holidays(year=2026)
+
+
+class HolidaySyncTests(TestCase):
+    """ดึงวันหยุดเข้าระบบ — ต้องเป็นฉบับร่างเสมอ และห้ามทับของที่เจ้าหน้าที่กรอกเอง"""
+
+    def setUp(self):
+        from unittest.mock import Mock
+
+        self.fake = Mock(status_code=200, content=ICS_SAMPLE.encode('utf-8'))
+        User.objects.create_user(username='admin1', password='pass12345',
+                                 is_staff=True, is_superuser=True)
+        self.client = Client()
+        self.client.login(username='admin1', password='pass12345')
+
+    def _sync(self, year=2026):
+        from unittest.mock import patch
+
+        with patch('booking.holiday_feed.requests.get', return_value=self.fake):
+            return self.client.post(reverse('manage_holidays_sync'), data={'year': year})
+
+    def test_imported_rows_are_inactive_drafts(self):
+        self._sync()
+        h = HolidayDate.objects.get(date=date(2026, 8, 12))
+        self.assertFalse(h.is_active)            # ต้องไม่บล็อกการจองจนกว่าคนจะยืนยัน
+        self.assertEqual(h.source, HolidayDate.SOURCE_AUTO)
+
+    def test_manual_row_is_never_overwritten(self):
+        HolidayDate.objects.create(date=date(2026, 8, 12), description='ปิดตามมติสำนักฯ',
+                                   is_active=True, source=HolidayDate.SOURCE_MANUAL)
+        self._sync()
+        h = HolidayDate.objects.get(date=date(2026, 8, 12))
+        self.assertEqual(h.description, 'ปิดตามมติสำนักฯ')
+        self.assertTrue(h.is_active)
+        self.assertEqual(h.source, HolidayDate.SOURCE_MANUAL)
+
+    def test_sync_twice_creates_no_duplicates(self):
+        self._sync()
+        first = HolidayDate.objects.count()
+        self._sync()
+        self.assertEqual(HolidayDate.objects.count(), first)
+
+    def _book_on(self, holiday_date, key):
+        """จองวันที่กำหนด — ใช้วันหยุดที่ยังไม่ถึงและเป็นวันธรรมดา เพื่อไม่ให้ติดกติกาอื่น"""
+        room = Room.objects.create(
+            name='ห้องทดสอบ', booking_name=key, location='x', capacity=2,
+            open_time=time(8, 30), close_time=time(16, 30), is_active=True,
+        )
+        user = LineUser.objects.create(line_user_id=f'U-{key}', user_ldap=key,
+                                       display_name='ทดสอบ', is_active=True)
+        return self.client.post(reverse('create_booking'), data=json.dumps({
+            'userId': user.line_user_id,
+            'room': room.booking_name,
+            'booking_date': holiday_date.strftime('%Y-%m-%d'),
+            'start_time': '09:00', 'end_time': '10:00',
+            'group_name': 'กลุ่มทดสอบ', 'attendees': 'ผู้ทดสอบ',
+        }), content_type='application/json')
+
+    def _future_weekday_holiday(self, source, is_active):
+        d = _next_weekday(date.today() + timedelta(days=3))
+        HolidayDate.objects.update_or_create(
+            date=d, defaults={'description': 'วันหยุดทดสอบ',
+                              'is_active': is_active, 'source': source})
+        return d
+
+    def test_draft_holiday_does_not_block_booking(self):
+        """ฉบับร่างต้องไม่มีผลกับการจอง — เป็นหัวใจของการออกแบบนี้"""
+        d = self._future_weekday_holiday(HolidayDate.SOURCE_AUTO, is_active=False)
+        resp = self._book_on(d, 't1')
+        self.assertEqual(resp.status_code, 200, resp.content.decode())
+
+    def test_activated_holiday_blocks_booking(self):
+        d = self._future_weekday_holiday(HolidayDate.SOURCE_AUTO, is_active=True)
+        resp = self._book_on(d, 't2')
+        self.assertEqual(resp.status_code, 400)
+
+    def test_sync_requires_admin(self):
+        from unittest.mock import patch
+
+        self.client.logout()
+        with patch('booking.holiday_feed.requests.get') as mock_get:
+            resp = self.client.post(reverse('manage_holidays_sync'), data={'year': 2026})
+        self.assertEqual(resp.status_code, 302)
+        mock_get.assert_not_called()
+
+    def test_dashboard_warns_about_pending_holiday_with_bookings(self):
+        from unittest.mock import patch
+
+        HolidayDate.objects.create(date=date.today() + timedelta(days=3),
+                                   description='วันหยุดทดสอบ', is_active=False,
+                                   source=HolidayDate.SOURCE_AUTO)
+        with patch('booking.manage_views._npu_v2_request', return_value=None):
+            resp = self.client.get(reverse('manage_dashboard'))
+        self.assertContains(resp, 'ยังไม่ได้ตรวจ')
+        self.assertContains(resp, 'วันหยุดทดสอบ')

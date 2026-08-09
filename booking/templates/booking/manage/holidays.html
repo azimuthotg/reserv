@@ -10,10 +10,28 @@
         <a href="?year={{ y }}" class="btn btn-sm {% if y == year %}btn-green{% else %}btn-outline-secondary{% endif %}">{{ y }}</a>
         {% endfor %}
     </div>
-    <a href="{% url 'manage_holiday_add' %}" class="btn btn-sm btn-green">
-        <i class="bi bi-plus-lg"></i> เพิ่มวันหยุด
-    </a>
+    <div class="d-flex gap-2">
+        <form method="post" action="{% url 'manage_holidays_sync' %}" class="d-inline">
+            {% csrf_token %}
+            <input type="hidden" name="year" value="{{ year }}">
+            <button type="submit" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-cloud-download"></i> ดึงวันหยุดราชการ {{ year }}
+            </button>
+        </form>
+        <a href="{% url 'manage_holiday_add' %}" class="btn btn-sm btn-green">
+            <i class="bi bi-plus-lg"></i> เพิ่มวันหยุด
+        </a>
+    </div>
 </div>
+
+{% if pending_count %}
+<div class="alert alert-warning py-2" style="font-size:13px;">
+    <strong>มีวันหยุดฉบับร่างรอตรวจ {{ pending_count }} วัน</strong> —
+    ระบบดึงมาจากปฏิทินวันหยุดสาธารณะ <u>ยังไม่มีผลบล็อกการจอง</u>
+    จนกว่าจะกด "เปิดใช้" · ปฏิทินสาธารณะอาจมีวันที่สำนักฯ ไม่ได้ปิด
+    และอาจขาดบางวัน กรุณาตรวจก่อนเปิดใช้ทุกครั้ง
+</div>
+{% endif %}
 
 <div class="table-card">
     <div class="table-responsive">
@@ -32,10 +50,17 @@
                 <tr>
                     <td style="white-space:nowrap;font-weight:600;">{{ h.date|th_date_long }}</td>
                     <td style="color:#888;">{{ h.date|th_weekday }}</td>
-                    <td>{{ h.description }}</td>
+                    <td>
+                        {{ h.description }}
+                        {% if h.source == 'auto' %}
+                        <span class="badge bg-light text-secondary border" style="font-weight:500;">จากปฏิทิน</span>
+                        {% endif %}
+                    </td>
                     <td>
                         {% if h.is_active %}
                         <span class="badge badge-confirmed">เปิดใช้</span>
+                        {% elif h.source == 'auto' %}
+                        <span class="badge bg-warning text-dark">ฉบับร่าง รอตรวจ</span>
                         {% else %}
                         <span class="badge badge-cancelled">ปิดใช้</span>
                         {% endif %}

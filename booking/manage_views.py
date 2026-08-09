@@ -13,10 +13,12 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .forms import HolidayDateForm, RoomClosureForm, RoomForm, StaffAddForm, StaffEditForm
+from .holiday_feed import HolidayFeedError, fetch_holidays
 from .models import Booking, BookingLog, HolidayDate, LineUser, Room, RoomClosure, RoomDevice
 from .service_hours import MAX_BOOKING_HOURS_TEXT, room_service_hours
 from .views import _notify_booking_cancelled, _npu_v2_request, _push_text
@@ -91,10 +93,21 @@ def manage_dashboard(request):
         HolidayDate.objects.filter(is_active=True, date__gte=today, date__lte=today + timedelta(days=30))
         .order_by('date')
     )
+    # วันหยุดฉบับร่างที่ใกล้ถึงแต่ยังไม่มีใครตรวจ — ต้นเหตุที่เคยปล่อยให้จองวันหยุดได้
+    # แนบจำนวนการจองที่ตกวันนั้นไปด้วย เพราะนั่นคือสิ่งที่ต้องรีบจัดการ
+    pending_holidays = list(
+        HolidayDate.objects.filter(source=HolidayDate.SOURCE_AUTO, is_active=False,
+                                   date__gte=today, date__lte=today + timedelta(days=30))
+        .order_by('date')
+    )
+    for h in pending_holidays:
+        h.booking_count = Booking.objects.filter(booking_date=h.date, status='confirmed').count()
+
     return render(request, 'booking/manage/dashboard.html', {
         'stats': stats,
         'recent_bookings': recent_bookings,
         'upcoming_holidays': upcoming_holidays,
+        'pending_holidays': pending_holidays,
         'today': today,
     })
 
@@ -428,7 +441,44 @@ def manage_holidays(request):
         'holidays': holidays,
         'year':     year,
         'years':    years,
+        # ฉบับร่างที่ระบบดึงมาและยังไม่ถึงวัน — ต้องให้เจ้าหน้าที่ตรวจก่อนจึงมีผล
+        'pending_count': HolidayDate.objects.filter(
+            source=HolidayDate.SOURCE_AUTO, is_active=False,
+            date__gte=date.today()).count(),
     })
+
+
+@admin_required
+@require_POST
+def manage_holidays_sync(request):
+    """ดึงวันหยุดจากปฏิทินสาธารณะเข้ามาเป็นฉบับร่าง (ไม่เปิดใช้ให้เอง)
+
+    ปฏิทินสาธารณะไม่ตรงกับวันหยุดของสำนักฯ 100% (มีวันที่ไม่ใช่วันหยุดราชการปนมา
+    และขาดบางวัน) เจ้าหน้าที่จึงต้องเป็นคนกดเปิดใช้เอง — ดู booking/holiday_feed.py
+    """
+    year = int(request.POST.get('year', date.today().year))
+    try:
+        items = fetch_holidays(year=year)
+    except HolidayFeedError as exc:
+        messages.error(request, str(exc))
+        return redirect(f'{reverse("manage_holidays")}?year={year}')
+
+    created = skipped = 0
+    for d, summary in items:
+        existing = HolidayDate.objects.filter(date=d).first()
+        if existing:
+            skipped += 1
+            continue
+        HolidayDate.objects.create(date=d, description=summary,
+                                   is_active=False, source=HolidayDate.SOURCE_AUTO)
+        created += 1
+
+    if created:
+        messages.success(request, f'ดึงมาใหม่ {created} วัน — ยังเป็นฉบับร่าง '
+                                  f'กรุณาตรวจแล้วกด "เปิดใช้" เฉพาะวันที่สำนักฯ ปิดจริง')
+    else:
+        messages.info(request, f'ไม่มีวันใหม่ (มีอยู่แล้ว {skipped} วัน)')
+    return redirect(f'{reverse("manage_holidays")}?year={year}')
 
 
 @staff_required
