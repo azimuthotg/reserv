@@ -12,6 +12,7 @@
 
 สคริปต์นี้เปิดเฉพาะหน้าจอแบบอ่านอย่างเดียว ไม่กดบันทึก ไม่แก้ข้อมูลใด ๆ บน production
 """
+import glob
 import os
 import sys
 
@@ -22,6 +23,18 @@ HERE  = os.path.dirname(os.path.abspath(__file__))
 SHOTS = os.path.join(HERE, "screenshots", "manual2026")
 
 VIEWPORT = {"width": 1920, "height": 1080}
+
+
+def chromium_path():
+    """หา chrome ที่ติดตั้งไว้จริงใน ms-playwright cache
+
+    playwright ใน WSL (1.58) มองหา chromium revision ที่ไม่ตรงกับที่ติดตั้งไว้ (1217)
+    เรียก launch() เปล่า ๆ จะฟ้อง "Executable doesn't exist" — ระบุ executable_path เอง
+    แบบเดียวกับ doc/check_booking_form.py ถ้าหาไม่เจอค่อยปล่อยให้ playwright จัดการเอง
+    """
+    cache = os.path.expanduser("~/.cache/ms-playwright")
+    found = sorted(glob.glob(os.path.join(cache, "chromium-*", "chrome-linux64", "chrome")))
+    return found[-1] if found else None
 
 
 def shot(page, name):
@@ -38,8 +51,11 @@ def main():
     if not (user and pwd):
         sys.exit("ต้องตั้ง STAFF_USER และ STAFF_PASS ก่อนรัน (ดูคำอธิบายหัวไฟล์)")
 
+    chrome = chromium_path()
+    print("chromium:", chrome or "(ใช้ค่า default ของ playwright)")
+
     with sync_playwright() as pw:
-        browser = pw.chromium.launch()
+        browser = pw.chromium.launch(executable_path=chrome, args=["--no-sandbox"])
         page = browser.new_context(viewport=VIEWPORT).new_page()
 
         if capture_all:
@@ -81,7 +97,7 @@ def main():
         shot(page, "staff_13c_external_edit")
 
         browser.close()
-    print("เสร็จแล้ว — รัน python3 doc/make_external_manual_docx.py เพื่อสร้างคู่มือใหม่")
+    print("เสร็จแล้ว — รัน python3 doc/make_external_report_docx.py เพื่อสร้างรายงานใหม่")
 
 
 if __name__ == "__main__":

@@ -469,3 +469,112 @@ class ExternalAccessDayTests(TestCase):
             })
         self.assertContains(resp, 'ต้องเป็นตัวเลข 13 หลัก')
         mock_req.assert_not_called()
+
+
+class ManageExternalEditTests(TestCase):
+    """หน้าแก้ไขชื่อ-สกุลสมาชิกถาวร /manage/external/<id>/edit/
+
+    reserv ไม่เก็บข้อมูลสมาชิกเอง — view เป็น proxy ไป `/v2/external/permanent/<id>/update/`
+    จุดที่ต้องกันพลาดที่สุดคือ **ไม่เลือกไฟล์รูป = ต้องไม่ส่ง files ไปเลย** ไม่งั้นรูปเดิมของสมาชิกถูกทับ
+    """
+
+    CID = '1234567890123'
+
+    def setUp(self):
+        User.objects.create_user(username='staff1', password='pass12345', is_staff=True)
+        self.client = Client()
+        self.client.login(username='staff1', password='pass12345')
+        self.url = reverse('manage_external_edit', kwargs={'citizen_id': self.CID})
+
+    def _member_resp(self):
+        from unittest.mock import Mock
+
+        fake = Mock(status_code=200)
+        fake.json.return_value = {
+            'citizen_id': self.CID, 'first_name': 'สมชาย',
+            'last_name': 'ใจดี', 'has_photo': True,
+        }
+        return fake
+
+    def test_requires_staff_login(self):
+        from unittest.mock import patch
+
+        self.client.logout()
+        with patch('booking.manage_views._npu_v2_request') as mock_req:
+            resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, 302)
+        self.assertNotIn(reverse('manage_external_edit', kwargs={'citizen_id': self.CID}),
+                         resp['Location'])
+        mock_req.assert_not_called()
+
+    def test_get_prefills_current_name_from_api(self):
+        from unittest.mock import patch
+
+        with patch('booking.manage_views._npu_v2_request',
+                   return_value=self._member_resp()) as mock_req:
+            resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'value="สมชาย"')
+        self.assertContains(resp, 'value="ใจดี"')
+        self.assertContains(resp, 'เว้นว่างไว้ = ใช้รูปเดิม')
+        self.assertEqual(mock_req.call_args.args[0], 'GET')
+
+    def test_post_without_photo_does_not_send_files(self):
+        from unittest.mock import Mock, patch
+
+        with patch('booking.manage_views._npu_v2_request',
+                   return_value=Mock(status_code=200)) as mock_req:
+            resp = self.client.post(self.url, data={
+                'first_name': 'สมชาย', 'last_name': 'ใจงาม',
+            })
+        self.assertRedirects(
+            resp, reverse('manage_external_detail', kwargs={'citizen_id': self.CID}),
+            fetch_redirect_response=False,
+        )
+        kwargs = mock_req.call_args.kwargs
+        self.assertIsNone(kwargs['files'])          # ไม่ส่ง files = api ใช้รูปเดิม
+        self.assertEqual(kwargs['data']['last_name'], 'ใจงาม')
+
+    def test_post_with_photo_sends_file_bytes(self):
+        from unittest.mock import Mock, patch
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        photo = SimpleUploadedFile('new.jpg', b'\xff\xd8\xff-fake-jpeg', content_type='image/jpeg')
+        with patch('booking.manage_views._npu_v2_request',
+                   return_value=Mock(status_code=200)) as mock_req:
+            self.client.post(self.url, data={
+                'first_name': 'สมชาย', 'last_name': 'ใจดี', 'photo': photo,
+            })
+        sent = mock_req.call_args.kwargs['files']['photo']
+        self.assertEqual(sent[0], 'new.jpg')
+        self.assertEqual(sent[1], b'\xff\xd8\xff-fake-jpeg')   # อ่านเป็น bytes เพื่อให้ retry ได้
+
+    def test_post_404_redirects_to_list(self):
+        from unittest.mock import Mock, patch
+
+        with patch('booking.manage_views._npu_v2_request', return_value=Mock(status_code=404)):
+            resp = self.client.post(self.url, data={
+                'first_name': 'สมชาย', 'last_name': 'ใจดี',
+            })
+        self.assertRedirects(resp, reverse('manage_external_list'),
+                             fetch_redirect_response=False)
+
+    def test_post_api_unreachable_redisplays_form_with_input(self):
+        from unittest.mock import patch
+
+        with patch('booking.manage_views._npu_v2_request', return_value=None):
+            resp = self.client.post(self.url, data={
+                'first_name': 'สมชาย', 'last_name': 'ใจงาม',
+            })
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'เชื่อมต่อ NPU API ไม่ได้')
+        self.assertContains(resp, 'value="ใจงาม"')       # ไม่ล้างสิ่งที่ staff พิมพ์ทิ้ง
+
+    def test_get_404_redirects_to_list(self):
+        from unittest.mock import Mock, patch
+
+        with patch('booking.manage_views._npu_v2_request', return_value=Mock(status_code=404)):
+            resp = self.client.get(self.url)
+        self.assertRedirects(resp, reverse('manage_external_list'),
+                             fetch_redirect_response=False)

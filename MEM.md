@@ -5,6 +5,19 @@
 
 ## ปัญหา & วิธีแก้
 
+### 2026-08-09 — playwright ใน WSL หา chromium ไม่เจอ (revision ไม่ตรง) + ภาพหายเงียบในเอกสาร
+**อาการ 1:** `pw.chromium.launch()` ใน WSL ล้มทุกครั้ง `Executable doesn't exist at .../chromium_headless_shell-1208/...`
+**สาเหตุ:** playwright python เป็น **1.58.0** (มองหา revision **1208**) แต่ browser ที่ติดตั้งไว้จริงคือ **1217**
+**แก้:** ระบุ `executable_path` เอง — หา binary จาก `~/.cache/ms-playwright/chromium-*/chrome-linux64/chrome`
+(เอาตัวใหม่สุด) + `args=["--no-sandbox"]` · ทำเป็นฟังก์ชัน `chromium_path()` ใน `doc/capture_external_shots.py`
+**หมายเหตุ:** ต้องรันเป็น user `admin_e` (`wsl -d Ubuntu -u admin_e -- ...`) — user default ของ WSL
+มี playwright คนละตัวและมองไม่เห็น cache นี้ · distro ที่มีของคือ **Ubuntu** ไม่ใช่ `Ubuntu-24.04` ที่เป็น default
+
+**อาการ 2 (อันตรายกว่า):** `manual_style.figure()` เจอไฟล์ภาพไม่ครบจะ `print("ข้าม")` **แล้วสร้างเอกสารต่อเงียบ ๆ**
+→ `external-access-report.docx` ที่แจกออกไปมีหัวข้อครบแต่**ขาดภาพ 1 ภาพโดยไม่มีใครรู้** นานเป็นเดือน
+**บทเรียน:** สคริปต์ generate เอกสารที่ข้าม asset ที่หายไปแบบไม่ error = ของขาดหลุดออกไปถึงมือผู้อ่าน
+ถ้าจะเพิ่มภาพใหม่ ให้เช็ค output ของสคริปต์ว่ามีคำว่า "ไม่พบภาพ" หรือไม่ทุกครั้ง
+
 ### 2026-07-17 — ⚠️ `.env` ในเครื่อง dev ชี้ MySQL production จริง (กับดัก)
 `.env` ชี้ `DB_HOST=202.29.55.213 / reserv_db` ซึ่งเป็น **ฐานเดียวกับที่ production ใช้**
 (ยืนยันแล้ว: prod มองเห็นข้อมูลที่เขียนจากเครื่อง dev) → `python manage.py migrate` บนเครื่อง dev
@@ -229,6 +242,9 @@ flip gate (ประตูทางเข้า) ไม่สังกัดห�
 - ✅ `/card-login/` ผู้ใช้เทสเองแล้ว **ทำงานสมบูรณ์** — ปิด task เรื่องเทสหน้านี้
   (หมายเหตุเชิงเทคนิค: ยังไม่มีเคสใน `booking/tests.py` แต่ผู้ใช้ยอมรับสถานะนี้แล้ว ไม่ต้องเตือนซ้ำ)
 - ✅ เคาะกติกาโควตา 3 สิทธิ์/ห้อง/วัน คงเดิมช่วงแรก · พักงานคู่มือ 2569 ทั้งชุด (ดูหัวข้อในส่วนการตัดสินใจ)
+- ✅ **เทสหน้าแก้ไขสมาชิกถาวร** `ManageExternalEditTests` 7 เคส → **38/38 ผ่าน** (ดู [doc/progress-2026-08-09.md](doc/progress-2026-08-09.md))
+  เคสสำคัญคือ "ไม่เลือกรูป = ต้องไม่ส่ง `files`" เพราะถ้าพลาดจะทับรูปเดิมของสมาชิกด้วยค่าว่าง
+- ✅ **เติมตาราง URL ใน CLAUDE.md + AGENTS.md** (`/external/permanent/`, `/card-login/`, `/manage/external/*`)
 - 🧹 ล้างรายการ `next:` ที่ล้าสมัย — deploy overlap ขึ้น prod / แจ้งทีม VM เรื่อง overlap แยกฉบับ /
   ขอ URL Gateway / แจ้ง `booking_name=canva2` **ทั้ง 4 รายการทำเสร็จไปแล้วตั้งแต่ 8 ส.ค. แต่ค้างอยู่ในทะเบียน**
 

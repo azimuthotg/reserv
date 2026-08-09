@@ -16,8 +16,10 @@ Migration จาก Google Apps Script + Google Sheets → Django + MySQL
 - **LINE OA:** กด "จองห้อง" ใน Rich Menu → LIFF เปิด `/booking/?room=X` → กรอกฟอร์มจอง
 - **เว็บไซต์:** เปิด `https://lib.npu.ac.th/reserv/` ผ่าน browser → LINE Login → กรอกฟอร์มจอง
 
-ผู้ใช้ทั่วไป **ทุกช่องทาง** ยืนยันตัวตนผ่าน LINE LIFF และ `api.npu.ac.th`
-ไม่มี session login แยกสำหรับผู้ใช้ทั่วไปบนเว็บไซต์ ส่วน Django session login ใช้เฉพาะ Staff Portal (`/manage/`)
+**การจองห้องทุกช่องทาง** ยืนยันตัวตนผ่าน LINE LIFF และ `api.npu.ac.th` — จองผ่านทางอื่นไม่ได้
+Django session login ใช้กับ Staff Portal (`/manage/`) เท่านั้น
+**ข้อยกเว้นที่ไม่ใช่การจอง:** `/card-login/` ให้นักศึกษา/บุคลากรล็อกอิน **AD บนเว็บโดยไม่ต้องผ่าน LINE**
+เพื่อขอ QR เข้าประตูอย่างเดียว (จองห้องไม่ได้) — ใช้ signed cookie ของตัวเอง ไม่ใช่ Django session
 
 **เวลาให้บริการสำหรับประชาสัมพันธ์:**
 - จันทร์ – ศุกร์: `08:30 – 16:30 น.`
@@ -95,9 +97,11 @@ api.npu.ac.th         MySQL reserv_db
 | `/booking/?room=X` | `/reserv/booking/?room=X` | form จอง (LIFF) |
 | `/booking/success/` | `/reserv/booking/success/` | จองสำเร็จ |
 | `/calendar/` | `/reserv/calendar/` | FullCalendar แบบ public ไม่ต้อง login |
-| `/external/` | `/reserv/external/` | บุคคลภายนอกขอ QR เข้าห้องสมุด (public) — เรียก `/v2/external/issue/` ผ่าน JWT |
+| `/external/` | `/reserv/external/` | บุคคลภายนอกขอ QR **รายวัน** (public) — เรียก `/v2/external/issue/` ผ่าน JWT · บังคับแค่ชื่อ-สกุล เลขบัตรไม่บังคับ |
+| `/external/permanent/` | `/reserv/external/permanent/` | บุคคลภายนอกสมัคร **สมาชิกถาวร** (public) — **บังคับเลขบัตร 13 หลัก** ต่างจากหน้ารายวัน · รอ staff อนุมัติที่ `/manage/external/` |
 | `/room/<booking_name>/` | `/reserv/room/<booking_name>/` | รายละเอียดห้องแบบ public |
 | `/card/` | `/reserv/card/` | Virtual Card + Walai status (LIFF) |
+| `/card-login/` | `/reserv/card-login/` | **นักศึกษา/บุคลากรล็อกอิน AD บนเว็บ → QR เข้าประตู โดยไม่ต้องผ่าน LINE** (public) · จองห้องไม่ได้ · "จดจำ 90 วัน" ใช้ signed cookie แยกจาก Django session · rate limit ต่อบัญชี (ห้ามต่อ IP — ผู้ใช้อยู่หลัง NAT) |
 | `/room-control/` | `/reserv/room-control/` | ควบคุมอุปกรณ์ IoT ระหว่างเวลาจอง (LIFF) |
 | `/api/access-status/` | `/reserv/api/access-status/` | ตรวจสถานะ local user ก่อนใช้ frontend cache |
 | `/api/check-user/` | `/reserv/api/check-user/` | ตรวจการผูก LINE userId |
@@ -105,6 +109,7 @@ api.npu.ac.th         MySQL reserv_db
 | `/api/checkin/` | `/reserv/api/checkin/` | Check-in ก่อน/หลังเวลาเริ่มไม่เกิน 15 นาที |
 | `/api/calendar-events/` | `/reserv/api/calendar-events/` | JSON events |
 | `/manage/` | `/reserv/manage/` | Staff Portal ใช้ Django session login |
+| `/manage/external/` | `/reserv/manage/external/` | staff จัดการสมาชิกถาวร — `register/` · `<citizen_id>/` · `/edit/` · `/approve/` · `/revoke/` · `/delete/` · `/photo/` · **ทุกเส้นทาง proxy ไป api v2 — reserv ไม่เก็บข้อมูลสมาชิกเอง** (หน้า staff เว้นเลขบัตรได้ รองรับ VVIP api gen `V`+12 หลักให้) |
 | `/admin/` | `/reserv/admin/` | Django Admin |
 | `/health/` | `/reserv/health/` | Health check (NMS monitoring) — public, JSON `{status, db, db_ms}`, 200/503 |
 

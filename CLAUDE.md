@@ -65,13 +65,14 @@ done_2026-08-09:
   - ✅ **`/card-login/` ยืนยันทำงานสมบูรณ์** (ผู้ใช้เทสเอง) — ปิด task เรื่องเทสหน้านี้
   - ✅ **เคาะกติกาโควตา: คงไว้ 3 สิทธิ์/ห้อง/วัน (รอบละ 1)** สำหรับช่วงแรก รอข้อมูลการใช้งานมากพอค่อยวิเคราะห์ปรับ — ปิดข้อค้าง "คุยกติกานอกเวลาทำการ"
   - ✅ ล้างรายการ `next:` ที่ล้าสมัย (deploy overlap / แจ้ง overlap แยกฉบับ / ขอ URL Gateway / แจ้ง booking_name — ทำไปแล้วทั้งหมด)
+  - ✅ **เพิ่ม test หน้าแก้ไขสมาชิกถาวร `ManageExternalEditTests` 7 เคส** — คลุมจุดที่พังเงียบได้คือ **ไม่เลือกรูป = ต้องไม่ส่ง `files` ไป api** (ไม่งั้นทับรูปเดิมของสมาชิก) + เลือกรูป=ส่ง bytes · GET เติมชื่อเดิม · 404 ทั้ง GET/POST redirect ไปหน้ารายการ · api ล่มแล้วไม่ล้างสิ่งที่ staff พิมพ์ · ต้องล็อกอิน staff — **test 38/38 ผ่าน** (เดิม 31)
+  - ✅ **เติมตาราง URL ใน CLAUDE.md + AGENTS.md** — เพิ่ม `/external/permanent/`, `/card-login/`, `/manage/external/*` (เดิมมีแค่ `/external/` ทั้งที่โค้ดมี 70 routes) · แก้ข้อความ auth flow ที่เขียนว่า "ไม่มี session login แยกสำหรับผู้ใช้ทั่วไป" ซึ่งไม่จริงตั้งแต่มี `/card-login/` (22 ก.ค.)
+  - ✅ **แก้ `doc/capture_external_shots.py` ให้รันได้จริง** — playwright 1.58 ใน WSL มองหา chromium revision 1208 แต่ที่ติดตั้งคือ 1217 → `launch()` ล้มทุกครั้ง · เพิ่ม `chromium_path()` หา binary เองจาก `~/.cache/ms-playwright` + `--no-sandbox` · แก้ข้อความท้ายสคริปต์ที่ยังอ้างชื่อไฟล์เก่า `make_external_manual_docx.py` · ทดสอบเปิดเบราว์เซอร์ + เข้าหน้า login ผ่านแล้ว
 next:
   - **[รอ URL สุดท้าย — ผู้ใช้สั่งยังไม่ลงมือ] เปลี่ยนปุ่มของห้อง VM 3 ห้อง (`canva`, `canva2`, `netflix1_vm`) จาก "ควบคุมอุปกรณ์ไฟฟ้า" เป็นปุ่ม "เข้าใช้งาน" ที่เปิดแท็บใหม่ไปหน้า login ของ VM Gateway** — URL ทดสอบ `http://202.29.55.180:8888/vm/login` · **รอทีม DNS ทำ https + domain ก่อนค่อยแก้จริง** · แก้ `how_to_use` ของ 3 ห้องให้ตรงวิธีเข้าใช้จริงในรอบเดียวกัน (ตอนนี้ Canva ยังเขียนว่า "เปิดเครื่องคอมพิวเตอร์ที่ให้บริการ")
   - **หารูปห้อง Netflix Pro** แล้ววางเป็น `booking/static/booking/images/rooms/netflix1_vm.png` (ตอนนี้ยังไม่มีไฟล์ หน้าแรกแสดงไอคอน 🏢 แทน — ผู้ใช้แจ้ง 2026-08-08 ว่ายังไม่มีรูป ปล่อยไปก่อนได้) · เพิ่มด้วย `git add -f` เพราะ .gitignore ignore `*.png`
   - **แก้ LINE Rich Menu** — ปุ่ม ChatGPT → `?room=canva2` + เปลี่ยนรูปปุ่มเป็น "Canva Pro 2" และรูปปุ่ม Canva เป็น "Canva Pro 1" (ผู้ใช้ทำเอง — รายละเอียดใน doc/line-richmenu-urls.md)
-  - เพิ่ม `/external/permanent/`, `/card-login/`, `/manage/external/*` ในตาราง URL ของ CLAUDE.md + AGENTS.md (ตอนนี้มีแค่ `/external/`)
-  - แคปภาพหน้าแก้ไขสมาชิกถาวร `/manage/external/<id>/edit/` ด้วย `STAFF_USER=... STAFF_PASS=... python3 doc/capture_external_shots.py` แล้ว generate รายงาน external ซ้ำให้ครบ 7 ภาพ
-  - เพิ่ม test ให้หน้าแก้ไขสมาชิกถาวร `/manage/external/<id>/edit/` (deploy+เทสมือผ่านแล้ว แต่ยังไม่มีเคส)
+  - **[รอผู้ใช้รัน — ต้องใช้รหัส staff] แคปภาพหน้าแก้ไขสมาชิกถาวรให้รายงาน external ครบ 7 ภาพ** — สคริปต์พร้อมและทดสอบเปิดเบราว์เซอร์ผ่านแล้ว เหลือแค่ใส่รหัส: `wsl -d Ubuntu -u admin_e -- env STAFF_USER=xxx STAFF_PASS=yyy python3 /mnt/c/projects/reserv/doc/capture_external_shots.py` แล้วรัน `python doc/make_external_report_docx.py`
   - export PDF/Excel จากหน้า analytics — ค้างเป็น task (spawn แล้ว 2026-07-09) รอทำเมื่อมีความต้องการจริง (ดู MEM.md: embed ฟอนต์ TH Sarabun New กันตัวอักษรหาย)
   - ทำฟีเจอร์เพิ่มวันหยุดอัตโนมัติในตารางวันหยุด (ตอนนี้ต้องเพิ่มเองทีละวัน) — รับแจ้ง 2026-07-12
   - ขยายขนาด QR code ให้ใหญ่ขึ้นทั้งระบบเดิมและระบบใหม่ (ทุกช่องทางที่ออก QR: /card/, /card-login/, /external/ ฯลฯ) — รับแจ้งจาก inbox 2026-07-23
@@ -101,8 +102,10 @@ Migration จาก Google Apps Script + Google Sheets → Django + MySQL
 - **LINE OA:** กด "จองห้อง" ใน Rich Menu → LIFF เปิด `/booking/?room=X` → กรอกฟอร์มจอง
 - **เว็บไซต์:** เปิด `https://lib.npu.ac.th/reserv/` ผ่าน browser → LINE Login → กรอกฟอร์มจอง
 
-ผู้ใช้ทั่วไป **ทุกช่องทาง** ยืนยันตัวตนผ่าน LINE LIFF และ `api.npu.ac.th`
-ไม่มี session login แยกสำหรับผู้ใช้ทั่วไปบนเว็บไซต์ ส่วน Django session login ใช้เฉพาะ Staff Portal (`/manage/`)
+**การจองห้องทุกช่องทาง** ยืนยันตัวตนผ่าน LINE LIFF และ `api.npu.ac.th` — จองผ่านทางอื่นไม่ได้
+Django session login ใช้กับ Staff Portal (`/manage/`) เท่านั้น
+**ข้อยกเว้นที่ไม่ใช่การจอง:** `/card-login/` ให้นักศึกษา/บุคลากรล็อกอิน **AD บนเว็บโดยไม่ต้องผ่าน LINE**
+เพื่อขอ QR เข้าประตูอย่างเดียว (จองห้องไม่ได้) — ใช้ signed cookie ของตัวเอง ไม่ใช่ Django session
 
 **เวลาให้บริการสำหรับประชาสัมพันธ์:**
 - จันทร์ – ศุกร์: `08:30 – 16:30 น.`
@@ -180,9 +183,11 @@ api.npu.ac.th         MySQL reserv_db
 | `/booking/?room=X` | `/reserv/booking/?room=X` | form จอง (LIFF) |
 | `/booking/success/` | `/reserv/booking/success/` | จองสำเร็จ |
 | `/calendar/` | `/reserv/calendar/` | FullCalendar แบบ public ไม่ต้อง login |
-| `/external/` | `/reserv/external/` | บุคคลภายนอกขอ QR เข้าห้องสมุด (public) — เรียก `/v2/external/issue/` ผ่าน JWT |
+| `/external/` | `/reserv/external/` | บุคคลภายนอกขอ QR **รายวัน** (public) — เรียก `/v2/external/issue/` ผ่าน JWT · บังคับแค่ชื่อ-สกุล เลขบัตรไม่บังคับ |
+| `/external/permanent/` | `/reserv/external/permanent/` | บุคคลภายนอกสมัคร **สมาชิกถาวร** (public) — **บังคับเลขบัตร 13 หลัก** ต่างจากหน้ารายวัน · รอ staff อนุมัติที่ `/manage/external/` |
 | `/room/<booking_name>/` | `/reserv/room/<booking_name>/` | รายละเอียดห้องแบบ public |
 | `/card/` | `/reserv/card/` | Virtual Card + Walai status (LIFF) |
+| `/card-login/` | `/reserv/card-login/` | **นักศึกษา/บุคลากรล็อกอิน AD บนเว็บ → QR เข้าประตู โดยไม่ต้องผ่าน LINE** (public) · จองห้องไม่ได้ · "จดจำ 90 วัน" ใช้ signed cookie แยกจาก Django session · rate limit ต่อบัญชี (ห้ามต่อ IP — ผู้ใช้อยู่หลัง NAT) |
 | `/room-control/` | `/reserv/room-control/` | ควบคุมอุปกรณ์ IoT ระหว่างเวลาจอง (LIFF) |
 | `/api/access-status/` | `/reserv/api/access-status/` | ตรวจสถานะ local user ก่อนใช้ frontend cache |
 | `/api/check-user/` | `/reserv/api/check-user/` | ตรวจการผูก LINE userId |
@@ -190,6 +195,7 @@ api.npu.ac.th         MySQL reserv_db
 | `/api/checkin/` | `/reserv/api/checkin/` | Check-in ก่อน/หลังเวลาเริ่มไม่เกิน 15 นาที |
 | `/api/calendar-events/` | `/reserv/api/calendar-events/` | JSON events |
 | `/manage/` | `/reserv/manage/` | Staff Portal ใช้ Django session login |
+| `/manage/external/` | `/reserv/manage/external/` | staff จัดการสมาชิกถาวร — `register/` · `<citizen_id>/` · `/edit/` · `/approve/` · `/revoke/` · `/delete/` · `/photo/` · **ทุกเส้นทาง proxy ไป api v2 — reserv ไม่เก็บข้อมูลสมาชิกเอง** (หน้า staff เว้นเลขบัตรได้ รองรับ VVIP api gen `V`+12 หลักให้) |
 | `/admin/` | `/reserv/admin/` | Django Admin |
 | `/health/` | `/reserv/health/` | Health check (NMS monitoring) — public, JSON `{status, db, db_ms}`, 200/503 |
 
