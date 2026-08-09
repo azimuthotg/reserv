@@ -85,7 +85,7 @@ next:
   - **[รอผู้ใช้รัน — ต้องใช้รหัส staff] แคปภาพหน้าแก้ไขสมาชิกถาวรให้รายงาน external ครบ 7 ภาพ** — สคริปต์พร้อมและทดสอบเปิดเบราว์เซอร์ผ่านแล้ว เหลือแค่ใส่รหัส: `wsl -d Ubuntu -u admin_e -- env STAFF_USER=xxx STAFF_PASS=yyy python3 /mnt/c/projects/reserv/doc/capture_external_shots.py` แล้วรัน `python doc/make_external_report_docx.py`
   - export PDF/Excel จากหน้า analytics — ค้างเป็น task (spawn แล้ว 2026-07-09) รอทำเมื่อมีความต้องการจริง (ดู MEM.md: embed ฟอนต์ TH Sarabun New กันตัวอักษรหาย)
   - 🔴 **deploy วันหยุดอัตโนมัติขึ้น prod** — `git pull` + **`nssm restart Reserv`** (migration `0016` apply ลงฐานจริงจากเครื่อง dev แล้ว) · ข้อมูลวันหยุดอยู่ในฐานแล้วแต่**หน้าเจ้าหน้าที่ยังไม่มีปุ่ม/แถบเตือนจนกว่าจะ restart**
-  - **ตั้ง Task Scheduler ให้รัน `sync_holidays` อัตโนมัติ** — แนะนำเดือนละครั้ง (ครม. ประกาศวันหยุดพิเศษกลางปีได้) `C:\project\reserv\venv\Scripts\python.exe C:\project\reserv\manage.py sync_holidays` · **ยังไม่รู้ว่า `send_reminders`/`morning_iot_report` ตั้งไว้ยังไงบนเซิร์ฟเวอร์ ต้องถามผู้ใช้ก่อนเพื่อเกาะรูปแบบเดียวกัน**
+  - **ตั้ง Task Scheduler ให้รัน `deploy/sync_holidays.bat` เดือนละครั้ง** (ผู้ใช้เคาะ 2026-08-09 — ทุก 30 วันเพื่อทันวันหยุดพิเศษที่ ครม. ประกาศกลางปี) · คำสั่ง `schtasks` อยู่ใน [doc/deploy_guide.md](doc/deploy_guide.md) · เช็คด้วยว่า `send_reminders`/`morning_iot_report` ตั้งไว้ยังไง จะได้วางให้เข้าชุดกัน
   - **เจ้าหน้าที่ตรวจวันหยุดฉบับร่าง 34 วัน** ที่หน้า `/manage/holidays/` แล้วกดเปิดใช้เฉพาะวันที่สำนักฯ ปิดจริง (ตอนนี้เปิดใช้แล้วเฉพาะ 12 ส.ค. 2569)
 risks:
   - `/std-info/`,`/staff-info/` (v1) ฝั่ง api ยังไม่ต้อง auth — ใครรู้รหัสนักศึกษายิงดูชื่อ-คณะได้ (leak `apassword` + ดึงทั้งตาราง + สิทธิ์เขียน ปิดแล้ว 2026-07-23 ดู MEM.md — เป็นงานฝั่ง api)

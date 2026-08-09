@@ -646,6 +646,19 @@ class HolidayFeedParseTests(TestCase):
             got = dict(fetch_holidays(year=2027))
         self.assertEqual(list(got), [date(2027, 1, 1)])
 
+    def test_date_range_filter_keeps_window_within_one_year(self):
+        """ค่าเริ่มต้นของ sync_holidays ดึงล่วงหน้าไม่เกิน 1 ปี (ผู้ใช้กำหนด 2026-08-09)"""
+        from unittest.mock import Mock, patch
+
+        from .holiday_feed import fetch_holidays
+
+        fake = Mock(status_code=200, content=ICS_SAMPLE.encode('utf-8'))
+        with patch('booking.holiday_feed.requests.get', return_value=fake):
+            got = dict(fetch_holidays(start=date(2026, 4, 1), end=date(2026, 12, 31)))
+        self.assertIn(date(2026, 4, 13), got)
+        self.assertIn(date(2026, 8, 12), got)
+        self.assertNotIn(date(2027, 1, 1), got)      # เกินหน้าต่าง
+
     def test_http_error_raises(self):
         from unittest.mock import Mock, patch
 

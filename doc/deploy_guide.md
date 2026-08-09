@@ -274,3 +274,36 @@ LINE OA (Rich Menu / Flex Message)
 | `/reserv/api/check-user/` | ตรวจ LINE userId กับ NPU API |
 | `/reserv/api/booking/` | สร้างการจอง |
 | `/reserv/admin/` | Django Admin |
+
+---
+
+## งานตามเวลา (Task Scheduler)
+
+### ดึงวันหยุดราชการอัตโนมัติ — เดือนละครั้ง
+
+`sync_holidays` ดึงวันหยุดล่วงหน้า 1 ปีเข้ามาเป็น **ฉบับร่าง** (`is_active=False`)
+ไม่บล็อกการจองจนกว่าเจ้าหน้าที่จะกด "เปิดใช้" ที่ `/manage/holidays/`
+รันเดือนละครั้งเพื่อให้ทันวันหยุดพิเศษที่ ครม. ประกาศระหว่างปี
+
+สร้าง task (รันใน PowerShell แบบ Administrator ครั้งเดียว):
+
+```powershell
+schtasks /create /tn "Reserv - Sync Holidays" /tr "C:\project\reserv\deploy\sync_holidays.bat" /sc MONTHLY /d 1 /st 06:00 /ru SYSTEM /rl HIGHEST
+```
+
+ตรวจ / รันทดสอบ / ลบ:
+
+```powershell
+schtasks /query /tn "Reserv - Sync Holidays" /v /fo LIST
+schtasks /run   /tn "Reserv - Sync Holidays"
+schtasks /delete /tn "Reserv - Sync Holidays" /f
+```
+
+log อยู่ที่ `C:\project\reserv\logs\sync_holidays.log` (สคริปต์สร้างโฟลเดอร์ให้เอง)
+
+> ⚠️ `deploy/sync_holidays.bat` เรียก python ผ่าน venv (`venv\Scripts\python.exe`)
+> ห้ามแก้เป็น `python` เปล่า ๆ จะได้ `ImportError: Couldn't import Django`
+
+> ⚠️ ต้องออกอินเทอร์เน็ตไปที่ `calendar.google.com` ได้ (ทดสอบแล้วใช้ได้ 2026-08-09)
+> ถ้าวันหนึ่งดึงไม่ได้ ระบบจะไม่พังแต่จะไม่มีวันหยุดใหม่เข้ามา —
+> แถบเตือนบนแดชบอร์ดจะไม่ช่วยเพราะไม่มีฉบับร่างให้เตือน ต้องเพิ่มมือเหมือนเดิม

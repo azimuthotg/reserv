@@ -68,10 +68,15 @@ def is_observance(summary):
     return any(k in summary for k in OBSERVANCE_KEYWORDS)
 
 
-def fetch_holidays(year=None, url=FEED_URL, timeout=TIMEOUT, session=None):
+def fetch_holidays(year=None, start=None, end=None, url=FEED_URL, timeout=TIMEOUT,
+                   session=None):
     """ดึงและแกะปฏิทิน คืน [(date, summary), ...] — กรองวันสำคัญที่ไม่ใช่วันหยุดออกแล้ว
 
-    `year` ระบุเพื่อกรองเฉพาะปีนั้น (ค.ศ.) · ไม่ระบุ = คืนทุกปีที่ฟีดมี
+    กรองได้ 2 แบบ (ใช้ร่วมกันได้)
+    - `year` — เฉพาะปีนั้น (ค.ศ.) ใช้กับปุ่ม "ดึงวันหยุดราชการ <ปี>" ในหน้าเจ้าหน้าที่
+    - `start` / `end` — ช่วงวันที่ (รวมปลายทั้งสองข้าง) ใช้กับหน้าต่างกลิ้ง 12 เดือนของ command
+
+    ไม่ระบุอะไรเลย = คืนทุกปีที่ฟีดมี (ปัจจุบัน 2021–2031)
     """
     getter = (session or requests).get
     try:
@@ -82,5 +87,10 @@ def fetch_holidays(year=None, url=FEED_URL, timeout=TIMEOUT, session=None):
         raise HolidayFeedError(f'ปฏิทินวันหยุดตอบกลับ HTTP {resp.status_code}')
 
     events = parse_ics(resp.content.decode('utf-8'))
-    return [(d, s) for d, s in events
-            if (year is None or d.year == year) and not is_observance(s)]
+    return [
+        (d, s) for d, s in events
+        if (year is None or d.year == year)
+        and (start is None or d >= start)
+        and (end is None or d <= end)
+        and not is_observance(s)
+    ]
