@@ -14,7 +14,7 @@ deploy_notes:
   - restart: c:\nssm\nssm.exe restart Reserv   (ชื่อ service ยืนยันจากเซิร์ฟเวอร์แล้ว 2026-08-08)
   - ⚠️ .env เครื่อง dev ชี้ DB production ตัวเดียวกัน — migrate จากเครื่อง dev ลงฐานจริงทันที (ดู MEM.md)
 progress: 98
-phase: ระบบใช้งานจริง (production) ครบ 4 phase แล้ว — external access ปิดครบวงจร · บริการ VM 3 ห้อง (Canva Pro 1/2, Netflix Pro) เปิดจองนอกเวลาแล้วและทีม VM Gateway ผูก mapping ฝั่งเขาเรียบร้อย · เหลือปุ่มเข้าใช้งาน VM (รอ URL จริงจากทีม DNS) + งาน enhancement
+phase: ระบบใช้งานจริง (production) ครบ 4 phase แล้ว — external access ปิดครบวงจร · บริการ VM 3 ห้อง (Canva Pro 1/2, ChatGPT) เปิดจอง 24 ชม. · เหลือปุ่มเข้าใช้งาน VM (รอ URL จริงจากทีม DNS) + งาน enhancement
 done_2026-07-10:
   - ✅ push ค้างทั้ง 2 repo (reserv+apiproject) ขึ้น GitHub สำเร็จ (แก้จากฝั่ง Windows แทน WSL token ที่หมดอายุ)
   - ✅ deploy prod ทั้ง reserv+apiproject (git pull+restart, ไม่มี migration) เรียบร้อย เทส prod ผ่าน
@@ -67,6 +67,7 @@ done_2026-08-09:
   - ✅ ล้างรายการ `next:` ที่ล้าสมัย (deploy overlap / แจ้ง overlap แยกฉบับ / ขอ URL Gateway / แจ้ง booking_name — ทำไปแล้วทั้งหมด)
   - ✅ **เพิ่ม test หน้าแก้ไขสมาชิกถาวร `ManageExternalEditTests` 7 เคส** — คลุมจุดที่พังเงียบได้คือ **ไม่เลือกรูป = ต้องไม่ส่ง `files` ไป api** (ไม่งั้นทับรูปเดิมของสมาชิก) + เลือกรูป=ส่ง bytes · GET เติมชื่อเดิม · 404 ทั้ง GET/POST redirect ไปหน้ารายการ · api ล่มแล้วไม่ล้างสิ่งที่ staff พิมพ์ · ต้องล็อกอิน staff — **test 38/38 ผ่าน** (เดิม 31)
   - ✅ **เติมตาราง URL ใน CLAUDE.md + AGENTS.md** — เพิ่ม `/external/permanent/`, `/card-login/`, `/manage/external/*` (เดิมมีแค่ `/external/` ทั้งที่โค้ดมี 70 routes) · แก้ข้อความ auth flow ที่เขียนว่า "ไม่มี session login แยกสำหรับผู้ใช้ทั่วไป" ซึ่งไม่จริงตั้งแต่มี `/card-login/` (22 ก.ค.)
+  - ✅ **สลับบริการเครื่องเสมือน: ปิด Netflix Pro → เปิด ChatGPT** (ตามใบแจ้งทีม VM 9 ส.ค.) — ตรวจก่อนปิดว่า `netflix1_vm` ไม่มี booking confirmed ตั้งแต่วันนี้ (0 รายการ ตรงกับที่ทีม VM แจ้ง) · `chat-gpt` เปิดกลับพร้อมตั้ง `is_online=1`, `00:00–23:59` · **เขียนเนื้อหาห้องใหม่ทั้งชุด** (เดิมยังเป็นเครื่องจริงชั้น 1 — location/description/facilities/rules/how_to_use + เติม `eligible_users` ที่ว่างอยู่) · เพิ่มกฎเตือนเรื่องบัญชีใช้ร่วมกัน (อย่าพิมพ์ข้อมูลส่วนตัว ลบประวัติก่อนเลิกใช้) · แก้ข้อมูลล้วนไม่แตะ code · สคริปต์ [doc/prep_chatgpt_room.py](doc/prep_chatgpt_room.py) + [doc/switch_netflix_to_chatgpt.py](doc/switch_netflix_to_chatgpt.py) · **ตรวจ prod ผ่าน** (`/room/chat-gpt/` 200 · `/room/netflix1_vm/` 404 · ปฏิทิน 6 ห้องถูกต้อง) · ร่างหนังสือตอบกลับ [doc/reply-vm-chatgpt-2026-08-09.md](doc/reply-vm-chatgpt-2026-08-09.md)
   - ✅ **แก้เพดานเวลาจองที่แสดงผลไม่ตรงกับของจริงทุกห้อง** — หน้ารายละเอียดเคยแสดง `Room.max_booking_hours` (2 ชม. เกือบทุกห้อง · Netflix 3 ชม.) **ทั้งที่ระบบ hardcode 210 นาที = 3.5 ชม. เท่ากันหมด** และไม่เคยบังคับตามฟิลด์นั้นเลย · ผู้ใช้เคาะว่า **3.5 ชม. ถูกแล้ว แก้การแสดงผลให้ตรง** · รวมเป็นค่ากลาง `MAX_BOOKING_MINUTES`/`MAX_BOOKING_HOURS_TEXT` ใน `service_hours.py` ใช้ร่วมกันทั้ง backend guard, ฟอร์มจอง, หน้ารายละเอียด และหน้าแก้ไขห้อง · ถอด `max_booking_hours` ออกจาก `RoomForm` (แสดงเป็นค่าคงที่แบบ disabled แทน) กันเจ้าหน้าที่ตั้งค่าแล้วเข้าใจผิดว่ามีผล — **ไม่มี migration** (คงฟิลด์ใน model ไว้พร้อมคอมเมนต์ว่าเลิกใช้)
   - ✅ **Canva Pro 1/2 ความจุ 2 → 1 คน** (ผู้ใช้ยืนยัน — เป็น VM ส่วนตัวเครื่องละคน)
   - ✅ **รูปห้อง 3 บริการ VM ครบแล้ว** — ผู้ใช้ generate ด้วย AI (มีชื่อบริการพาดบนรูป) · แปลงเป็น 1920×1080 crop 16:9 + quantize 256 สี เหลือ 625–752 KB เท่ารูปห้องเดิม (เต็มสี 1.9 MB หนักเกินไปสำหรับ LIFF บนมือถือ) · `netflix1_vm.png` เพิ่มใหม่ · `canva.png`/`canva2.png` ทับรูปเครื่องจริงเดิมที่ไม่ตรงข้อเท็จจริงแล้ว
@@ -74,8 +75,10 @@ done_2026-08-09:
   - ✅ **ขยายขนาด QR code ทุกช่องทาง** (งานค้างจาก inbox 2026-07-23) — เดิมแต่ละหน้า hardcode คนละค่า (160/180/200 px) · รวมมาที่ helper กลาง [booking/static/booking/js/qr.js](booking/static/booking/js/qr.js) (`NPUQr.render`) คิดขนาดจากความกว้างจอจริง 200–320 px และวาดที่ความละเอียด 2 เท่าเพื่อความคมบนจอ retina · ใช้ครบทั้ง 5 หน้า: `/card/`, `/card-login/`, `/external/`, `/external/permanent/`, `/manage/external/<id>/` · **บนจอ 375px: 180→279 px (+55%)** · ตรวจบนเบราว์เซอร์จริงที่ 320/375/1280 px ไม่ล้นแนวนอน และทำงานถูกทั้ง 2 เส้นทางของ qrcodejs (Android โชว์ canvas · เบราว์เซอร์อื่นสลับเป็น img) — **deploy prod + ตรวจบนของจริงผ่านแล้ว** (`qr.js` 200/2877 bytes · วาดบนหน้า production ได้ 279 px ที่จอ 375 และ 320 px ที่ desktop · ไม่มี console error)
   - ✅ **แก้ `doc/capture_external_shots.py` ให้รันได้จริง** — playwright 1.58 ใน WSL มองหา chromium revision 1208 แต่ที่ติดตั้งคือ 1217 → `launch()` ล้มทุกครั้ง · เพิ่ม `chromium_path()` หา binary เองจาก `~/.cache/ms-playwright` + `--no-sandbox` · แก้ข้อความท้ายสคริปต์ที่ยังอ้างชื่อไฟล์เก่า `make_external_manual_docx.py` · ทดสอบเปิดเบราว์เซอร์ + เข้าหน้า login ผ่านแล้ว
 next:
-  - **[รอ URL สุดท้าย — ผู้ใช้สั่งยังไม่ลงมือ] เปลี่ยนปุ่มของห้อง VM 3 ห้อง (`canva`, `canva2`, `netflix1_vm`) จาก "ควบคุมอุปกรณ์ไฟฟ้า" เป็นปุ่ม "เข้าใช้งาน" ที่เปิดแท็บใหม่ไปหน้า login ของ VM Gateway** — URL ทดสอบ `http://202.29.55.180:8888/vm/login` · **รอทีม DNS ทำ https + domain ก่อนค่อยแก้จริง** · แก้ `how_to_use` ของ 3 ห้องให้ตรงวิธีเข้าใช้จริงในรอบเดียวกัน (ตอนนี้ Canva ยังเขียนว่า "เปิดเครื่องคอมพิวเตอร์ที่ให้บริการ")
-  - **deploy เพดานเวลาจอง 3.5 ชม. + ความจุ Canva ขึ้น prod** — `git pull` + **`nssm restart Reserv`** (แก้ Python code) · ข้อมูลความจุแก้ลงฐานจริงจากเครื่อง dev แล้ว · เช็ค `/room/canva/` ว่าขึ้น "จองสูงสุด 3.5 ชม./ครั้ง" และ "รองรับ 1 คน"
+  - **[รอ URL สุดท้าย — ผู้ใช้สั่งยังไม่ลงมือ] เปลี่ยนปุ่มของห้อง VM 3 ห้อง (`canva`, `canva2`, `chat-gpt`) จาก "ควบคุมอุปกรณ์ไฟฟ้า" เป็นปุ่ม "เข้าใช้งาน" ที่เปิดแท็บใหม่ไปหน้า login ของ VM Gateway** — URL ทดสอบ `http://202.29.55.180:8888/vm/login` · **รอทีม DNS ทำ https + domain ก่อนค่อยแก้จริง** · แก้ `how_to_use` ของ 3 ห้องให้ตรงวิธีเข้าใช้จริงในรอบเดียวกัน (ตอนนี้ Canva ยังเขียนว่า "เปิดเครื่องคอมพิวเตอร์ที่ให้บริการ")
+  - 🔴 **deploy เพดานเวลาจอง 3.5 ชม. ขึ้น prod** — `git pull` + **`nssm restart Reserv`** (แก้ Python code) · **ตอนนี้ production ยังแสดง "จองสูงสุด 2 ชม./ครั้ง" ที่หน้า ChatGPT/Canva ซึ่งผิด** · หลัง restart เช็ค `/room/chat-gpt/` ว่าขึ้น 3.5 ชม.
+  - **ส่งหนังสือตอบกลับทีม VM Gateway** — [doc/reply-vm-chatgpt-2026-08-09.md](doc/reply-vm-chatgpt-2026-08-09.md) (แจ้งว่าทำครบ 4 ข้อ + ขอแก้ความเข้าใจเรื่อง `max_booking_hours` + ทวง URL https/domain กับตารางบำรุงรักษาเครื่องแม่)
+  - **ทำรูปห้อง `chat-gpt.png` ใหม่** — ตอนนี้ยังเป็นรูปเครื่องจริงเก่า ไม่มีชื่อพาด ไม่เข้าชุดกับ Canva Pro 1/2 (ใช้พรอมป์เดียวกับ Canva เปลี่ยนโทนสี + คำว่า ChatGPT)
   - **แก้ LINE Rich Menu** — ปุ่ม ChatGPT → `?room=canva2` + เปลี่ยนรูปปุ่มเป็น "Canva Pro 2" และรูปปุ่ม Canva เป็น "Canva Pro 1" (ผู้ใช้ทำเอง — รายละเอียดใน doc/line-richmenu-urls.md)
   - **[รอผู้ใช้รัน — ต้องใช้รหัส staff] แคปภาพหน้าแก้ไขสมาชิกถาวรให้รายงาน external ครบ 7 ภาพ** — สคริปต์พร้อมและทดสอบเปิดเบราว์เซอร์ผ่านแล้ว เหลือแค่ใส่รหัส: `wsl -d Ubuntu -u admin_e -- env STAFF_USER=xxx STAFF_PASS=yyy python3 /mnt/c/projects/reserv/doc/capture_external_shots.py` แล้วรัน `python doc/make_external_report_docx.py`
   - export PDF/Excel จากหน้า analytics — ค้างเป็น task (spawn แล้ว 2026-07-09) รอทำเมื่อมีความต้องการจริง (ดู MEM.md: embed ฟอนต์ TH Sarabun New กันตัวอักษรหาย)
@@ -83,7 +86,7 @@ next:
 risks:
   - `/std-info/`,`/staff-info/` (v1) ฝั่ง api ยังไม่ต้อง auth — ใครรู้รหัสนักศึกษายิงดูชื่อ-คณะได้ (leak `apassword` + ดึงทั้งตาราง + สิทธิ์เขียน ปิดแล้ว 2026-07-23 ดู MEM.md — เป็นงานฝั่ง api)
   - รายวันไม่บังคับเลขบัตร → ระงับสิทธิ์/โควตารายคนใช้ไม่ได้ + pool 100 รหัส/วันอาจหมดเร็ว (ดู MEM.md — มีแผนถอย)
-  - `booking_name` ของห้องที่ผูก VM Gateway (`canva`, `canva2`, `netflix1_vm`) เป็นสัญญาข้ามระบบ — แก้โดยไม่แจ้งทีม VM = นักศึกษาเข้าเครื่องไม่ได้ทันที (ดู MEM.md)
+  - `booking_name` ของห้องที่ผูก VM Gateway (`canva`, `canva2`, `chat-gpt`) เป็นสัญญาข้ามระบบ — แก้โดยไม่แจ้งทีม VM = นักศึกษาเข้าเครื่องไม่ได้ทันที (ดู MEM.md)
   - .env เครื่อง dev ชี้ DB production ตัวเดียวกัน ไม่มีฐานทดสอบแยก → migrate/สคริปต์เขียนข้อมูลลงฐานจริงทันที (ดู MEM.md)
 updated: 2026-08-09
 -->
@@ -116,12 +119,14 @@ Django session login ใช้กับ Staff Portal (`/manage/`) เท่า�
 - เสาร์ – อาทิตย์: `09:00 – 17:00 น.`
 - ปิดเฉพาะวันหยุดนักขัตฤกษ์ โดยแจ้งล่วงหน้า
 
-**บริการเครื่องเสมือน (VM) — ไม่ต้องเข้าอาคาร:**
-- **Canva Pro 1 / Canva Pro 2** = VM คนละตัว **บัญชี Canva แยกกัน** จองได้ `00:00 – 23:59` ทุกวันรวมวันหยุด
-  ทั้งหมดใช้ผ่านเว็บ **ไม่มีเครื่องจริงให้นั่งที่ชั้น 1 แล้ว**
-- **Netflix Pro** = สำนักฯ มี **บัญชี Netflix เพียงบัญชีเดียว** ช่วงกลางวันบัญชีนี้ให้บริการอยู่ที่
-  **Edutainment Zone (ชั้น 3)** จึงเปิดให้จองผ่าน VM **เฉพาะนอกเวลาราชการ**
-  (รอบเช้ามืด `00:00–08:30` และรอบกลางคืน `17:00–23:59`)
+**บริการเครื่องเสมือน (VM) — ไม่ต้องเข้าอาคาร:** ปัจจุบัน 3 บริการ ทุกตัวจองได้ `00:00 – 23:59`
+ทุกวันรวมวันหยุด ใช้ผ่านเว็บล้วน **ไม่มีเครื่องจริงให้นั่งที่ชั้น 1 แล้ว**
+- **Canva Pro 1 / Canva Pro 2** = VM คนละตัว **บัญชี Canva แยกกัน**
+- **ChatGPT** = VM 1 ตัว บัญชี ChatGPT 1 บัญชี (เปิดกลับ 2026-08-09 บนเครื่องเดิมของ Netflix)
+
+> **`netflix1_vm` (Netflix Pro) ปิดแล้ว `is_active=0` ตั้งแต่ 2026-08-09** — สำนักฯ เปลี่ยนบริการ
+> บนเครื่องเสมือนตัวนั้นไปเป็น ChatGPT (ใบแจ้งทีม VM 9 ส.ค.) เก็บห้องและประวัติ 20 รายการไว้
+> **Netflix ที่ Edutainment Zone ชั้น 3 ยังให้บริการตามปกติ — คนละเรื่องกับ VM ตัวนี้**
 
 แบ่งเป็น 3 รอบ (เช้ามืด/กลางวัน/กลางคืน) จองได้รอบละ 1 ครั้ง — ดู Overlap / รอบบริการ ด้านล่าง
 
@@ -203,8 +208,9 @@ api.npu.ac.th         MySQL reserv_db
 | `/admin/` | `/reserv/admin/` | Django Admin |
 | `/health/` | `/reserv/health/` | Health check (NMS monitoring) — public, JSON `{status, db, db_ms}`, 200/503 |
 
-room keys: `mini`, `edutainment`, `canva`, `canva2`, `meeting_f1`, `netflix1_vm`
-(`chat-gpt` ปิดแล้ว `is_active=0` ตั้งแต่ 2026-08-08 — เก็บไว้เพื่อรักษาประวัติการจอง 16 รายการ)
+room keys: `mini`, `edutainment`, `canva`, `canva2`, `meeting_f1`, `chat-gpt`
+(`netflix1_vm` ปิดแล้ว `is_active=0` ตั้งแต่ 2026-08-09 — เก็บประวัติ 20 รายการ ·
+`chat-gpt` เคยปิด 2026-08-08 แล้ว **เปิดกลับ 2026-08-09** เป็นบริการ VM 24 ชม.)
 
 ---
 
@@ -261,16 +267,16 @@ key รูปแบบ `npu_user_v2:<LINE userId>` เพื่อไม่ใ�
 ส่วนเสาร์-อาทิตย์ใช้ `09:00–17:00` จาก `booking/service_hours.py`
 ทุก booking ต้องตรวจช่วงเวลาอีกครั้งฝั่ง backend ด้วย `room_service_hours()`
 
-**บริการออนไลน์ (`Room.is_online`):** ห้องที่เป็นเครื่องเสมือน (`canva`, `canva2`, `netflix1_vm`)
+**บริการออนไลน์ (`Room.is_online`):** ห้องที่เป็นเครื่องเสมือน (`canva`, `canva2`, `chat-gpt`)
 เข้าใช้แบบ RDP ไปที่เครื่องแม่ที่เปิด 24 ชม. **ไม่ต้องเข้าอาคาร ไม่มีอุปกรณ์ IoT ผูกอยู่**
 - ใช้ `open_time`/`close_time` ของห้องเองทุกวัน **ไม่ถูกตัดด้วยเวลาเปิดอาคารหรือเวลาเสาร์-อาทิตย์**
   ปัจจุบันตั้งไว้ `00:00–23:59`
 - **จองวันหยุดนักขัตฤกษ์ได้** (`HolidayDate` ไม่บล็อก) และ date picker ไม่ปิดวันหยุดให้ห้องกลุ่มนี้
 
 **`Room.day_round_enabled`:** ปิดรอบกลางวันของห้องนั้นได้ ใช้เมื่อทรัพยากรถูกใช้ที่จุดบริการอื่น
-ในเวลาราชการ — ปัจจุบัน **`netflix1_vm` เท่านั้นที่ตั้งเป็น `False`** เพราะบัญชี Netflix บัญชีเดียว
-ถูกใช้อยู่ที่ Edutainment Zone ช่วงกลางวัน (ห้ามใส่ booking_name ใน code เปลี่ยนผ่าน `/manage/rooms/`)
-ผลพลอยได้: บัญชี Netflix ไม่มีทางถูกจอง 2 ที่พร้อมกัน เพราะ Edutainment ปิด 16:30 ส่วน VM เริ่ม 17:00
+ในเวลาราชการ — **ตอนนี้ไม่มีห้องไหนตั้งเป็น `False` แล้ว** (เคยใช้กับ `netflix1_vm` เพราะบัญชี Netflix
+บัญชีเดียวถูกใช้ที่ Edutainment Zone ช่วงกลางวัน · ห้องนั้นปิดไปแล้ว 2026-08-09)
+ฟีเจอร์ยังอยู่ในระบบพร้อมใช้ ติ๊กผ่าน `/manage/rooms/` (ห้าม hardcode booking_name ใน code)
 
 **รอบบริการ (booking rounds):** แบ่ง 3 รอบต่อวันใน `service_hours.py` — **1 สิทธิ์ต่อห้อง ต่อรอบ**
 | รอบ | เวลา |
