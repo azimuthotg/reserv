@@ -260,6 +260,8 @@ flip gate (ประตูทางเข้า) ไม่สังกัดห�
 - ✅ **เทสหน้าแก้ไขสมาชิกถาวร** `ManageExternalEditTests` 7 เคส → **38/38 ผ่าน** (ดู [doc/progress-2026-08-09.md](doc/progress-2026-08-09.md))
   เคสสำคัญคือ "ไม่เลือกรูป = ต้องไม่ส่ง `files`" เพราะถ้าพลาดจะทับรูปเดิมของสมาชิกด้วยค่าว่าง
 - ✅ **เติมตาราง URL ใน CLAUDE.md + AGENTS.md** (`/external/permanent/`, `/card-login/`, `/manage/external/*`)
+- ✅ **ขยายขนาด QR ทุกช่องทาง + deploy prod แล้ว** — 180→279 px บนจอ 375 · ตรวจบน production ผ่าน
+  (static 200, วาดจริงได้ขนาดถูก, ไม่มี console error) · รายละเอียดและกับดัก qrcodejs อยู่ในส่วน "ปัญหา & วิธีแก้"
 - 🧹 ล้างรายการ `next:` ที่ล้าสมัย — deploy overlap ขึ้น prod / แจ้งทีม VM เรื่อง overlap แยกฉบับ /
   ขอ URL Gateway / แจ้ง `booking_name=canva2` **ทั้ง 4 รายการทำเสร็จไปแล้วตั้งแต่ 8 ส.ค. แต่ค้างอยู่ในทะเบียน**
 
