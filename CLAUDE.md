@@ -14,7 +14,7 @@ deploy_notes:
   - restart: c:\nssm\nssm.exe restart Reserv   (ชื่อ service ยืนยันจากเซิร์ฟเวอร์แล้ว 2026-08-08)
   - ⚠️ .env เครื่อง dev ชี้ DB production ตัวเดียวกัน — migrate จากเครื่อง dev ลงฐานจริงทันที (ดู MEM.md)
 progress: 98
-phase: ระบบใช้งานจริง (production) ครบ 4 phase แล้ว — external access ปิดครบวงจร (deploy+e2e+ทีมประตูเทส QR ผ่านทั้งรายวันและถาวร) · เหลือเฉพาะงาน enhancement (analytics export, วันหยุดอัตโนมัติ)
+phase: ระบบใช้งานจริง (production) ครบ 4 phase แล้ว — external access ปิดครบวงจร · บริการ VM 3 ห้อง (Canva Pro 1/2, Netflix Pro) เปิดจองนอกเวลาแล้วและทีม VM Gateway ผูก mapping ฝั่งเขาเรียบร้อย · เหลือปุ่มเข้าใช้งาน VM (รอ URL จริงจากทีม DNS) + งาน enhancement
 done_2026-07-10:
   - ✅ push ค้างทั้ง 2 repo (reserv+apiproject) ขึ้น GitHub สำเร็จ (แก้จากฝั่ง Windows แทน WSL token ที่หมดอายุ)
   - ✅ deploy prod ทั้ง reserv+apiproject (git pull+restart, ไม่มี migration) เรียบร้อย เทส prod ผ่าน
@@ -53,30 +53,24 @@ done_2026-08-08:
   - ✅ **แก้เอกสาร deploy ให้ตรงของจริง** — CLAUDE.md/AGENTS.md เคยเขียน Nginx + พอร์ต 8000 + `nssm install reserv-booking "python -m waitress..."` + `load_rooms` ซึ่ง**ผิดทั้งหมด** · ของจริงคือ IIS+ARR → WhiteNoise, `deploy/waitress_serve.py` พอร์ต 8003, path `C:\project\reserv`, ไม่มี command `load_rooms` แล้ว · **ชื่อ NSSM service จริง = `Reserv`** (ผู้ใช้ยืนยันจากเซิร์ฟเวอร์) แก้ครบทั้ง 4 ไฟล์
   - ✅ **deploy prod + เทสจริงผ่าน** — `git pull` + `collectstatic` (1 ไฟล์: canva2.png) ไม่ต้อง restart · ตรวจบน production: `/room/canva2/` 200 พร้อมรูป · `/room/chat-gpt/` 404 · ปฏิทินสาธารณะแสดง 6 ห้องชื่อใหม่ครบ · static `canva2.png` 200 (803 KB)
   - ✅ **จัดระเบียบห้อง `netflix1_vm` → ชื่อแสดง "Netflix Pro"** — ห้องนี้เปิดใช้จริง 20 การจอง (ล่าสุด 1 ส.ค. 2569) แต่ไม่เคยมีในเอกสารเลย · แก้ `name`/`location`/`facilities`/`rules`/`how_to_use`/`eligible_users` ให้เข้าชุดกับห้องอื่น · เพิ่มลง line-richmenu-urls.md พร้อมเตือนว่า `netflix` ในเอกสารเก่า = Edutainment Zone คนละห้อง (ดู MEM.md)
-  - ✅ **กติกาห้ามจองทับเวลาข้ามห้อง (ตามใบแจ้งทีม VM รอบ 2)** — เพิ่มฟิลด์ `Room.allow_overlap` (migration `0013`) + guard ใน `create_booking()` ภายใน transaction เดียวกับ conflict check · ติ๊กยกเว้นเฉพาะ `meeting_f1` · ไม่ hardcode booking_name · test 23/23 ผ่าน (เพิ่มใหม่ 6 เคส) — **รอ deploy prod (มี migration → ต้อง restart)**
+  - ✅ **กติกาห้ามจองทับเวลาข้ามห้อง (ตามใบแจ้งทีม VM รอบ 2)** — เพิ่มฟิลด์ `Room.allow_overlap` (migration `0013`) + guard ใน `create_booking()` ภายใน transaction เดียวกับ conflict check · ติ๊กยกเว้นเฉพาะ `meeting_f1` · ไม่ hardcode booking_name · test 23/23 ผ่าน (เพิ่มใหม่ 6 เคส) — deploy prod + restart Reserv เรียบร้อยในวันเดียวกัน
   - ✅ **เปิดจองนอกเวลาให้บริการออนไลน์ 3 ห้อง** (`canva`, `canva2`, `netflix1_vm` = RDP เข้าเครื่องแม่ที่เปิด 24 ชม. ไม่ต้องเข้าอาคาร) — เพิ่ม `Room.is_online` (migration `0014`) · จองได้ `00:00–23:59` ทุกวันรวมวันหยุด · แบ่ง 3 รอบ เช้ามืด/กลางวัน/กลางคืน จองได้รอบละ 1 ครั้ง · ห้ามจองคร่อมรอบ · ห้องจริงพฤติกรรมไม่เปลี่ยน · test 30/30 ผ่าน (เพิ่มใหม่ 7 เคส)
   - ✅ **Netflix เปิดจองเฉพาะนอกเวลาราชการ** — สำนักฯ มีบัญชี Netflix บัญชีเดียว กลางวันให้บริการที่ Edutainment Zone (ชั้น 3) · เพิ่ม `Room.day_round_enabled` (migration `0015`) ปิดรอบกลางวันรายห้อง ตั้ง `netflix1_vm=False` ห้องเดียว · หน้าจองไม่แสดงเวลาช่วงกลางวันให้เลือก + ตัดเวลาสิ้นสุดที่ขอบรอบ · แก้ location/description/rules/how_to_use ของ 3 บริการ VM ให้ตรงข้อเท็จจริง (Canva = VM แยกตัว แยก account ไม่มีเครื่องจริงชั้น 1) · test 31/31 ผ่าน
   - ✅ **เทสฟอร์มจองจริงบน production ด้วย Playwright** (headed ใน WSL ผู้ใช้ล็อกอิน LINE เอง · อ่านอย่างเดียว) — Netflix slot กลางวัน = 0 · Canva Pro 2 ครบ 3 รอบ 143 slot · เลือกเริ่ม 16:00 สิ้นสุดได้สูงสุด 17:00 · MINI THEATER เหมือนเดิม · เก็บสคริปต์ไว้ที่ [doc/check_booking_form.py](doc/check_booking_form.py)
-  - ✅ **ยุบหนังสือถึงทีม VM 3 ฉบับเหลือฉบับเดียว** [doc/reply-vm-summary-2026-08-08.md](doc/reply-vm-summary-2026-08-08.md) — ร่างเดิมย้ายไป `doc/archive/vm-letters-drafts/` (ยังไม่ได้ส่งออกไป และบางส่วนถูกแก้ทีหลัง)
+  - ✅ **ยุบหนังสือถึงทีม VM 3 ฉบับเหลือฉบับเดียว** [doc/reply-vm-summary-2026-08-08.md](doc/reply-vm-summary-2026-08-08.md) — ร่างเดิมย้ายไป `doc/archive/vm-letters-drafts/` (บางส่วนถูกแก้ทีหลัง · ฉบับรวมส่งให้ทีม VM แล้ว 2026-08-09)
+done_2026-08-09:
+  - ✅ **ส่งหนังสือให้ทีม VM Gateway แล้ว และทีม VM ดำเนินการครบตามเอกสาร** — `room_key='canva2'` · ถอด mapping `chat-gpt` · กรอง `is_active=1` · Gateway รองรับ session 24 ชม. → **ช่องว่าง "จองได้แต่เข้าเครื่องไม่ได้" ปิดแล้ว**
+  - ✅ **ยืนยัน location: Canva Pro 1 / Canva Pro 2 / Netflix Pro เป็น VM ทั้งหมด** — ไม่มีเครื่องจริงให้นั่ง (ปิดข้อค้างเรื่อง location)
+  - ✅ **ได้ URL เว็บ VM Gateway (ชั่วคราว)** `http://202.29.55.180:8888/vm/login` — รอทีม DNS ทำ https + domain ก่อนนำไปใช้จริง
+  - ✅ **`/card-login/` ยืนยันทำงานสมบูรณ์** (ผู้ใช้เทสเอง) — ปิด task เรื่องเทสหน้านี้
+  - ✅ **เคาะกติกาโควตา: คงไว้ 3 สิทธิ์/ห้อง/วัน (รอบละ 1)** สำหรับช่วงแรก รอข้อมูลการใช้งานมากพอค่อยวิเคราะห์ปรับ — ปิดข้อค้าง "คุยกติกานอกเวลาทำการ"
+  - ✅ ล้างรายการ `next:` ที่ล้าสมัย (deploy overlap / แจ้ง overlap แยกฉบับ / ขอ URL Gateway / แจ้ง booking_name — ทำไปแล้วทั้งหมด)
 next:
-  - **ส่งหนังสือฉบับรวมให้ทีม VM Gateway** — [doc/reply-vm-summary-2026-08-08.md](doc/reply-vm-summary-2026-08-08.md) (สำเนาที่ `C:\projects\vm\doc\reply_reserv_summary_2026-08-08.md`) · ขอให้เขาทำ 5 ข้อ: ตั้ง `room_key='canva2'` · ถอด mapping `chat-gpt` · กรอง `is_active=1` · **เช็คว่า Gateway เปิด session ได้ 24 ชม.** · รัน `check_booking_mapping` · และขอ URL เว็บ Gateway + ตารางบำรุงรักษาเครื่องแม่กลับมา
-  - **แก้ `how_to_use` ของ `canva`/`canva2`** — ยังเขียนว่า "เปิดเครื่องคอมพิวเตอร์ที่ให้บริการ" ซึ่งทำไม่ได้ตอนอาคารปิด ต้องได้ URL เว็บ Gateway จากทีมพัฒนาก่อน (ขอไปแล้ว)
-  - **ตัดสินใจเรื่อง `location` ของ Canva Pro 1/2** — ยังเป็น "ชั้น 1 สำนักวิทยบริการ" ถ้าใช้ผ่านเว็บอย่างเดียวควรเปลี่ยนเป็นออนไลน์เหมือน Netflix Pro (ถ้ามีเครื่องจริงให้นั่งด้วยก็คงไว้)
-  - **deploy กติกา overlap ขึ้น prod** — `git pull` + `nssm restart Reserv` (migration `0013` apply ลงฐานจริงจากเครื่อง dev แล้ว ไม่ต้องรัน migrate ซ้ำบนเซิร์ฟเวอร์) แล้วเทสจริง 1 เคส
-  - **แจ้งทีม VM Gateway ว่าเพิ่มกติกา overlap แล้ว** — [doc/reply-vm-overlap-2026-08-08.md](doc/reply-vm-overlap-2026-08-08.md)
+  - **[รอ URL สุดท้าย — ผู้ใช้สั่งยังไม่ลงมือ] เปลี่ยนปุ่มของห้อง VM 3 ห้อง (`canva`, `canva2`, `netflix1_vm`) จาก "ควบคุมอุปกรณ์ไฟฟ้า" เป็นปุ่ม "เข้าใช้งาน" ที่เปิดแท็บใหม่ไปหน้า login ของ VM Gateway** — URL ทดสอบ `http://202.29.55.180:8888/vm/login` · **รอทีม DNS ทำ https + domain ก่อนค่อยแก้จริง** · แก้ `how_to_use` ของ 3 ห้องให้ตรงวิธีเข้าใช้จริงในรอบเดียวกัน (ตอนนี้ Canva ยังเขียนว่า "เปิดเครื่องคอมพิวเตอร์ที่ให้บริการ")
   - **หารูปห้อง Netflix Pro** แล้ววางเป็น `booking/static/booking/images/rooms/netflix1_vm.png` (ตอนนี้ยังไม่มีไฟล์ หน้าแรกแสดงไอคอน 🏢 แทน — ผู้ใช้แจ้ง 2026-08-08 ว่ายังไม่มีรูป ปล่อยไปก่อนได้) · เพิ่มด้วย `git add -f` เพราะ .gitignore ignore `*.png`
-  - **เพิ่ม Canva Pro 2 + Netflix Pro ลงคู่มือผู้ใช้/เจ้าหน้าที่ 2569** — ทั้ง 2 ห้องยังไม่มีในคู่มือเล่มใดเลย (ระวัง: `make_user_manual_2569.py` ยังไม่ sync กับไฟล์ .docx ที่แก้ใน Word — รันทับแล้วงานหาย ดู task ด้านล่าง)
-  - **ขอ URL เว็บ VM Gateway จากทีมพัฒนา** แล้วแก้ `how_to_use` ของห้อง `canva`, `canva2`, `netflix1_vm` ให้ตรงวิธีเข้าใช้จริง (ตอนนี้ Canva ยังเขียนแบบเครื่องจริง ส่วน Netflix เขียนกว้าง ๆ) — ขอไปในหนังสือตอบกลับแล้ว
-  - **แจ้งทีม VM Gateway กลับว่าใช้ `booking_name = canva2`** (ใบแจ้งขอให้ตอบกลับเพื่อตั้ง `VMMachine.room_key` แล้วรัน `python manage.py check_booking_mapping`)
   - **แก้ LINE Rich Menu** — ปุ่ม ChatGPT → `?room=canva2` + เปลี่ยนรูปปุ่มเป็น "Canva Pro 2" และรูปปุ่ม Canva เป็น "Canva Pro 1" (ผู้ใช้ทำเอง — รายละเอียดใน doc/line-richmenu-urls.md)
-  - **คุยกติกาการจองนอกเวลาทำการ** — ในเวลาทำการยึด "1 คน 1 ครั้งต่อบริการต่อวัน" ตามเดิม ส่วนนอกเวลาจะเปลี่ยน ยังไม่สรุป (ดู MEM.md 2026-08-08)
-  - แคปภาพหน้าแก้ไขสมาชิกถาวร `/manage/external/<id>/edit/` ด้วย `STAFF_USER=... STAFF_PASS=... python3 doc/capture_external_shots.py` แล้ว generate รายงานซ้ำให้ครบ 7 ภาพ
-  - sync คู่มือ 2569 ทั้ง 2 เล่มเรื่องช่องทางลงทะเบียนสมาชิกถาวร — staff บท 10 เขียน "เจ้าหน้าที่กรอกให้" · user บท 14 เขียน "ติดต่อเจ้าหน้าที่" ทั้งที่ให้ URL `/external/permanent/` ไว้ในตารางเดียวกัน ต้องตัดสินก่อนว่าจะประกาศ self-service ไหม
   - เพิ่ม `/external/permanent/`, `/card-login/`, `/manage/external/*` ในตาราง URL ของ CLAUDE.md + AGENTS.md (ตอนนี้มีแค่ `/external/`)
-  - แพตช์สารบัญ [doc/staff-manual-2569.docx](doc/staff-manual-2569.docx) ด้วย `python3 doc/fix_manual_toc.py doc/staff-manual-2569.docx` แล้วเปิดด้วย Word 1 ครั้ง (ยังไม่มีเลขหน้าสารบัญ)
-  - sync `doc/make_user_manual_2569.py` ให้ตรงไฟล์จริง (ปก v2.0 มีนาคม 2569 + ชื่อไฟล์ `user-manual-reserv-2569.docx`) — ตอนนี้ถ้ารันสคริปต์ทับ งานที่แก้ใน Word จะหาย
-  - แคปหน้า `/room-control/` ตอนมีอุปกรณ์จริง — ต้องทำช่วง 08:30–16:30 ขณะมี booking active (server ตรวจเวลาจริง เลื่อนนาฬิกาเบราว์เซอร์ไม่ช่วย) แล้วรัน `doc/compose_mobile_figures.py` + `doc/make_user_manual_2569.py` ซ้ำ
-  - เพิ่ม test ให้หน้า `/card-login/` (deploy+เทสมือผ่านแล้ว แต่ยังไม่มีเคสใน tests.py — เทสผ่าน test client สคริปต์ชั่วคราวเท่านั้น)
+  - แคปภาพหน้าแก้ไขสมาชิกถาวร `/manage/external/<id>/edit/` ด้วย `STAFF_USER=... STAFF_PASS=... python3 doc/capture_external_shots.py` แล้ว generate รายงาน external ซ้ำให้ครบ 7 ภาพ
   - เพิ่ม test ให้หน้าแก้ไขสมาชิกถาวร `/manage/external/<id>/edit/` (deploy+เทสมือผ่านแล้ว แต่ยังไม่มีเคส)
   - export PDF/Excel จากหน้า analytics — ค้างเป็น task (spawn แล้ว 2026-07-09) รอทำเมื่อมีความต้องการจริง (ดู MEM.md: embed ฟอนต์ TH Sarabun New กันตัวอักษรหาย)
   - ทำฟีเจอร์เพิ่มวันหยุดอัตโนมัติในตารางวันหยุด (ตอนนี้ต้องเพิ่มเองทีละวัน) — รับแจ้ง 2026-07-12
@@ -86,7 +80,7 @@ risks:
   - รายวันไม่บังคับเลขบัตร → ระงับสิทธิ์/โควตารายคนใช้ไม่ได้ + pool 100 รหัส/วันอาจหมดเร็ว (ดู MEM.md — มีแผนถอย)
   - `booking_name` ของห้องที่ผูก VM Gateway (`canva`, `canva2`, `netflix1_vm`) เป็นสัญญาข้ามระบบ — แก้โดยไม่แจ้งทีม VM = นักศึกษาเข้าเครื่องไม่ได้ทันที (ดู MEM.md)
   - .env เครื่อง dev ชี้ DB production ตัวเดียวกัน ไม่มีฐานทดสอบแยก → migrate/สคริปต์เขียนข้อมูลลงฐานจริงทันที (ดู MEM.md)
-updated: 2026-08-08
+updated: 2026-08-09
 -->
 
 # CLAUDE.md
