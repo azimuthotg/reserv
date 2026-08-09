@@ -11,6 +11,9 @@ class Room(models.Model):
     location         = models.CharField(max_length=200)
     capacity         = models.IntegerField()
     min_attendees    = models.IntegerField(default=1, help_text='จำนวนผู้ใช้ขั้นต่ำ')
+    # ⚠️ เลิกใช้แล้ว (2026-08-09) — ระบบไม่เคยบังคับตามฟิลด์นี้ เพดานจริงคือ
+    # service_hours.MAX_BOOKING_MINUTES เท่ากันทุกห้อง · คงฟิลด์ไว้เพื่อไม่ต้อง migrate
+    # แต่ถอดออกจาก RoomForm และหน้าแสดงผลแล้ว ห้ามนำกลับมาใช้โดยไม่บังคับใช้จริง
     max_booking_hours = models.IntegerField(default=2, help_text='เวลาจองสูงสุดต่อครั้ง (ชั่วโมง)')
     eligible_users   = models.TextField(blank=True, help_text='ผู้มีสิทธิ์ใช้บริการ เช่น นักศึกษา, บุคลากร')
     facilities       = models.TextField(blank=True, help_text='อุปกรณ์/สิ่งอำนวยความสะดวก (แต่ละรายการขึ้นบรรทัดใหม่)')

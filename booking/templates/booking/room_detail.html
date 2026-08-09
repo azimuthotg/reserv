@@ -173,7 +173,9 @@
             {% if room.min_attendees > 1 %}
             <div class="chip"><span class="chip-icon">👤</span>ขั้นต่ำ {{ room.min_attendees }} คน</div>
             {% endif %}
-            <div class="chip"><span class="chip-icon">⏱</span>จองสูงสุด {{ room.max_booking_hours }} ชม./ครั้ง</div>
+            {# เพดานจริงมาจาก service_hours.MAX_BOOKING_MINUTES ไม่ใช่ Room.max_booking_hours
+               ที่ระบบไม่เคยบังคับใช้ (เคยแสดง 2/3 ชม. ทั้งที่จองได้ 3.5 ชม. ทุกห้อง) #}
+            <div class="chip"><span class="chip-icon">⏱</span>จองสูงสุด {{ max_booking_hours_text }} ชม./ครั้ง</div>
         </div>
     </div>
 

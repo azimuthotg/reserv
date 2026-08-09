@@ -18,7 +18,7 @@ from django.views.decorators.http import require_POST
 
 from .forms import HolidayDateForm, RoomClosureForm, RoomForm, StaffAddForm, StaffEditForm
 from .models import Booking, BookingLog, HolidayDate, LineUser, Room, RoomClosure, RoomDevice
-from .service_hours import room_service_hours
+from .service_hours import MAX_BOOKING_HOURS_TEXT, room_service_hours
 from .views import _notify_booking_cancelled, _npu_v2_request, _push_text
 
 
@@ -607,7 +607,8 @@ def manage_room_add(request):
     if request.method == 'POST' and form.is_valid():
         form.save()
         return redirect('manage_rooms')
-    return render(request, 'booking/manage/room_form.html', {'form': form, 'title': 'เพิ่มห้อง'})
+    return render(request, 'booking/manage/room_form.html', {
+        'form': form, 'title': 'เพิ่มห้อง', 'max_booking_hours_text': MAX_BOOKING_HOURS_TEXT})
 
 
 @admin_required
@@ -617,7 +618,8 @@ def manage_room_edit(request, pk):
     if request.method == 'POST' and form.is_valid():
         form.save()
         return redirect('manage_rooms')
-    return render(request, 'booking/manage/room_form.html', {'form': form, 'title': 'แก้ไขห้อง'})
+    return render(request, 'booking/manage/room_form.html', {
+        'form': form, 'title': 'แก้ไขห้อง', 'max_booking_hours_text': MAX_BOOKING_HOURS_TEXT})
 
 
 @admin_required

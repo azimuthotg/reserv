@@ -56,9 +56,9 @@
                         <div class="form-text">เสาร์–อาทิตย์ ระบบใช้เวลาเปิดบริการ 09:00–17:00 น. ตามนโยบายสำนักวิทยบริการ</div>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label fw-semibold" style="font-size:13px;">{{ form.max_booking_hours.label }}</label>
-                        {{ form.max_booking_hours }}
-                        {% if form.max_booking_hours.errors %}<div class="text-danger" style="font-size:12px;">{{ form.max_booking_hours.errors.0 }}</div>{% endif %}
+                        <label class="form-label fw-semibold" style="font-size:13px;">เวลาจองสูงสุดต่อครั้ง</label>
+                        <input type="text" class="form-control" value="{{ max_booking_hours_text }} ชั่วโมง" disabled>
+                        <div class="form-text">ค่ากลางของทั้งระบบ เท่ากันทุกห้อง — แก้ได้ที่ <code>booking/service_hours.py</code></div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold" style="font-size:13px;">{{ form.capacity.label }}</label>

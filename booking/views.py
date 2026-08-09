@@ -19,6 +19,8 @@ from django.views.decorators.http import require_http_methods
 
 from .models import Booking, BookingLog, HolidayDate, LineUser, Room, RoomClosure, RoomDevice
 from .service_hours import (
+    MAX_BOOKING_HOURS_TEXT,
+    MAX_BOOKING_MINUTES,
     ROUND_DAY,
     ROUND_EARLY,
     ROUND_LABELS,
@@ -480,6 +482,8 @@ def booking_page(request):
         'holidays_json':   json.dumps(holidays_map),
         'closure_url':     request.build_absolute_uri(reverse('room_closure_info')),
         'max_booking_date': max_booking_date.isoformat(),
+        'max_booking_minutes':    MAX_BOOKING_MINUTES,
+        'max_booking_hours_text': MAX_BOOKING_HOURS_TEXT,
     }
     return render(request, 'booking/booking.html', context)
 
@@ -758,8 +762,9 @@ def create_booking(request):
         return JsonResponse({'error': 'เวลาเริ่มต้องน้อยกว่าเวลาสิ้นสุด'}, status=400)
 
     duration_min = (datetime.combine(date.today(), e_time) - datetime.combine(date.today(), s_time)).seconds // 60
-    if duration_min > 210:
-        return JsonResponse({'error': 'จองได้สูงสุด 3.5 ชั่วโมงต่อครั้ง'}, status=400)
+    if duration_min > MAX_BOOKING_MINUTES:
+        return JsonResponse(
+            {'error': f'จองได้สูงสุด {MAX_BOOKING_HOURS_TEXT} ชั่วโมงต่อครั้ง'}, status=400)
 
     if b_date < date.today():
         return JsonResponse({'error': 'ไม่สามารถจองย้อนหลังได้'}, status=400)
@@ -1573,6 +1578,7 @@ def room_detail(request, booking_name):
         'room_color': room_color,
         'weekend_open_time':  WEEKEND_OPEN_TIME,
         'weekend_close_time': WEEKEND_CLOSE_TIME,
+        'max_booking_hours_text': MAX_BOOKING_HOURS_TEXT,
         'facilities': facilities,
         'rules':      rules,
         'how_to_use': how_to_use,

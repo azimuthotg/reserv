@@ -153,7 +153,7 @@
                 </div>
             </div>
 
-            <div class="or-divider" id="or-divider">หรือเลือกเวลาเอง (สูงสุด 3.5 ชั่วโมง)</div>
+            <div class="or-divider" id="or-divider">หรือเลือกเวลาเอง (สูงสุด {{ max_booking_hours_text }} ชั่วโมง)</div>
 
             <div class="row g-2">
                 <div class="col-6">
@@ -199,7 +199,8 @@
     const CLOSURE_URL      = "{{ closure_url }}";
     const HOLIDAYS         = {{ holidays_json|safe }};  // { 'YYYY-MM-DD': 'description' }
     const MAX_BOOKING_DATE = "{{ max_booking_date }}";
-    const MAX_DURATION  = 210; // นาที = 3.5 ชม.
+    const MAX_DURATION  = {{ max_booking_minutes }};        // ค่ากลางจาก service_hours.py
+    const MAX_HOURS_TEXT = "{{ max_booking_hours_text }}";  // ข้อความที่โชว์ให้ผู้ใช้
 
     let currentUserId = '';
     let quickSelected = null; // 'morning' | 'afternoon' | null
@@ -293,7 +294,8 @@
                 : '🕐 นอกเวลาราชการเท่านั้น 00:00–08:30 และ 17:00–23:59  |  👥 สูงสุด ' +
                   ROOM_DATA.capacity + ' คน';
             document.getElementById('quick-btns').style.display = 'none';
-            document.getElementById('or-divider').textContent = 'เลือกเวลา (สูงสุด 3.5 ชั่วโมง ต่อ 1 รอบบริการ)';
+            document.getElementById('or-divider').textContent =
+                'เลือกเวลา (สูงสุด ' + MAX_HOURS_TEXT + ' ชั่วโมง ต่อ 1 รอบบริการ)';
         } else {
             document.getElementById('room-hours').textContent =
                 '🕐 จ.-ศ. ' + ROOM_DATA.open_time + '–' + ROOM_DATA.close_time +

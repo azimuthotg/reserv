@@ -45,7 +45,9 @@ class RoomForm(forms.ModelForm):
         model  = Room
         fields = [
             'name', 'booking_name', 'description', 'location',
-            'capacity', 'min_attendees', 'max_booking_hours',
+            # ไม่มี 'max_booking_hours' — ระบบไม่ได้บังคับใช้ฟิลด์นี้ (เพดานจริงคือ
+            # service_hours.MAX_BOOKING_MINUTES เท่ากันทุกห้อง) เปิดให้แก้จะเข้าใจผิดว่ามีผล
+            'capacity', 'min_attendees',
             'open_time', 'close_time',
             'eligible_users', 'how_to_use', 'facilities', 'rules',
             'is_active', 'allow_overlap', 'is_online', 'day_round_enabled', 'ha_entity_id',
@@ -57,7 +59,6 @@ class RoomForm(forms.ModelForm):
             'location':          forms.TextInput(attrs={'class': 'form-control'}),
             'capacity':          forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
             'min_attendees':     forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
-            'max_booking_hours': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
             'open_time':         forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
             'close_time':        forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
             'eligible_users':    forms.Textarea(attrs={'class': 'form-control', 'rows': 2,
@@ -81,7 +82,6 @@ class RoomForm(forms.ModelForm):
             'location':          'ที่ตั้ง',
             'capacity':          'ความจุสูงสุด (คน)',
             'min_attendees':     'จำนวนผู้ใช้ขั้นต่ำ (คน)',
-            'max_booking_hours': 'เวลาจองสูงสุดต่อครั้ง (ชั่วโมง)',
             'open_time':         'เวลาเปิด จ.-ศ.',
             'close_time':        'เวลาปิด จ.-ศ.',
             'eligible_users':    'ผู้มีสิทธิ์ใช้บริการ',
