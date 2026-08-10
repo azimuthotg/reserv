@@ -825,6 +825,52 @@ class ManageHolidaysPageTests(TestCase):
         self.assertContains(resp, 'กดแท็บปีนั้นเพื่อดู')
 
 
+class TemplateCommentTests(TestCase):
+    """กันคอมเมนต์นักพัฒนาหลุดออกไปแสดงบนหน้าเว็บ
+
+    `{# ... #}` ของ Django **ใช้ได้บรรทัดเดียวเท่านั้น** เขียนคร่อมหลายบรรทัดจะไม่ถูกมองว่า
+    เป็นคอมเมนต์ แล้วพ่นออกมาเป็นข้อความให้ผู้ใช้เห็น — เกิดขึ้นจริงบน production 2026-08-10
+    ทุกหน้า `/room/<key>/` โชว์ข้อความ "เพดานจริงมาจาก service_hours.MAX_BOOKING_MINUTES…"
+    อยู่กลางหน้า หลายบรรทัดต้องใช้ `{% comment %}` แทน
+    """
+
+    def test_no_multiline_hash_comments_in_templates(self):
+        import os
+        import re
+
+        from django.conf import settings
+
+        root = os.path.join(settings.BASE_DIR, 'booking', 'templates')
+        offenders = []
+        for dirpath, _dirnames, filenames in os.walk(root):
+            for name in filenames:
+                if not name.endswith('.html'):
+                    continue
+                path = os.path.join(dirpath, name)
+                with open(path, encoding='utf-8') as fh:
+                    for lineno, line in enumerate(fh, start=1):
+                        # เปิด {# แล้วไม่ปิด #} ในบรรทัดเดียวกัน = คอมเมนต์หลายบรรทัด
+                        if re.search(r'\{#(?!.*#\})', line):
+                            offenders.append(f'{os.path.relpath(path, root)}:{lineno}')
+
+        self.assertEqual(
+            offenders, [],
+            'พบคอมเมนต์ {# #} ที่คร่อมหลายบรรทัด ซึ่งจะแสดงบนหน้าเว็บจริง '
+            'ให้เปลี่ยนเป็น {% comment %}...{% endcomment %} ที่: ' + ', '.join(offenders))
+
+    def test_room_detail_page_has_no_developer_note(self):
+        """ตรวจที่หน้าจริงด้วย — ไม่ใช่แค่ไวยากรณ์ในไฟล์"""
+        room = Room.objects.create(
+            name='ห้องทดสอบคอมเมนต์', booking_name='comment-check', location='x', capacity=1,
+            open_time=time(8, 30), close_time=time(16, 30), is_active=True,
+        )
+        resp = self.client.get(reverse('room_detail', args=[room.booking_name]))
+        self.assertEqual(resp.status_code, 200)
+        body = resp.content.decode()
+        self.assertNotIn('MAX_BOOKING_MINUTES', body)
+        self.assertNotIn('{#', body)
+
+
 class HolidayFreshnessTests(TestCase):
     """เตือนเมื่อ "ไม่มีใครดึงข้อมูลวันหยุดมานาน"
 

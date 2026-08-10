@@ -173,8 +173,15 @@
             {% if room.min_attendees > 1 %}
             <div class="chip"><span class="chip-icon">👤</span>ขั้นต่ำ {{ room.min_attendees }} คน</div>
             {% endif %}
-            {# เพดานจริงมาจาก service_hours.MAX_BOOKING_MINUTES ไม่ใช่ Room.max_booking_hours
-               ที่ระบบไม่เคยบังคับใช้ (เคยแสดง 2/3 ชม. ทั้งที่จองได้ 3.5 ชม. ทุกห้อง) #}
+            {% comment %}
+            เพดานจริงมาจาก service_hours.MAX_BOOKING_MINUTES ไม่ใช่ Room.max_booking_hours
+            ที่ระบบไม่เคยบังคับใช้ (เคยแสดง 2/3 ชม. ทั้งที่จองได้ 3.5 ชม. ทุกห้อง)
+
+            ต้องใช้ {% templatetag openblock %} comment {% templatetag closeblock %} ไม่ใช่ {# #}
+            — {# #} ของ Django ใช้ได้บรรทัดเดียวเท่านั้น เขียนคร่อมหลายบรรทัดจะไม่ถูกมองว่าเป็น
+            คอมเมนต์ แล้วพ่นออกมาเป็นข้อความบนหน้าเว็บสาธารณะ (เกิดขึ้นจริง เห็นบน production
+            2026-08-10 ทุกหน้า /room/<key>/)
+            {% endcomment %}
             <div class="chip"><span class="chip-icon">⏱</span>จองสูงสุด {{ max_booking_hours_text }} ชม./ครั้ง</div>
         </div>
     </div>
