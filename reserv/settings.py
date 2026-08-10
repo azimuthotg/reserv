@@ -115,6 +115,15 @@ HA_TOKEN         = os.getenv('HA_TOKEN', '')
 LINE_GROUP_ID      = os.getenv('LINE_GROUP_ID', '')       # Group ID สำหรับส่งรายงานแบบ manual
 IOT_ADMIN_LINE_ID  = os.getenv('IOT_ADMIN_LINE_ID', '')   # userId คนรับผิดชอบ IoT (รายงานเช้าอัตโนมัติ)
 
+# ── VM Gateway (LRS ARC) ──────────────────────────────────────────────────────
+# ปลายทางปุ่ม "เข้าใช้งาน" ของห้องบริการออนไลน์ (Room.is_online)
+# **URL เดียวใช้ได้ทุกห้อง** — Gateway ตรวจการจองจากบัญชีที่ล็อกอินแล้วพาเข้าเครื่องเอง
+# ห้ามลิงก์ไป Guacamole ตรง ๆ (ข้ามการตรวจสิทธิ์ทั้งหมด) — ทีม VM ยืนยัน 2026-08-10
+# อยู่ใน .env เพราะเป็นที่อยู่ของระบบอื่น เปลี่ยนได้โดยไม่ต้องแก้โค้ด
+VM_GATEWAY_URL = os.getenv('VM_GATEWAY_URL', 'https://arcvm.npu.ac.th/vm/login/')
+# เปิดปุ่มได้กี่นาทีก่อนเวลาจอง — ต้องตรงกับฝั่ง Gateway ไม่งั้นผู้ใช้กดแล้วโดนปฏิเสธ
+VM_GATEWAY_EARLY_MINUTES = int(os.getenv('VM_GATEWAY_EARLY_MINUTES', '5'))
+
 # ── Session ───────────────────────────────────────────────────────────────────
 SESSION_ENGINE   = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 86400  # 24 hours

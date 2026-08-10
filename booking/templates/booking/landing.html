@@ -364,6 +364,10 @@
     const CHECKIN_URL      = "{{ checkin_url }}";
     const ROOM_DETAIL_BASE   = "room/";
     const ROOMS              = {{ rooms_json|safe }};
+    // ปลายทางปุ่ม "เข้าใช้งาน" ของห้องออนไลน์ — URL เดียวใช้ได้ทุกห้อง Gateway หาการจองเอง
+    // ตั้งค่าใน .env (VM_GATEWAY_URL) ห้าม hardcode ที่นี่ เพราะเป็นที่อยู่ของระบบอื่น
+    const VM_GATEWAY_URL     = "{{ vm_gateway_url }}";
+    const VM_EARLY_MIN       = {{ vm_gateway_early }};
     let currentUserId = null;
 
     const ACCENT_COLORS = ['#06C755','#3b82f6','#f59e0b','#8b5cf6','#ef4444','#06b6d4'];
@@ -450,6 +454,8 @@
 
             // ตรวจสถานะเวลา
             let isPast = false, isStarted = false, isActive = false, isCheckinWindow = false;
+            // ห้องออนไลน์เข้าเครื่องได้ก่อนเวลาจอง VM_EARLY_MIN นาที ตามเงื่อนไขจริงของ Gateway
+            let canEnterVm = false;
             if (b.booking_date === todayStr) {
                 const [sh, sm] = b.start_time.split(':').map(Number);
                 const [eh, em] = b.end_time.split(':').map(Number);
@@ -457,6 +463,7 @@
                 const endMin   = eh * 60 + em;
                 isPast          = curMin >= endMin;
                 isStarted       = curMin >= startMin;
+                canEnterVm      = curMin >= startMin - VM_EARLY_MIN && curMin < endMin;
                 isActive        = isStarted && !isPast;
                 isCheckinWindow = curMin >= startMin - 15 && curMin < startMin + 15 && !b.checked_in;
             }
@@ -467,25 +474,42 @@
             // canCancel: ยังไม่เริ่ม + ยังไม่ checked_in + ยังไม่ cancel + ไม่อยู่ในช่วง check-in window
             const canCancel = !isCancelled && !isPast && !isStarted && !b.checked_in && !isCheckinWindow;
 
+            // ปุ่มเข้าใช้บริการ — ห้องออนไลน์กับห้องจริงคนละปุ่มกันคนละที่หมาย
+            // ห้องออนไลน์ (Canva Pro, ChatGPT) ไม่มีอุปกรณ์ IoT ผูกอยู่ ปุ่มควบคุมอุปกรณ์
+            // จึงไม่มีความหมาย ต้องเป็นปุ่มเข้าเครื่องเสมือนผ่าน VM Gateway แทน
+            // เปิดแท็บใหม่เสมอ (target=_blank) เพราะเป็นการควบคุมหน้าจอระยะไกล
+            // หน้าต่างในแอป LINE ใช้งานได้ไม่ครบ — ทีม VM ยืนยัน 2026-08-10
+            let accessHtml = '';
+            if (b.is_online) {
+                if (canEnterVm) {
+                    accessHtml = `<a class="btn-ctrl-bk" href="${VM_GATEWAY_URL}"
+                        target="_blank" rel="noopener noreferrer"
+                        onclick="event.stopPropagation();">🖥️ เข้าใช้งาน</a>`;
+                }
+            } else if (isActive) {
+                accessHtml = `<a class="btn-ctrl-bk" href="room-control/?room=${b.room_key}"
+                    onclick="event.stopPropagation();">🎛️ ควบคุมอุปกรณ์</a>`;
+            }
+
             let actionHtml;
             if (isCancelled) {
                 actionHtml = `<span class="badge-cancelled-bk">ยกเลิกแล้ว</span>`;
             } else if (isPast) {
                 actionHtml = `<span class="badge-past-bk">หมดเวลาแล้ว</span>`;
             } else if (isActive) {
-                // กำลังใช้งาน: ปุ่มควบคุม + ปุ่ม check-in (ถ้ายังไม่ check-in) + badge (ถ้า checked_in แล้ว)
+                // กำลังใช้งาน: ปุ่มเข้าใช้งาน/ควบคุม + ปุ่ม check-in (ถ้ายังไม่ check-in) + badge
                 actionHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
                     ${!b.checked_in ? `<button class="btn-checkin-bk" id="btn-ci-${b.id}"
                         onclick="event.stopPropagation();checkinBooking(${b.id})">✅ Check-in</button>` : ''}
-                    <a class="btn-ctrl-bk" href="room-control/?room=${b.room_key}"
-                        onclick="event.stopPropagation();">🎛️ ควบคุมอุปกรณ์</a>
+                    ${accessHtml}
                     ${b.checked_in ? `<span class="badge-checkedin-bk">✅ เช็คอินแล้ว</span>` : ''}
                 </div>`;
             } else {
-                // ยังไม่ถึงเวลา
+                // ยังไม่ถึงเวลา — ห้องออนไลน์ขึ้นปุ่มเข้าใช้งานได้ก่อนเวลาจอง VM_EARLY_MIN นาที
                 actionHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
                     ${isCheckinWindow ? `<button class="btn-checkin-bk" id="btn-ci-${b.id}"
                         onclick="event.stopPropagation();checkinBooking(${b.id})">✅ Check-in</button>` : ''}
+                    ${accessHtml}
                     ${b.checked_in ? `<span class="badge-checkedin-bk">✅ เช็คอินแล้ว</span>` : ''}
                     ${canCancel ? `<button class="btn-cancel-bk"
                         onclick="event.stopPropagation();cancelBooking(${b.id},'${b.room_name}','${dateStr}')">

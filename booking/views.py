@@ -391,6 +391,8 @@ def landing_page(request):
         'my_bookings_url':    request.build_absolute_uri(reverse('my_bookings')),
         'cancel_booking_url': request.build_absolute_uri(reverse('cancel_booking')),
         'checkin_url':        request.build_absolute_uri(reverse('checkin_booking')),
+        'vm_gateway_url':     settings.VM_GATEWAY_URL,
+        'vm_gateway_early':   settings.VM_GATEWAY_EARLY_MINUTES,
     })
 
 
@@ -1166,6 +1168,9 @@ def my_bookings(request):
             'attendees':     b.attendees or '',
             'status':        b.status,
             'checked_in':    b.checked_in,
+            # หน้าแรกใช้ค่านี้เลือกปุ่ม — ห้องออนไลน์ได้ปุ่ม "เข้าใช้งาน" ไป VM Gateway
+            # ส่วนห้องจริงได้ปุ่ม "ควบคุมอุปกรณ์" ไปหน้า IoT ตามเดิม
+            'is_online':     b.room.is_online,
         }
         for b in bookings
     ]

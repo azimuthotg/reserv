@@ -1,6 +1,7 @@
 import json
 from datetime import date, datetime, time, timedelta
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.test import Client, TestCase
 from django.urls import reverse
@@ -823,6 +824,65 @@ class ManageHolidaysPageTests(TestCase):
         resp = self._page()
         self.assertEqual(resp.context['next_active'].pk, far.pk)
         self.assertContains(resp, 'กดแท็บปีนั้นเพื่อดู')
+
+
+class VmGatewayButtonTests(TestCase):
+    """ปุ่ม "เข้าใช้งาน" ของห้องออนไลน์ — ชี้ไป VM Gateway ไม่ใช่หน้าควบคุมอุปกรณ์
+
+    ห้องออนไลน์ไม่มีอุปกรณ์ IoT ผูกอยู่ ปุ่ม "ควบคุมอุปกรณ์" จึงไม่มีความหมาย
+    URL ปลายทางเป็นสัญญาข้ามระบบกับทีม VM Gateway ต้องมาจาก settings ไม่ใช่ hardcode
+    """
+
+    def setUp(self):
+        self.online = Room.objects.create(
+            name='Canva Pro ทดสอบ', booking_name='vm-test', location='ออนไลน์', capacity=1,
+            open_time=time(0, 0), close_time=time(23, 59), is_active=True, is_online=True,
+        )
+        self.physical = Room.objects.create(
+            name='ห้องจริงทดสอบ', booking_name='phys-test', location='ชั้น 3', capacity=4,
+            open_time=time(8, 30), close_time=time(16, 30), is_active=True, is_online=False,
+        )
+        self.user = LineUser.objects.create(line_user_id='U-vm', user_ldap='vmtest',
+                                            display_name='ทดสอบ', is_active=True)
+
+    def _my_bookings(self, room):
+        Booking.objects.create(
+            room=room, line_user=self.user, booking_date=date.today(),
+            start_time=time(10, 0), end_time=time(11, 0),
+            group_name='ทดสอบ', attendees='ทดสอบ', status='confirmed',
+        )
+        resp = self.client.get(reverse('my_bookings'), {'userId': self.user.line_user_id})
+        self.assertEqual(resp.status_code, 200)
+        return json.loads(resp.content)['bookings'][0]
+
+    def test_api_reports_is_online(self):
+        """หน้าแรกเลือกปุ่มจากค่านี้ — ถ้าหายไปปุ่มจะกลายเป็นปุ่มควบคุมอุปกรณ์ทั้งหมด"""
+        self.assertTrue(self._my_bookings(self.online)['is_online'])
+
+    def test_api_reports_physical_room_as_not_online(self):
+        self.assertFalse(self._my_bookings(self.physical)['is_online'])
+
+    def test_landing_exposes_gateway_settings(self):
+        resp = self.client.get(reverse('landing'))
+        self.assertEqual(resp.status_code, 200)
+        body = resp.content.decode()
+        self.assertIn(settings.VM_GATEWAY_URL, body)
+        self.assertIn(f'const VM_EARLY_MIN       = {settings.VM_GATEWAY_EARLY_MINUTES}', body)
+
+    def test_gateway_url_is_https(self):
+        """ช่องทางเดิมเป็น http ซึ่งส่งรหัสผ่านเป็นข้อความธรรมดา — ห้ามถอยกลับไปใช้"""
+        self.assertTrue(settings.VM_GATEWAY_URL.startswith('https://'),
+                        f'VM_GATEWAY_URL ต้องเป็น https — ได้ {settings.VM_GATEWAY_URL}')
+
+    def test_room_control_link_not_hardcoded_for_online_rooms(self):
+        """กันไม่ให้ใครเผลอเอา URL ของ Gateway ไป hardcode ไว้ในเทมเพลต"""
+        import os
+
+        path = os.path.join(settings.BASE_DIR, 'booking', 'templates', 'booking', 'landing.html')
+        with open(path, encoding='utf-8') as fh:
+            source = fh.read()
+        self.assertNotIn('arcvm.npu.ac.th', source)
+        self.assertIn('{{ vm_gateway_url }}', source)
 
 
 class TemplateCommentTests(TestCase):
