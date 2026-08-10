@@ -1,4 +1,7 @@
+from datetime import date
+
 from django.db import models
+from django.utils import timezone
 
 
 class Room(models.Model):
@@ -167,6 +170,80 @@ class HolidayDate(models.Model):
 
     def __str__(self):
         return f'{self.date} — {self.description}'
+
+
+# sync ตั้งใจให้รันเดือนละครั้ง เผื่อพลาดได้อีกครึ่งเดือนก่อนจะถือว่าข้อมูลเก่า
+HOLIDAY_SYNC_STALE_DAYS = 45
+# ตารางควรมีวันหยุดครอบไปข้างหน้าอย่างน้อย 2 เดือน — จองล่วงหน้าได้แค่ 7 วันเปิดบริการ
+# แต่เผื่อเวลาให้เจ้าหน้าที่ตรวจฉบับร่างและแจ้งผู้ใช้ล่วงหน้าด้วย
+HOLIDAY_HORIZON_MIN_DAYS = 60
+
+
+class HolidaySyncRun(models.Model):
+    """บันทึกทุกครั้งที่ดึงปฏิทินวันหยุดสำเร็จ — **แม้รอบนั้นจะไม่มีวันใหม่เลย**
+
+    มีไว้ตอบคำถามที่ตาราง `HolidayDate` ตอบไม่ได้ คือ "ข้อมูลวันหยุดเก่าแค่ไหน"
+    แถบเตือนบนแดชบอร์ดเดิมขึ้นเฉพาะเมื่อ *มี* ฉบับร่างค้างอยู่ แดชบอร์ดที่เงียบเพราะ
+    เจ้าหน้าที่ตรวจครบแล้ว จึงหน้าตาเหมือนกันเป๊ะกับที่เงียบเพราะไม่มีใครกดดึงข้อมูล
+    มาเลยหลายเดือน — รูปแบบเดียวกับตอนที่ตารางค้างตั้งแต่ 3 มิ.ย. 2569 จนนักศึกษา
+    จอง MINI THEATER วันแม่ 12 ส.ค. ได้ 2 รายการ
+
+    ห้ามใช้ `HolidayDate` วันที่สร้างล่าสุดแทน — sync ที่รันตรงเวลาแต่ไม่เจอวันใหม่
+    จะดูเหมือนไม่เคยรัน ซึ่งเป็นสัญญาณเตือนผิดตัว
+    """
+    TRIGGER_BUTTON    = 'button'
+    TRIGGER_COMMAND   = 'command'
+    TRIGGER_BOOTSTRAP = 'bootstrap'
+    TRIGGER_CHOICES = [
+        (TRIGGER_BUTTON,    'เจ้าหน้าที่กดปุ่มในหน้าจัดการวันหยุด'),
+        (TRIGGER_COMMAND,   'คำสั่ง sync_holidays (ตั้งเวลา)'),
+        (TRIGGER_BOOTSTRAP, 'บันทึกย้อนหลังตอนติดตั้งฟีเจอร์'),
+    ]
+
+    synced_at     = models.DateTimeField(auto_now_add=True, verbose_name='ดึงเมื่อ')
+    created_count = models.PositiveIntegerField(default=0, verbose_name='ได้วันใหม่')
+    trigger       = models.CharField(max_length=20, choices=TRIGGER_CHOICES,
+                                     default=TRIGGER_BUTTON, verbose_name='สั่งจาก')
+
+    class Meta:
+        ordering     = ['-synced_at']
+        verbose_name = 'ประวัติการดึงวันหยุด'
+        verbose_name_plural = 'ประวัติการดึงวันหยุด'
+
+    def __str__(self):
+        return f'{self.synced_at:%Y-%m-%d %H:%M} — ได้ใหม่ {self.created_count} วัน'
+
+    @classmethod
+    def data_status(cls):
+        """สรุปว่า "ข้อมูลวันหยุดในระบบยังเชื่อถือได้อยู่ไหม" ให้แดชบอร์ดและหน้าจัดการใช้ร่วมกัน
+
+        เตือน 2 กรณีที่ต่างกัน:
+        - `is_stale`      ไม่ได้ดึงมานาน → วันหยุดที่ ครม. ประกาศเพิ่มกลางปียังไม่เข้าระบบ
+        - `horizon_short` ข้อมูลที่มีครอบไปข้างหน้าไม่พอ → อีกไม่นานจะไม่มีวันหยุดให้บล็อกเลย
+        """
+        today   = date.today()
+        last    = cls.objects.first()                       # Meta.ordering = ล่าสุดก่อน
+        horizon = HolidayDate.objects.aggregate(m=models.Max('date'))['m']
+
+        # แปลงเป็นเวลาไทยก่อนเสมอ — synced_at เก็บเป็น UTC ถ้าอ่านตรง ๆ วันจะเพี้ยนได้ 1 วัน
+        last_date    = timezone.localtime(last.synced_at).date() if last else None
+        days_since   = (today - last_date).days if last_date else None
+        horizon_days = (horizon - today).days if horizon else None
+
+        is_stale      = days_since is None or days_since > HOLIDAY_SYNC_STALE_DAYS
+        horizon_short = horizon_days is None or horizon_days < HOLIDAY_HORIZON_MIN_DAYS
+
+        return {
+            'last_run':      last,
+            'last_date':     last_date,
+            'days_since':    days_since,
+            'horizon':       horizon,
+            'horizon_days':  horizon_days,
+            'is_stale':      is_stale,
+            'horizon_short': horizon_short,
+            'stale_days':    HOLIDAY_SYNC_STALE_DAYS,
+            'needs_attention': is_stale or horizon_short,
+        }
 
 
 class BookingLog(models.Model):

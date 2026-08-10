@@ -24,6 +24,41 @@
 </div>
 {% endif %}
 
+{% if holiday_sync.needs_attention %}
+{# แถบข้างบนเตือนได้เฉพาะเมื่อมีฉบับร่างค้างอยู่ ถ้าไม่มีใครดึงข้อมูลมาเลยมันจะเงียบ
+   ทั้งที่ไม่ปลอดภัย — แถบนี้เตือนตรงนั้น ให้ "เงียบ" แปลว่าปลอดภัยจริง #}
+<div class="alert alert-warning py-2 mb-3" style="font-size:13px;">
+    <div class="fw-semibold mb-1">
+        <i class="bi bi-clock-history"></i> ข้อมูลวันหยุดอาจไม่เป็นปัจจุบัน
+    </div>
+    <ul class="mb-2" style="padding-left:20px;">
+        {% if holiday_sync.is_stale %}
+        <li>
+            {% if holiday_sync.last_date %}
+            ดึงปฏิทินวันหยุดครั้งล่าสุดเมื่อ
+            <strong>{{ holiday_sync.last_date|th_date_long }}</strong>
+            ({{ holiday_sync.days_since }} วันที่แล้ว)
+            {% else %}
+            <strong>ยังไม่เคยดึงปฏิทินวันหยุดเข้าระบบเลย</strong>
+            {% endif %}
+            — วันหยุดที่ ครม. ประกาศเพิ่มหลังจากนั้นยังไม่เข้าระบบ ระบบจะยังเปิดให้จองวันเหล่านั้น
+        </li>
+        {% endif %}
+        {% if holiday_sync.horizon_short %}
+        <li>
+            {% if holiday_sync.horizon %}
+            วันหยุดในระบบมีถึง <strong>{{ holiday_sync.horizon|th_date_long }}</strong>
+            เท่านั้น (อีก {{ holiday_sync.horizon_days }} วัน)
+            {% else %}
+            <strong>ยังไม่มีวันหยุดในระบบเลยสักวัน</strong>
+            {% endif %}
+        </li>
+        {% endif %}
+    </ul>
+    <a href="{% url 'manage_holidays' %}" class="btn btn-sm btn-warning">ไปดึงวันหยุดราชการ</a>
+</div>
+{% endif %}
+
 <!-- Stats -->
 <div class="row g-3 mb-4">
     <div class="col-6 col-md-3">

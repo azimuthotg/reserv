@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import Booking, BookingLog, HolidayDate, LineUser, Room, RoomClosure, RoomDevice
+from .models import (Booking, BookingLog, HolidayDate, HolidaySyncRun, LineUser, Room,
+                     RoomClosure, RoomDevice)
 
 
 class BookingLogInline(admin.TabularInline):
@@ -26,6 +27,21 @@ class HolidayDateAdmin(admin.ModelAdmin):
     list_filter   = ('is_active',)
     ordering      = ('date',)
     search_fields = ('description',)
+
+
+@admin.register(HolidaySyncRun)
+class HolidaySyncRunAdmin(admin.ModelAdmin):
+    """อ่านอย่างเดียว — เป็นบันทึกว่าระบบดึงปฏิทินไปเมื่อไหร่บ้าง แก้มือแล้วเสียความหมาย"""
+    list_display  = ('synced_at', 'trigger', 'created_count')
+    list_filter   = ('trigger',)
+    date_hierarchy = 'synced_at'
+    readonly_fields = ('synced_at', 'trigger', 'created_count')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(Room)

@@ -220,6 +220,15 @@ backend ใช้ `MAX_ADVANCE_DAYS` และ `max_advance_service_date()` เ�
 - sync **ไม่แตะแถว `source='manual'`** แม้วันตรงกัน — กันคำอธิบาย/สถานะที่คนตั้งไว้ถูกเขียนทับ
 - แดชบอร์ด `/manage/` ขึ้นแถบแดงเมื่อมีฉบับร่างใน 30 วันข้างหน้า พร้อมจำนวนการจองที่ตกวันนั้น
 
+**เตือนข้อมูลวันหยุดค้าง (`HolidaySyncRun`):** แถบแดงข้างบนขึ้นได้เฉพาะเมื่อ **มีแถวฉบับร่างอยู่จริง**
+แดชบอร์ดที่เงียบเพราะตรวจครบ จึงแยกไม่ออกจากที่เงียบเพราะไม่มีใครกดดึงมาหลายเดือน
+`HolidaySyncRun` บันทึกทุกครั้งที่ดึงสำเร็จ **แม้รอบนั้นไม่มีวันใหม่เลย** แล้ว `data_status()`
+สรุปให้แดชบอร์ดและ `/manage/holidays/` ใช้ร่วมกัน — ขึ้นแถบเหลืองเมื่อ
+`is_stale` (ไม่ได้ดึงเกิน `HOLIDAY_SYNC_STALE_DAYS`=45 วัน) หรือ
+`horizon_short` (วันหยุดล่าสุดในตารางอยู่ใกล้กว่า `HOLIDAY_HORIZON_MIN_DAYS`=60 วัน)
+- **ห้ามใช้วันที่สร้างของ `HolidayDate` แทน** — sync ที่รันตรงเวลาแต่ไม่เจอวันใหม่จะดูเหมือนไม่เคยรัน
+- fetch ล้มเหลวต้อง **ไม่** บันทึก `HolidaySyncRun` และ `--dry-run` ก็ไม่บันทึก
+
 ---
 
 ## NPU API (https://api.npu.ac.th)
@@ -246,6 +255,7 @@ helper ปัจจุบันอยู่ใน `booking/views.py` และ�
 - **RoomDevice** — อุปกรณ์ Home Assistant `room` ว่างได้ = อุปกรณ์ส่วนกลางที่ไม่สังกัดห้องจอง (จับกลุ่มด้วย `group_name`)
 - **RoomClosure** — ปิดห้องชั่วคราวตามวันและช่วงเวลา
 - **HolidayDate** — วันหยุดที่ไม่เปิดให้จอง
+- **HolidaySyncRun** — ประวัติการดึงปฏิทินวันหยุด (อ่านอย่างเดียว) ใช้ตอบว่า "ข้อมูลวันหยุดเก่าแค่ไหน"
 - **BookingLog** — audit trail เช่น `created`, `cancelled`, `checked_in`, `auto_cancelled`, `auto_off`
 
 **Conflict check** ต้องใช้ `select_for_update()` เสมอ — ดู `create_booking()` ใน `booking/views.py`

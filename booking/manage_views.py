@@ -19,7 +19,8 @@ from django.views.decorators.http import require_POST
 
 from .forms import HolidayDateForm, RoomClosureForm, RoomForm, StaffAddForm, StaffEditForm
 from .holiday_feed import HolidayFeedError, fetch_holidays
-from .models import Booking, BookingLog, HolidayDate, LineUser, Room, RoomClosure, RoomDevice
+from .models import (Booking, BookingLog, HolidayDate, HolidaySyncRun, LineUser, Room,
+                     RoomClosure, RoomDevice)
 from .service_hours import MAX_BOOKING_HOURS_TEXT, room_service_hours
 from .views import _notify_booking_cancelled, _npu_v2_request, _push_text
 
@@ -108,6 +109,9 @@ def manage_dashboard(request):
         'recent_bookings': recent_bookings,
         'upcoming_holidays': upcoming_holidays,
         'pending_holidays': pending_holidays,
+        # แถบ pending ด้านบนเตือนได้เฉพาะเมื่อ "มีฉบับร่างอยู่จริง" — อันนี้เตือนอีกด้าน
+        # คือข้อมูลไม่ได้ถูกดึงเข้ามานาน ซึ่งทำให้แถบนั้นเงียบทั้งที่ไม่ปลอดภัย
+        'holiday_sync': HolidaySyncRun.data_status(),
         'today': today,
     })
 
@@ -466,6 +470,8 @@ def manage_holidays(request):
         'pending_count': HolidayDate.objects.filter(
             source=HolidayDate.SOURCE_AUTO, is_active=False,
             date__gte=date.today()).count(),
+        # บอกตรงจุดที่เจ้าหน้าที่ลงมือได้ว่าดึงข้อมูลครั้งล่าสุดเมื่อไหร่
+        'holiday_sync': HolidaySyncRun.data_status(),
     })
 
 
@@ -496,6 +502,10 @@ def manage_holidays_sync(request):
         HolidayDate.objects.create(date=d, description=summary,
                                    is_active=False, source=HolidayDate.SOURCE_AUTO)
         created += 1
+
+    # บันทึกไว้แม้ created = 0 — "ดึงแล้วไม่เจอวันใหม่" ต่างจาก "ไม่มีใครดึงเลย"
+    HolidaySyncRun.objects.create(created_count=created,
+                                  trigger=HolidaySyncRun.TRIGGER_BUTTON)
 
     if created:
         messages.success(request, f'ดึงมาใหม่ {created} วัน — ยังเป็นฉบับร่าง '

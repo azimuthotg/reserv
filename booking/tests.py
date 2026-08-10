@@ -6,7 +6,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import Booking, BookingLog, HolidayDate, LineUser, Room
+from .models import Booking, BookingLog, HolidayDate, HolidaySyncRun, LineUser, Room
 
 
 def _next_weekday(from_date):
@@ -823,3 +823,153 @@ class ManageHolidaysPageTests(TestCase):
         resp = self._page()
         self.assertEqual(resp.context['next_active'].pk, far.pk)
         self.assertContains(resp, 'กดแท็บปีนั้นเพื่อดู')
+
+
+class HolidayFreshnessTests(TestCase):
+    """เตือนเมื่อ "ไม่มีใครดึงข้อมูลวันหยุดมานาน"
+
+    แถบเตือนฉบับร่างเดิมขึ้นได้เฉพาะเมื่อมีแถวฉบับร่างอยู่จริง แดชบอร์ดที่เงียบเพราะ
+    ตรวจครบแล้ว จึงแยกไม่ออกจากที่เงียบเพราะไม่มีใครดึงข้อมูลมาเลย — ชุดนี้คุมส่วนที่
+    ทำให้ "เงียบ = ปลอดภัยจริง"
+    """
+
+    def setUp(self):
+        from unittest.mock import Mock
+
+        self.fake = Mock(status_code=200, content=ICS_SAMPLE.encode('utf-8'))
+        User.objects.create_user(username='admin3', password='pass12345',
+                                 is_staff=True, is_superuser=True)
+        self.client = Client()
+        self.client.login(username='admin3', password='pass12345')
+        self.today = date.today()
+
+    def _sync(self, year=2026):
+        from unittest.mock import patch
+
+        with patch('booking.holiday_feed.requests.get', return_value=self.fake):
+            return self.client.post(reverse('manage_holidays_sync'), data={'year': year})
+
+    def _dashboard(self):
+        from unittest.mock import patch
+
+        with patch('booking.manage_views._npu_v2_request', return_value=None):
+            return self.client.get(reverse('manage_dashboard'))
+
+    def _age_last_run(self, days):
+        """auto_now_add เขียนทับค่าที่ส่งมา ต้องดันเวลาย้อนหลังผ่าน queryset update"""
+        HolidaySyncRun.objects.update(synced_at=timezone.now() - timedelta(days=days))
+
+    def _far_horizon(self):
+        HolidayDate.objects.create(date=self.today + timedelta(days=200),
+                                   description='วันหยุดไกล', is_active=True,
+                                   source=HolidayDate.SOURCE_MANUAL)
+
+    # ── บันทึกการดึง ──────────────────────────────────────────────────────────
+
+    def test_button_sync_records_a_run(self):
+        self._sync()
+        self.assertEqual(HolidaySyncRun.objects.count(), 1)
+        self.assertEqual(HolidaySyncRun.objects.first().trigger,
+                         HolidaySyncRun.TRIGGER_BUTTON)
+
+    def test_sync_with_no_new_days_still_records_a_run(self):
+        """หัวใจของฟีเจอร์ — "ดึงแล้วไม่เจอวันใหม่" ต้องไม่ดูเหมือน "ไม่มีใครดึงเลย" """
+        self._sync()
+        self._sync()                                   # รอบสองไม่มีวันใหม่แน่นอน
+        self.assertEqual(HolidaySyncRun.objects.count(), 2)
+        self.assertEqual(HolidaySyncRun.objects.first().created_count, 0)
+
+    def test_failed_fetch_records_nothing(self):
+        from unittest.mock import Mock, patch
+
+        with patch('booking.holiday_feed.requests.get',
+                   return_value=Mock(status_code=503)):
+            self.client.post(reverse('manage_holidays_sync'), data={'year': 2026})
+        self.assertEqual(HolidaySyncRun.objects.count(), 0)
+
+    def test_command_records_a_run(self):
+        from io import StringIO
+        from unittest.mock import patch
+
+        from django.core.management import call_command
+
+        with patch('booking.holiday_feed.requests.get', return_value=self.fake):
+            call_command('sync_holidays', '--year', '2026', stdout=StringIO())
+        self.assertEqual(HolidaySyncRun.objects.count(), 1)
+        self.assertEqual(HolidaySyncRun.objects.first().trigger,
+                         HolidaySyncRun.TRIGGER_COMMAND)
+
+    def test_dry_run_records_nothing(self):
+        from io import StringIO
+        from unittest.mock import patch
+
+        from django.core.management import call_command
+
+        with patch('booking.holiday_feed.requests.get', return_value=self.fake):
+            call_command('sync_holidays', '--year', '2026', '--dry-run', stdout=StringIO())
+        self.assertEqual(HolidaySyncRun.objects.count(), 0)
+
+    # ── สถานะข้อมูล ───────────────────────────────────────────────────────────
+
+    def test_never_synced_is_stale(self):
+        self.assertTrue(HolidaySyncRun.data_status()['is_stale'])
+
+    def test_fresh_sync_with_far_horizon_is_quiet(self):
+        self._far_horizon()
+        HolidaySyncRun.objects.create()
+        status = HolidaySyncRun.data_status()
+        self.assertFalse(status['needs_attention'])
+
+    def test_old_sync_is_stale(self):
+        self._far_horizon()
+        HolidaySyncRun.objects.create()
+        self._age_last_run(60)
+        status = HolidaySyncRun.data_status()
+        self.assertTrue(status['is_stale'])
+        self.assertEqual(status['days_since'], 60)
+
+    def test_recent_sync_is_not_stale(self):
+        self._far_horizon()
+        HolidaySyncRun.objects.create()
+        self._age_last_run(20)
+        self.assertFalse(HolidaySyncRun.data_status()['is_stale'])
+
+    def test_short_horizon_warns_even_after_fresh_sync(self):
+        """ดึงมาสด ๆ แต่ข้อมูลครอบไปข้างหน้าไม่ถึง 2 เดือน ก็ยังต้องเตือน"""
+        HolidayDate.objects.create(date=self.today + timedelta(days=10),
+                                   description='วันหยุดใกล้', is_active=True,
+                                   source=HolidayDate.SOURCE_MANUAL)
+        HolidaySyncRun.objects.create()
+        status = HolidaySyncRun.data_status()
+        self.assertFalse(status['is_stale'])
+        self.assertTrue(status['horizon_short'])
+        self.assertTrue(status['needs_attention'])
+
+    # ── แถบเตือนบนแดชบอร์ด ────────────────────────────────────────────────────
+
+    def test_dashboard_warns_when_never_synced(self):
+        resp = self._dashboard()
+        self.assertContains(resp, 'ยังไม่เคยดึงปฏิทินวันหยุดเข้าระบบเลย')
+
+    def test_dashboard_warns_when_sync_is_old(self):
+        self._far_horizon()
+        HolidaySyncRun.objects.create()
+        self._age_last_run(90)
+        resp = self._dashboard()
+        self.assertContains(resp, 'ข้อมูลวันหยุดอาจไม่เป็นปัจจุบัน')
+        self.assertContains(resp, '90 วันที่แล้ว')
+
+    def test_dashboard_quiet_when_data_is_fresh(self):
+        """ต้องไม่ขึ้นเตือนตอนทุกอย่างเรียบร้อย ไม่งั้นเจ้าหน้าที่จะเลิกอ่านแถบเตือน"""
+        self._far_horizon()
+        HolidaySyncRun.objects.create()
+        resp = self._dashboard()
+        self.assertNotContains(resp, 'ข้อมูลวันหยุดอาจไม่เป็นปัจจุบัน')
+
+    def test_holidays_page_shows_last_sync(self):
+        self._far_horizon()
+        HolidaySyncRun.objects.create()
+        self._age_last_run(3)
+        resp = self.client.get(reverse('manage_holidays'))
+        self.assertContains(resp, 'ดึงปฏิทินวันหยุดครั้งล่าสุด')
+        self.assertContains(resp, '3 วันที่แล้ว')

@@ -21,7 +21,7 @@ from datetime import date, timedelta
 from django.core.management.base import BaseCommand
 
 from booking.holiday_feed import HolidayFeedError, fetch_holidays
-from booking.models import HolidayDate
+from booking.models import HolidayDate, HolidaySyncRun
 
 DEFAULT_DAYS = 365
 
@@ -76,6 +76,12 @@ class Command(BaseCommand):
                         is_active=False,               # ฉบับร่าง รอเจ้าหน้าที่ยืนยัน
                         source=HolidayDate.SOURCE_AUTO,
                     )
+
+        # บันทึกไว้แม้ created = 0 — แดชบอร์ดต้องแยก "ดึงแล้วไม่เจอวันใหม่"
+        # ออกจาก "ไม่มีใครดึงเลย" ให้ได้ ไม่งั้นเงียบเหมือนกันทั้งสองแบบ
+        if not dry:
+            HolidaySyncRun.objects.create(created_count=created,
+                                          trigger=HolidaySyncRun.TRIGGER_COMMAND)
 
         self.stdout.write('')
         self.stdout.write(self.style.SUCCESS(
