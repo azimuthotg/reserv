@@ -607,6 +607,28 @@
         return `${CACHE_KEY_PREFIX}:${userId}`;
     }
 
+    // profile cache มีอายุ — กันกรณีผูกบัญชีใหม่/แก้ชื่อที่ต้นทางแล้วหน้าเว็บยังโชว์ของเดิม
+    const CACHE_TTL_MS = 30 * 60 * 1000;
+
+    function readCache(key) {
+        let box = null;
+        try {
+            box = JSON.parse(sessionStorage.getItem(key));
+        } catch (e) {
+            box = null;
+        }
+        // ของเก่าที่ไม่มี _ts ให้ถือว่าหมดอายุ เพื่อบังคับดึงใหม่ครั้งแรก
+        if (!box || !box._ts || Date.now() - box._ts > CACHE_TTL_MS) {
+            sessionStorage.removeItem(key);
+            return null;
+        }
+        return box.data;
+    }
+
+    function writeCache(key, data) {
+        sessionStorage.setItem(key, JSON.stringify({ _ts: Date.now(), data: data }));
+    }
+
     function throwIfBlocked(data) {
         if (data.blocked) {
             const error = new Error(ACCESS_DENIED_MSG);
@@ -630,9 +652,9 @@
         sessionStorage.removeItem(LEGACY_CACHE_KEY);
         const locallyRegistered = await checkAccess(profile.userId);
         const key = cacheKey(profile.userId);
-        const cached = sessionStorage.getItem(key);
+        const cached = readCache(key);
         if (locallyRegistered && cached) {
-            return JSON.parse(cached);
+            return cached;
         }
         const resp = await fetch(CHECK_URL, {
             method:  'POST',
@@ -642,7 +664,7 @@
         const data = await resp.json();
         throwIfBlocked(data);
         if (data.registered) {
-            sessionStorage.setItem(key, JSON.stringify(data));
+            writeCache(key, data);
         }
         return data;
     }

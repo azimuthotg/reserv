@@ -316,19 +316,24 @@ def _parse_profile(profile):
     return str(full_name).strip(), str(faculty).strip(), str(department).strip()
 
 
-def _get_or_refresh_line_user(line_user_id, display_name, user_ldap, user_type):
+def _get_or_refresh_line_user(line_user_id, display_name, user_ldap, user_type, force=False):
     """
     ดึง LineUser จาก DB
     - ถ้ามีและ profile_updated_at < 30 วัน → คืนเลย (fast path)
     - ถ้าไม่มี หรือ profile เก่า → ดึง NPU API → cache → คืน
+
+    fast path ต้องถูกยกเลิกเมื่อ user_ldap/user_type ที่ api ส่งมา
+    ไม่ตรงกับที่ cache ไว้ มิฉะนั้นจะคืน "ชื่อของบัญชีเดิม" คู่กับ "รหัสของบัญชีใหม่"
+    (ผู้ใช้ผูก LINE ใหม่กับอีกรหัสหนึ่งภายใน 30 วัน) — force=True ใช้ตอนเพิ่งผูกบัญชี
     """
     now          = timezone.now()
     cache_cutoff = now - timedelta(days=PROFILE_CACHE_DAYS)
 
     lu = LineUser.objects.filter(line_user_id=line_user_id).first()
 
-    # fast path: cache ยังใหม่อยู่ และมีข้อมูล faculty แล้ว
-    if (lu and lu.full_name and lu.faculty and
+    # fast path: cache ยังใหม่อยู่ ข้อมูลครบ และยังเป็นเจ้าของบัญชีคนเดิม
+    if (not force and lu and lu.full_name and lu.faculty and
+            lu.user_ldap == user_ldap and lu.user_type == user_type and
             lu.profile_updated_at and lu.profile_updated_at > cache_cutoff):
         return lu
 
@@ -336,14 +341,20 @@ def _get_or_refresh_line_user(line_user_id, display_name, user_ldap, user_type):
     raw_profile              = _fetch_npu_profile(user_ldap, user_type)
     full_name, faculty, dept = _parse_profile(raw_profile)
 
+    # api ล่ม/ตอบไม่ได้ + ยังเป็นรหัสเดิม → คงชื่อเดิมไว้ อย่าล้างเป็นค่าว่าง
+    # และไม่ต้องเลื่อน profile_updated_at เพื่อให้ครั้งหน้าลองดึงใหม่
+    keep_cached = (raw_profile is None and lu is not None and
+                   lu.user_ldap == user_ldap and lu.user_type == user_type)
+
     if lu:
         lu.display_name      = display_name
         lu.user_ldap         = user_ldap
         lu.user_type         = user_type
-        lu.full_name         = full_name
-        lu.faculty           = faculty
-        lu.department        = dept
-        lu.profile_updated_at = now
+        if not keep_cached:
+            lu.full_name         = full_name
+            lu.faculty           = faculty
+            lu.department        = dept
+            lu.profile_updated_at = now
         lu.save(update_fields=[
             'display_name', 'user_ldap', 'user_type', 'full_name',
             'faculty', 'department', 'profile_updated_at', 'updated_at',
@@ -426,7 +437,9 @@ def register_page(request):
         elif not _register_npu_user(user_id, user_ldap, user_type, display_name):
             error = 'ไม่สามารถผูกบัญชีกับระบบมหาวิทยาลัยได้ กรุณาลองใหม่อีกครั้ง'
         else:
-            _get_or_refresh_line_user(user_id, display_name, user_ldap, user_type)
+            # เพิ่งผูกบัญชีใหม่ → ดึง profile สดเสมอ ไม่ใช้ cache เดิมของ LINE ID นี้
+            _get_or_refresh_line_user(
+                user_id, display_name, user_ldap, user_type, force=True)
             return redirect(next_url)
 
     return render(request, 'booking/register.html', {

@@ -169,6 +169,18 @@ Walai card และ IoT room control ส่วน `check_user()` ตรวจ�
 
 **Frontend profile cache:** หน้า landing, booking และ card ใช้ `sessionStorage`
 key รูปแบบ `npu_user_v2:<LINE userId>` เพื่อไม่ให้ profile ค้างข้ามบัญชีเมื่อสลับ LINE user
+**มีอายุ 30 นาที (`CACHE_TTL_MS`)** — เดิมไม่มีอายุ พอผูกบัญชีใหม่ระหว่าง session เดิม
+หน้าเว็บก็ยังโชว์ของเก่า เพราะ `/api/access-status/` ตอบว่า registered จาก local row เท่านั้น
+
+**Profile cache ฝั่ง server (`LineUser` + `PROFILE_CACHE_DAYS`=30):** `_get_or_refresh_line_user()`
+ต้องยกเลิก fast path เมื่อ `user_ldap`/`user_type` ที่ api ส่งมาไม่ตรงกับที่ cache ไว้
+- cache ผูกกับ **LINE userId** ไม่ใช่รหัส — ลบการผูกที่ `apiapp_userprofile` ฝั่ง api **ไม่ล้าง cache นี้**
+  ผลคือ `/api/check-user/` คืน `userLdap` สดจาก api คู่กับ `full_name` ของเจ้าของเดิม
+  = อาการ "รหัสถูก แต่ชื่อผิด" (เคสจริง 2026-08-13 ดู MEM.md)
+- หน้า `/register/` เรียกด้วย `force=True` เสมอ เพราะเพิ่งผูกบัญชี = ต้องได้ profile สด
+- ดึง profile ไม่สำเร็จ + รหัสเดิม → **คงชื่อเดิมไว้ ห้ามเขียนทับด้วยค่าว่าง** และไม่เลื่อน
+  `profile_updated_at` เพื่อให้ครั้งหน้าลองใหม่
+- แก้รายคนด้วย `python manage.py refresh_profile <ldap|LINE userId|ชื่อ>` (มี `--dry-run`)
 
 **Service hours policy:** `Room.open_time` และ `Room.close_time` เป็นเวลาเปิด-ปิดวันจันทร์-ศุกร์
 ส่วนเสาร์-อาทิตย์ใช้ `09:00–17:00` จาก `booking/service_hours.py`

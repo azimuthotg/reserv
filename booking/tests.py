@@ -1079,3 +1079,110 @@ class HolidayFreshnessTests(TestCase):
         resp = self.client.get(reverse('manage_holidays'))
         self.assertContains(resp, 'ดึงปฏิทินวันหยุดครั้งล่าสุด')
         self.assertContains(resp, '3 วันที่แล้ว')
+
+
+class ProfileCacheInvalidationTests(TestCase):
+    """cache profile ต้องไม่ค้างข้ามเจ้าของบัญชี
+
+    เคสจริง 2026-08-13: นักศึกษาแจ้งว่า "รหัสถูก แต่ชื่อผิด" — เพราะ /api/check-user/
+    คืน userLdap สดจาก api แต่คืน full_name จาก LineUser ที่ cache ไว้ 30 วัน
+    ลบการผูกที่ api แล้วผูกใหม่ก็ไม่หาย เพราะ cache ฝั่ง reserv ไม่ถูกแตะเลย
+    """
+
+    def setUp(self):
+        self.lu = LineUser.objects.create(
+            line_user_id='Utest-profile-cache',
+            display_name='nong',
+            user_ldap='650000000001',
+            user_type='นักศึกษา',
+            full_name='นางสาวชื่อ เดิม',
+            faculty='คณะเดิม',
+            department='สาขาเดิม',
+            profile_updated_at=timezone.now(),
+        )
+
+    def _std_profile(self):
+        return {
+            'prefix_name':     'นาย',
+            'student_name':    'ชื่อ',
+            'student_surname': 'ใหม่',
+            'faculty_name':    'คณะใหม่',
+            'program_name':    'สาขาใหม่',
+        }
+
+    def test_ldap_change_invalidates_cache(self):
+        from unittest.mock import patch
+
+        from .views import _get_or_refresh_line_user
+
+        with patch('booking.views._fetch_npu_profile',
+                   return_value=self._std_profile()) as mock_fetch:
+            lu = _get_or_refresh_line_user(
+                'Utest-profile-cache', 'nong', '650000000002', 'นักศึกษา')
+
+        mock_fetch.assert_called_once_with('650000000002', 'นักศึกษา')
+        self.assertEqual(lu.user_ldap, '650000000002')
+        self.assertEqual(lu.full_name, 'นายชื่อ ใหม่')
+        self.assertEqual(lu.faculty, 'คณะใหม่')
+
+    def test_same_ldap_still_uses_cache(self):
+        """ของเดิมต้องไม่ถูกกระทบ — ไม่งั้นทุกครั้งที่เปิดหน้าจะยิง api ใหม่หมด"""
+        from unittest.mock import patch
+
+        from .views import _get_or_refresh_line_user
+
+        with patch('booking.views._fetch_npu_profile') as mock_fetch:
+            lu = _get_or_refresh_line_user(
+                'Utest-profile-cache', 'nong', '650000000001', 'นักศึกษา')
+
+        mock_fetch.assert_not_called()
+        self.assertEqual(lu.full_name, 'นางสาวชื่อ เดิม')
+
+    def test_force_refreshes_even_when_ldap_unchanged(self):
+        """หน้า register ผูกบัญชีใหม่ → ต้องดึงชื่อสดเสมอ แม้เป็นรหัสเดิม"""
+        from unittest.mock import patch
+
+        from .views import _get_or_refresh_line_user
+
+        with patch('booking.views._fetch_npu_profile',
+                   return_value=self._std_profile()) as mock_fetch:
+            lu = _get_or_refresh_line_user(
+                'Utest-profile-cache', 'nong', '650000000001', 'นักศึกษา',
+                force=True)
+
+        mock_fetch.assert_called_once()
+        self.assertEqual(lu.full_name, 'นายชื่อ ใหม่')
+
+    def test_api_failure_keeps_cached_name(self):
+        """api ล่ม + รหัสเดิม → คงชื่อเดิมไว้ อย่าล้างเป็นค่าว่างแล้วเอาไปขึ้นบัตร"""
+        from unittest.mock import patch
+
+        from .views import _get_or_refresh_line_user
+
+        old_stamp = self.lu.profile_updated_at
+        with patch('booking.views._fetch_npu_profile', return_value=None):
+            lu = _get_or_refresh_line_user(
+                'Utest-profile-cache', 'nong', '650000000001', 'นักศึกษา',
+                force=True)
+
+        self.assertEqual(lu.full_name, 'นางสาวชื่อ เดิม')
+        self.assertEqual(lu.profile_updated_at, old_stamp)
+
+    def test_check_user_returns_matching_ldap_and_name(self):
+        """เคสที่ผู้ใช้แจ้ง: รหัสกับชื่อต้องเป็นคนเดียวกันเสมอ"""
+        from unittest.mock import patch
+
+        with patch('booking.views._fetch_npu_user',
+                   return_value={'userLdap': '650000000002',
+                                 'user_type': 'นักศึกษา'}), \
+             patch('booking.views._fetch_npu_profile',
+                   return_value=self._std_profile()):
+            resp = self.client.post(
+                reverse('check_user'),
+                data=json.dumps({'userId': 'Utest-profile-cache',
+                                 'displayName': 'nong'}),
+                content_type='application/json')
+
+        data = resp.json()
+        self.assertEqual(data['userLdap'], '650000000002')
+        self.assertEqual(data['full_name'], 'นายชื่อ ใหม่')
